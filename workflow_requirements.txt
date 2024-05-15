@@ -1,0 +1,3 @@
+invoke
+snakemake
+snakemake-executor-plugin-slurm

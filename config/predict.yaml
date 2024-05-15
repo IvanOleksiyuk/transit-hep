@@ -1,0 +1,17 @@
+defaults:
+  - _self_
+
+  - load_model: cnn
+  - load_datamodule: mnist
+
+  - hydra: default
+  - common: private # create your own and never push! look at default for reference
+
+predictor:
+  _target_: lightning.Trainer
+  enable_progress_bar: true
+  logger: null
+
+io:
+  checkpoint_path: result.ckpt
+  predictions_save_path: prediction.h5

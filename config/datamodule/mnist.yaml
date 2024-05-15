@@ -1,0 +1,24 @@
+_target_: hyperproject.data.mnist.MNISTDataModule
+val_frac: 0.1
+
+dev_set_factory:
+  _target_: hyperproject.data.mnist.MNISTDataset
+  _partial_: true
+  load_path: ${io.dataset_path}
+  train: true
+
+predict_set_factory:
+  _target_: hyperproject.data.mnist.MNISTDataset
+  _partial_: true
+  load_path: ${io.dataset_path}
+  train: false
+
+dev_loader_conf:
+  batch_size: 1024
+  num_workers: 3
+  pin_memory: true
+
+predict_loader_conf:
+  batch_size: 1024
+  num_workers: 3
+  pin_memory: true

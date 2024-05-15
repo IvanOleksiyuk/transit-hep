@@ -1,0 +1,43 @@
+stages:
+  - lint
+  - test
+  - build
+
+pre-commit:
+  stage: lint
+  image: python:3.11
+  script:
+    - pip install pre-commit==3.4.0
+    - pre-commit run --all-files
+  allow_failure: True
+
+run-unit-tests:
+  stage: test
+  image: python:3.11
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  script:
+    - pip install invoke pytest -r requirements.txt -e . -e libs/mltools
+    - invoke run-unit-tests
+  allow_failure: True
+
+build_latest:
+  stage: build
+  image:
+    name: gitlab-registry.cern.ch/ci-tools/docker-image-builder
+    entrypoint: [""]
+  variables:
+    TAG: latest
+    IMAGE_NAME: docker-image
+    DOCKER_FILE: "${CI_PROJECT_DIR}/docker/Dockerfile"
+    TO: "${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:${TAG}"
+  script:
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${DOCKER_FILE}"
+      --destination "${TO}"
+  rules:
+    - changes:
+      - docker/Dockerfile
+      - requirements.txt

@@ -1,0 +1,4 @@
+[submodule "libs/mltools"]
+	path = libs/mltools
+	url = https://gitlab.cern.ch/mleigh/mltools.git
+	branch = projecttemplate

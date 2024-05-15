@@ -1,0 +1,6 @@
+/config/common/private.yaml
+/experiments
+/.snakemake
+__pycache__
+*.egg-info
+*.DS_Store

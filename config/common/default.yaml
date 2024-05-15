@@ -1,0 +1,20 @@
+# no hydra stuff here, this has to be read by snakemake too!
+
+project_name: hyperproject
+
+# path to apptainer container for snakemake
+# to use during the workflow (should be on scratch)
+container_path: null # example: /srv/beegfs/scratch/users/<u>/<user>/projects/<project_name>/container.sif
+
+# directory path for experiment output, which will be located at
+# <experiment_base_path>/<experiment_group>/<experiment_name> (must be on scratch)
+experiments_base_path: null # example: /srv/beegfs/scratch/users/<u>/<user>/projects/<project_name>/experiments
+
+experiment_group: initial_testing # determines workflow output folder
+stage: debug # used for tagging runs, making it e.g. easy to delete debug runs
+matmul_precision: medium # should use medium if on ampere gpus
+model_compile_mode: null # can be set to default for faster compiles (very buggy!!!)
+
+# this has to go in the private config, since it's user specific
+logging:
+  wandb_username: null

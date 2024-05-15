@@ -1,0 +1,10 @@
+roc_0: { _target_: hyperproject.plotting.summaries.ROC, digit: 0 }
+roc_1: { _target_: hyperproject.plotting.summaries.ROC, digit: 1 }
+roc_2: { _target_: hyperproject.plotting.summaries.ROC, digit: 2 }
+roc_3: { _target_: hyperproject.plotting.summaries.ROC, digit: 3 }
+roc_4: { _target_: hyperproject.plotting.summaries.ROC, digit: 4 }
+roc_5: { _target_: hyperproject.plotting.summaries.ROC, digit: 5 }
+roc_6: { _target_: hyperproject.plotting.summaries.ROC, digit: 6 }
+roc_7: { _target_: hyperproject.plotting.summaries.ROC, digit: 7 }
+roc_8: { _target_: hyperproject.plotting.summaries.ROC, digit: 8 }
+roc_9: { _target_: hyperproject.plotting.summaries.ROC, digit: 9 }

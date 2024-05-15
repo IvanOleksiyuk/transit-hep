@@ -1,0 +1,2 @@
+_target_: hyperproject.data.mnist.MNISTDataModule.load_from_checkpoint
+checkpoint_path: ${io.checkpoint_path}

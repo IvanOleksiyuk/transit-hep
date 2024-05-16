@@ -1,0 +1,26 @@
+# @package _global_
+
+defaults:
+  - data: lhco
+  - model: coupling_spline
+  - top_transformer: simple_transform
+  - output: basic_output
+  - mass_sampling: zfit
+  - _self_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+
+load_path: null
+
+train:
+  n_epochs: 1
+  lr: 0.001
+  gclip: 5
+
+output:
+  save_dir: /opt/project/results/cathode

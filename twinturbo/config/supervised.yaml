@@ -1,0 +1,135 @@
+# @package _global_
+
+do_train_template: False
+do_export_template: False
+do_train_cwola: True
+do_export_cwola: True
+do_evaluation: True
+
+general:
+  seed: 12345 # For reproducibility
+  run_dir: runs/supervised
+
+train_template:
+  placeholder_a: 1
+
+export_template:
+  placeholder_b: 2
+
+train_cwola:
+  project_name: cwola # Determines output directory path and wandb project
+  network_name: ${now:%Y-%m-%d}_${now:%H-%M-%S-%f} # Used for both saving and wandb
+  ckpt_path: null # Checkpoint path to resume training
+  precision: high # Should use medium if on ampere gpus
+  compile: null # Can set to default for faster compiles
+  full_resume: False
+  seed: ${general.seed} 
+  data:
+    _target_: twinturbo.src.data.lhco_simple.LHCODataModule
+    train_frac: 0.8
+    train_data_conf:
+      file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features.h5"
+      preprocessing_cfg: null
+      var_group_list: [["m_j1", "m_j2", "del_m", "tau21_j1", "tau32_j1", "tau21_j2", "tau32_j2"], ["is_signal"], ["m_jj"]]
+      to_return_list: [True, True, False]
+      scaler_cfg: 
+        scalers: ["norm", "norm", "", ""]
+      selection_cfg: 
+        cuts: ["m_jj > 2800", "m_jj < 5000"]
+        n_sig: 90000
+        n_bkg: 90000
+      plot_before_scale:
+        save_path: ${general.run_dir}/plots/train/
+      plot_after_scale:
+        save_path: ${general.run_dir}/plots/train_skl/
+    loader_kwargs:
+      pin_memory: true
+      batch_size: 512
+      num_workers: 1
+      drop_last: false
+  
+  model:
+    _target_: twinturbo.src.models.MLPclassifier.MLPclassifier
+    mlp_config:
+      hddn_dim: [32, 32, 32]
+    loss_name: crossentropy
+    optimizer:
+      _target_: torch.optim.AdamW
+      _partial_: true
+      lr: 1.0e-4
+      weight_decay: 1.0e-5
+    scheduler:
+      scheduler:
+        _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+        _partial_: True
+        T_max: 100_000
+        last_epoch: -1
+        eta_min: 0
+      lightning:
+        monitor: valid/vall_loss
+        interval: step
+        frequency: 1
+  
+  callbacks:
+    model_checkpoint:
+      _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      dirpath: ${general.run_dir}/checkpoints
+      filename: best_{epoch:03d}
+      monitor: valid/total_loss
+      mode: min
+      save_last: True
+      auto_insert_metric_name: False
+
+    model_summary:
+      _target_: pytorch_lightning.callbacks.RichModelSummary
+      max_depth: 2
+
+    early_stopping:
+      _target_: pytorch_lightning.callbacks.EarlyStopping
+      monitor: valid/total_loss
+      mode: min
+      patience: 50
+      check_on_train_epoch_end: False
+
+    lr_monitor:
+      _target_: pytorch_lightning.callbacks.LearningRateMonitor
+      logging_interval: step
+
+  loggers:
+    wandb:
+      _target_: pytorch_lightning.loggers.wandb.WandbLogger
+      offline: True
+      id: null
+      log_model: False
+      project: ${train_cwola.project_name}
+      name: ${train_cwola.network_name}
+      save_dir: ${general.run_dir}
+      resume: ${train_cwola.full_resume}
+
+  trainer:
+    _target_: pytorch_lightning.Trainer
+    min_epochs: 1
+    max_epochs: 99999
+    enable_progress_bar: True
+    accelerator: auto
+    devices: 1
+    gradient_clip_val: 5
+    precision: 32
+    check_val_every_n_epoch: 1
+    default_root_dir: ${general.run_dir}
+
+  paths:
+    # output dir will be created by hydra
+    output_dir:  ${general.run_dir}
+
+    # Interpolated
+    root_dir: ${oc.env:PROJECT_ROOT}
+    full_path: ${general.run_dir}
+
+
+export_cwola:
+  placeholder_d: 4
+
+evaluation:
+  
+

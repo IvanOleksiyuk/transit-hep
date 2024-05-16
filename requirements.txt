@@ -25,3 +25,6 @@ torch==2.2.0
 torchdiffeq==0.2.3
 tqdm==4.65.0
 wandb==0.16.0
+
+tables==3.9.2
+pyrootutils==1.0.4

@@ -1,0 +1,10 @@
+_target_: flows4flows.ffflows.utils.spline_inn
+nodes: 128
+num_blocks: 2
+num_stack: 2
+num_bins: 8
+tail_bound: 4.0
+context_features: 1
+activation:
+  _target_: flows4flows.ffflows.utils.get_activation
+  name: 'leaky_relu'

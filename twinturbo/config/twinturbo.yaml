@@ -11,7 +11,7 @@ do_evaluation: True
 general:
   name: twinTURBO_exp18_CLIP
   seed: 12345 # For reproducibility
-  run_dir: runs/02052024/${general.name}
+  run_dir: twinturbo/workspaces/exp_16_05_2024/${general.name}
 
 train_template:
   project_name: twinTURBO_LHCO # Determines output directory path and wandb project
@@ -124,7 +124,7 @@ train_template:
   trainer:
     _target_: pytorch_lightning.Trainer
     min_epochs: 1
-    max_epochs: 50
+    max_epochs: 1
     enable_progress_bar: True
     accelerator: auto
     devices: 1

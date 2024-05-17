@@ -1,5 +1,5 @@
 import pyrootutils
-root = pyrootutils.setup_root(search_from=__file__, pythonpath=True)
+root = pyrootutils.setup_root(search_from=__file__, pythonpath=True, cwd=True, indicator=".project-root")
 
 from typing import Union
 import logging
@@ -20,6 +20,7 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from omegaconf import DictConfig, OmegaConf
 import torch as T
 from torch.nn.functional import normalize, mse_loss, cosine_similarity
+from scipy.stats import pearsonr
 log = logging.getLogger(__name__)
 
 def to_np(inpt: Union[T.Tensor, tuple]) -> np.ndarray:
@@ -96,13 +97,15 @@ def plot_matrix(matrix, title, vmin=-1, vmax=1, abs=False):
 def evaluate_model(cfg):
 	if GlobalHydra().is_initialized():
 		GlobalHydra().clear()
-	hydra.initialize(version_base=None, config_path= "../conf")
+	hydra.initialize(version_base=None, config_path= "../config")
 	cfg = hydra.compose(config_name="twinturbo.yaml")
 	log.info("Loading run information")
 	cfg = cfg.export_template
 	print(cfg.paths.full_path)
 	orig_cfg = reload_original_config(cfg, get_best=True)
 	cfg = orig_cfg
+
+	plot_path= cfg["paths"]["output_dir"]+"/../plots/"
 
 	log.info("Loading best checkpoint")
 	device = "cuda" if T.cuda.is_available() else "cpu"
@@ -119,7 +122,6 @@ def evaluate_model(cfg):
 		datamodule = hydra.utils.instantiate(orig_cfg.datamodule)
   
 	tra_dataloader = datamodule.train_dataloader()
-	#val_dataloader = datamodule.train_dataloader()
 	batch1 = next(iter(tra_dataloader))
 	print("batch1:", batch1)
  
@@ -150,12 +152,89 @@ def evaluate_model(cfg):
 		e1_n = model.encoder1(w1_n)
 		e2_n = model.encoder2(w2_n)
 
-
-	print(e1.shape, e2.shape)
 	matrix = e1 @ e2.T
+ 
+	plt.figure()
 	plot_matrix(to_np(matrix), "e1 @ e2")
+	plt.savefig(plot_path+"e1_at_e2_matrix.png")
 	plt.figure()
 	plt.hist(to_np(matrix).flatten(), bins=100)
+	plt.savefig(plot_path+"e1_at_e2_hist.png")
 	plt.figure()
 	plt.hist(np.diagonal(to_np(matrix)), bins=100)
-	print(np.diagonal(to_np(matrix)))
+	plt.savefig(plot_path+"e1_at_e2_diag_hist.png")
+ 
+	bins= np.linspace(-3, 3, 30)
+	for i in range(recon.shape[1]):
+		plt.figure()
+		plt.hist(to_np(T.cat([v1, v2], dim=1)[:, i]), bins=bins, histtype='step')
+		plt.hist(to_np(recon[:, i]), bins=bins, histtype='step')
+		plt.savefig(plot_path+f"e1_at_e2_{i}.png")
+  
+	# Plot linear correlateion plots for the latent space
+	one_corretation_plot=True
+	if one_corretation_plot:
+		fig, axes = plt.subplots(e1.shape[1], e1.shape[1], figsize=(3*e1.shape[1], 3*e1.shape[1]))
+		fig.suptitle('Scatter plots with Pearson Correlation', fontsize=16)
+		for i in range(e1.shape[1]):
+			for j in range(e1.shape[1]):
+				axes[i, j].scatter(to_np(e1[:, i]), to_np(e2[:, j]), marker="o", label="e1", c=v2, cmap="viridis")
+				pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(e2[:, j]))
+				axes[i, j].set_title(f"Corr={pearson_correlation:.3f}")
+				axes[i, j].set_xlabel(f"dim{i} e1")
+				axes[i, j].set_ylabel(f"dim{j} e2")
+		plt.tight_layout()
+		plt.savefig(plot_path+"corerlations/"+"latent_space_correlations.png")
+	else:
+		for dim1 in range(e1.shape[1]):
+			for dim2 in range(e1.shape[1]):
+				plt.figure()
+				plt.scatter(to_np(e1[:, dim1]), to_np(e2[:, dim2]), marker="o", label="e1", c=v2, cmap="viridis")
+				pearson_correlation, p_value = pearsonr(to_np(e1[:, dim1]), to_np(e2[:, dim2]))
+				plt.title(f"Latent space (color=m) pearson={pearson_correlation}")
+				plt.xlabel(f"dim{dim1} e1")
+				plt.ylabel(f"dim{dim2} e2")
+				os.makedirs(plot_path+"corerlations/", exist_ok=True)
+				plt.savefig(plot_path+"corerlations/"+f"latent_space_{dim1}_{dim2}.png")
+    
+	# Mass correlation plots
+	if one_corretation_plot:
+		fig, axes = plt.subplots(1, e1.shape[1],  figsize=(3*e1.shape[1], 3))
+		fig.suptitle('Scatter plots with Pearson Correlation', fontsize=16)
+		for i in range(e1.shape[1]):
+			axes[i].scatter(to_np(e1[:, i]), to_np(v2), marker="o", label="e1", c=v2, cmap="viridis")
+			pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(v2).T[0])
+			axes[i].set_title(f"Corr={pearson_correlation:.3f}")
+			axes[i].set_xlabel(f"dim{i} e1")
+			axes[i].set_ylabel(f"mjj")
+		plt.tight_layout()
+		plt.savefig(plot_path+"corerlations/"+"latent_space_e1_mass_correlations.png")
+
+	# Same mass
+	plt.figure()	
+	plt.scatter(np.diagonal(to_np(matrix)), to_np(v2))
+	plt.savefig(plot_path+"e1_at_e2_diag_vs_mjj.png")
+ 
+	# Different mass
+	n = to_np(matrix).shape[0]
+	plt.figure()	
+	diag_mask = np.eye(n, dtype=bool)
+
+	# Invert the mask to get the non-diagonal elements
+	non_diag_mask = ~diag_mask
+	non_diag_elements = to_np(matrix)[non_diag_mask]
+	m_1_non_diag = np.tile(v2, (n, 1))[non_diag_mask]
+	m_2_non_diag = np.tile(v2, (n, 1)).T[non_diag_mask]
+	plt.figure()
+	plt.scatter(non_diag_elements, m_1_non_diag)
+	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1.png")
+	plt.figure()
+	plt.scatter(non_diag_elements, m_2_non_diag)
+	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj2.png")
+	plt.figure()
+	plt.scatter(non_diag_elements, m_1_non_diag-m_2_non_diag)
+	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1-mjj2.png")
+ 
+	
+
+

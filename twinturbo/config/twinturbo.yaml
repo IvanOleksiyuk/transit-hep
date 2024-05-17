@@ -1,7 +1,7 @@
 # @package _global_
 
-do_train_template: True
-do_export_template: True
+do_train_template: False
+do_export_template: False
 do_train_cwola: False
 do_evaluate_cwola: False
 do_evaluation: True
@@ -9,7 +9,7 @@ do_evaluation: True
 
 
 general:
-  name: twinTURBO_exp18_CLIP
+  name: twinTURBO_expn1_CLIP
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/exp_16_05_2024/${general.name}
 
@@ -124,7 +124,7 @@ train_template:
   trainer:
     _target_: pytorch_lightning.Trainer
     min_epochs: 1
-    max_epochs: 1
+    max_epochs: 50
     enable_progress_bar: True
     accelerator: auto
     devices: 1

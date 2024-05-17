@@ -240,17 +240,20 @@ class TwinTURBO(LightningModule):
 		if use_clip:
 			self.clip_loss = CLIPLossNorm(clip_logit_scale)
 
-	def _shared_step(self, sample: tuple, _batch_index = None) -> T.Tensor:
-		v1, v2 = sample
-		# Direc pass
-		w1 = T.cat([v1, v2*self.use_m], dim=1)
-		w2 = v2
+	def encode(self, w1, w2) -> T.Tensor:
 		if self.latent_norm:
 			e1 = normalize(self.encoder1(w1))
 			e2 = normalize(self.encoder2(w2))
 		else:
 			e1 = self.encoder1(w1)
 			e2 = self.encoder2(w2)
+		return e1, e2
+
+	def _shared_step(self, sample: tuple, _batch_index = None) -> T.Tensor:
+		v1, v2 = sample
+		w1 = T.cat([v1, v2*self.use_m], dim=1)
+		w2 = v2
+		e1, e2 = self.encode(w1, w2)
 		latent = T.cat([e1, e2], dim=1)
 		recon = self.decoder(latent)
 		
@@ -261,6 +264,7 @@ class TwinTURBO(LightningModule):
 		w1_n = recon_p[:]
 		
 		w2_n = recon_p[:, v1.shape[1]:]
+  
 		if self.latent_norm:
 			e1_n = normalize(self.encoder1(w1_n))
 			e2_n = normalize(self.encoder2(w2_n))

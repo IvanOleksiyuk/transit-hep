@@ -8,3 +8,5 @@ __pycache__
 workspaces**
 user**
 outputs**
+test_results**
+vicreg**

@@ -1,0 +1,22 @@
+data:
+    _target_: twinturbo.src.data.lhco_simple.SimpleDataModule
+    train_frac: 0.8
+    train_data_conf:
+      _target_: twinturbo.src.data.data.InMemoryDataset
+        file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features.h5"
+        preprocessing: 
+          - _target_: twinturbo.src.data.ApplyCuts
+            
+          - _target_: twinturbo.src.data.GroupVars
+            
+          - _target_: twinturbo.src.data.MixSignal
+            
+          - _target_: twinturbo.src.data.Scaler 
+            scalers
+
+
+    loader_kwargs:
+      pin_memory: true
+      batch_size: 512
+      num_workers: 8 
+      drop_last: false

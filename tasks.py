@@ -118,6 +118,8 @@ def container_pull(ctx: Context, login: bool = False):
 
     if login:
         log.info("Please enter the credentials of your CERN computing account.")
+
+    log.info("runnung: "+f"apptainer pull {apptainer_pull_args} {container_path} {container_url}")
     return_code = ctx.run(
         f"apptainer pull {apptainer_pull_args} {container_path} {container_url}",
         pty=True,

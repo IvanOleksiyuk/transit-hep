@@ -1,6 +1,6 @@
 # @package _global_
 
-do_train_template: False
+do_train_template: True
 do_export_template: False
 do_train_cwola: False
 do_evaluate_cwola: False
@@ -9,7 +9,7 @@ do_evaluation: True
 
 
 general:
-  name: twinTURBO_expn1_CLIP
+  name: twinTURBO_expn1_VIC
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/exp_16_05_2024/${general.name}
 
@@ -47,7 +47,7 @@ train_template:
       num_workers: 8 
       drop_last: false
   model:
-    _target_: twinturbo.src.models.twinturbo_model.TwinTURBO
+    _target_: twinturbo.src.models.twinturbo_model.TwinTURBOVICreg
     use_clip: True
     var_group_list: [["m_n"], ["m_jj"], ["is_signal"]]
     latent_norm: True

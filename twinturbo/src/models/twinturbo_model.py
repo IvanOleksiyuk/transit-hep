@@ -106,6 +106,7 @@ class TwinTURBO(LightningModule):
   		l1_reg = 0.0,
     	use_m = 1,
     	loss_balancing= 0,
+		vic_reg_conf=None,
 	) -> None:
 		"""
 		Args:
@@ -116,12 +117,16 @@ class TwinTURBO(LightningModule):
 		"""
 		super().__init__()
 		# TODO need to preprocess the data properly!
-		self.use_m = torch.tensor([use_m], dtype=torch.float32).to("cuda:0")
+		self.use_m = use_m
 		self.loss_weights=loss_weights
 		self.save_hyperparameters(logger=False)
-		self.encoder1 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
+		self.encoder1 = MLP(inpt_dim=inpt_dim[0][0], outp_dim=latent_dim, **encoder_mlp_config)
 		self.encoder2 = MLP(inpt_dim=inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
-		self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0]+inpt_dim[1][0], **decoder_mlp_config)
+		if self.use_m:
+			self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0], **decoder_mlp_config)
+		else:
+			self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0]+inpt_dim[1][0], **decoder_mlp_config)
+
 		self.var_group_list = var_group_list
 		self.latent_norm = latent_norm
 		self.use_clip = use_clip
@@ -136,6 +141,7 @@ class TwinTURBO(LightningModule):
 		self.projector = self.get_projector(latent_dim, [32, 64, 128]) #TODO fix this 
 		self.batch_size = 512 #TODO fix this 
 		self.num_features = 2 # TODO fix this
+		self.vic_reg_conf= vic_reg_conf
 
 	def encode(self, w1, w2) -> torch.Tensor:
 		if self.latent_norm:
@@ -185,46 +191,48 @@ class TwinTURBO(LightningModule):
 		return nn.Sequential(*layers)
 
 	def _shared_step(self, sample: tuple, _batch_index = None, step_type="none") -> torch.Tensor:
-		v1, v2 = sample
-		w1 = torch.cat([v1, v2*self.use_m], dim=1)
-		w2 = v2
+		batch_size=sample[0].shape[0]
+		w1, w2 = sample
+		m_dn = w2
+		if self.use_m:
+			x = w1[:, :-w2.shape[1]]
+		else:
+			x = w1
+
 		e1, e2 = self.encode(w1, w2)
 		latent = torch.cat([e1, e2], dim=1)
 		recon = self.decoder(latent)
 		
-		loss, repr_loss, std_loss, cov_loss = self.VICloss(e1, e2)
-  
 		# Reverse pass
-		e1_p = e1[torch.randperm(len(e1))]
+		e1_p = e1[torch.randperm(batch_size)]
 		latent_p = torch.cat([e1_p, e2], dim=1)
 		recon_p = self.decoder(latent_p)
-		w1_n = recon_p[:]
+		x_n = recon_p[:, :x.shape[1]]
+		m_n = recon_p[:, m_dn.shape[1]:]
 		
-		w2_n = recon_p[:, v1.shape[1]:]
-  
-		if self.latent_norm:
-			e1_n = normalize(self.encoder1(w1_n))
-			e2_n = normalize(self.encoder2(w2_n))
+		if self.use_m:
+			w1_n = torch.cat([x_n, m_n*self.use_m], dim=1)
 		else:
-			e1_n = self.encoder1(w1_n)
-			e2_n = self.encoder2(w2_n)
-	
+			w1_n = x_n
+		w2_n = m_n
+
+		e1_n, e2_n = self.encode(w1_n, w2_n)
 
 		loss_back_vec = mse_loss(e1_p, e1_n) 
 		loss_back_cont = mse_loss(e2, e2_n)
-		loss_reco = mse_loss(recon, torch.cat([v1, v2], dim=1))
+		loss_reco = mse_loss(recon, torch.cat([x, m_dn], dim=1))
 		if self.use_clip:
 			loss_attractive = -self.clip_loss(e1, e2).mean()
 			loss_repulsive = 0
 		else:
-			loss_attractive = -cosine_similarity(e1, e2[torch.randperm(len(v2))]).mean()
+			loss_attractive = -cosine_similarity(e1, e2[torch.randperm(batch_size)]).mean()
 			loss_repulsive = torch.abs(cosine_similarity(e1, e2)).mean()
 		all_params = torch.cat([x.view(-1) for x in self.parameters()])
 		l1_regularization = self.l1_reg*torch.norm(all_params, 1)
 		loss_reco = loss_reco.mean()
 		loss_back_vec = loss_back_vec.mean()
 		loss_back_cont = loss_back_cont.mean()
-
+  
 		total_loss = sum([l1_regularization,
 					loss_reco*self.loss_weights.loss_reco,
 					loss_attractive*self.loss_weights.loss_attractive,
@@ -239,10 +247,13 @@ class TwinTURBO(LightningModule):
 		self.log(f"{step_type}/loss_back_vec", loss_back_vec)
 		self.log(f"{step_type}/loss_back_cont", loss_back_cont)
 		self.log(f"{step_type}/l1_regularization", l1_regularization)
-		self.log(f"{step_type}/VIC_repr_loss", repr_loss)
-		self.log(f"{step_type}/VIC_std_loss", std_loss)
-		self.log(f"{step_type}/VIC_cov_loss", cov_loss)
-  
+		if self.vic_reg_conf is not None:
+			loss, repr_loss, std_loss, cov_loss = self.VICloss(e1, e2)
+			self.log(f"{step_type}/VIC_repr_loss", repr_loss)
+			self.log(f"{step_type}/VIC_std_loss", std_loss)
+			self.log(f"{step_type}/VIC_cov_loss", cov_loss)
+			total_loss += loss
+	
 		if step_type=="train":
 			self.loss_balabcing(loss_repulsive)
 		self.log("train/l_atr_weight", self.loss_weights.loss_attractive)	
@@ -318,9 +329,7 @@ class TwinTURBO(LightningModule):
 		"""
 
 	def generate(self, sample: tuple) -> torch.Tensor:
-		v1, v2 = sample
-		w1 = torch.cat([v1, v2*self.use_m], dim=1)
-		w2 = v2
+		w1, w2 = sample
 		if self.latent_norm:
 			e1 = normalize(self.encoder1(w1))
 			e2 = normalize(self.encoder2(w2))

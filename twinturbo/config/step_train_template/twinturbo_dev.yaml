@@ -5,9 +5,9 @@ defaults:
   - loggers: wandb.yaml
   - paths: default.yaml
   - trainer: 1e.yaml
-  - data: gauss_corr_2_twinturbo_wmass.yaml
+  - data: gauss_corr_2_twinturbo_usem.yaml
 
-project_name: twinTURBO_LHCO # Determines output directory path and wandb project
+project_name: twinTURBO_LHCO_gauss_corr # Determines output directory path and wandb project
 network_name: ${general.name}_${now:%Y-%m-%d}_${now:%H-%M-%S-%f} # Used for both saving and wandb
 ckpt_path: null # Checkpoint path to resume training
 precision: high # Should use medium if on ampere gpus

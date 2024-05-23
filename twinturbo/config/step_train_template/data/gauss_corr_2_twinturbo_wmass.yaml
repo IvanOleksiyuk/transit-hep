@@ -8,7 +8,7 @@ train_data:
   processor_cfg: 
   - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
     frame_name: "data"
-    new_df_dict: {"data": ["x0", "x1"], "mass": ["x0"]}
+    new_df_dict: {"data": ["x1"], "mass": ["x0"]}
   - _target_: twinturbo.src.data.data.ProcessorToFloat32
     frame_names: ["data", "mass"]
 loader_kwargs:

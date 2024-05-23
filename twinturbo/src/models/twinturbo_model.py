@@ -99,8 +99,6 @@ class TwinTURBO(LightningModule):
 		latent_norm: bool,
 		optimizer: partial,
 		scheduler: Mapping,
-		asim_alpha: float = 1.0,
-		asim_beta: float = 1.0,
 		var_group_list: list = None,
   		loss_weights: Mapping = None,
 		use_clip: bool = False,
@@ -124,8 +122,6 @@ class TwinTURBO(LightningModule):
 		self.encoder1 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
 		self.encoder2 = MLP(inpt_dim=inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
 		self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0]+inpt_dim[1][0], **decoder_mlp_config)
-		self.asim_alpha = asim_alpha
-		self.asim_beta = asim_beta
 		self.var_group_list = var_group_list
 		self.latent_norm = latent_norm
 		self.use_clip = use_clip
@@ -221,8 +217,8 @@ class TwinTURBO(LightningModule):
 			loss_attractive = -self.clip_loss(e1, e2).mean()
 			loss_repulsive = 0
 		else:
-			loss_attractive = -self.asim_alpha*cosine_similarity(e1, e2[torch.randperm(len(v2))]).mean()
-			loss_repulsive = torch.abs(self.asim_beta*cosine_similarity(e1, e2)).mean()
+			loss_attractive = -cosine_similarity(e1, e2[torch.randperm(len(v2))]).mean()
+			loss_repulsive = torch.abs(cosine_similarity(e1, e2)).mean()
 		all_params = torch.cat([x.view(-1) for x in self.parameters()])
 		l1_regularization = self.l1_reg*torch.norm(all_params, 1)
 		loss_reco = loss_reco.mean()

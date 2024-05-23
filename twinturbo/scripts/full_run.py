@@ -23,24 +23,24 @@ log = logging.getLogger(__name__)
 
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="twinturbo"
+    version_base=None, config_path=str('../config'), config_name="twinturbo_def_new"
 )
 def main(cfg: DictConfig) -> None:
 	## 1 - Create a separate folder for the experiment save all the relavant configs there
 	# Create a folder for the experiment
 	run_dir = Path(cfg.general.run_dir)
 	os.makedirs(run_dir, exist_ok=True)
-	os.makedirs(cfg.train_template.paths.full_path, exist_ok=True)
+	os.makedirs(cfg.step_train_template.paths.full_path, exist_ok=True)
 	print_config(cfg)
-	OmegaConf.save(cfg, Path(cfg.general.run_dir, "full_run_config.yaml"), resolve=True)
+	OmegaConf.save(cfg, Path(cfg.general.run_dir, "twinturbo_def_new.yaml"), resolve=True)
 
 	# run all the steps
 	if cfg.do_train_template:
 		log.info("Train a model for template generation")
-		train.main(cfg.train_template)
+		train.main(cfg.step_train_template)
 	if cfg.do_export_template:
 		log.info("Generate a template dataset using the model")
-		generate_teplate.main(cfg.export_template)
+		generate_teplate.main(cfg.step_export_template)
 	if cfg.do_train_cwola:
 		log.info("Train CWOLA model using the template dataset and the real data")
 		train.main(cfg.train_cwola)

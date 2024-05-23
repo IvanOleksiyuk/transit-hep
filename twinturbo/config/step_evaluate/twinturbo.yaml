@@ -1,0 +1,13 @@
+
+original_data: ${step_export_template.data.test_data}
+target_data: 
+  _target_: twinturbo.src.data.data.InMemoryDataFrameDict
+  list_order: ["data"]
+  file_path: "/home/users/o/oleksiyu/WORK/hyperproject/dummydata/gauss_corr_2.h5"
+  plotting_path: ${general.run_dir}/plots/train/
+  processor_cfg: 
+  - _target_: twinturbo.src.data.data.ProcessorApplyCuts
+    scalar_df_name: "data"
+    cuts: ["x0 > 0"]
+  - _target_: twinturbo.src.data.data.ProcessorToFloat32
+    frame_names: ["data"]

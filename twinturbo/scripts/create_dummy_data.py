@@ -1,3 +1,6 @@
+import pyrootutils
+root = pyrootutils.setup_root(search_from=__file__, pythonpath=True, cwd=True, indicator=".project-root")
+
 import argparse
 import os
 import numpy as np
@@ -6,6 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 from sklearn.datasets import make_moons, make_swiss_roll
+from twinturbo.src.utils.plot import plot_dataframe
 
 def set_seed(seed):
     np.random.seed(seed)
@@ -54,25 +58,10 @@ def generate_toroidal(n_samples, n_features, R=1.0, r=0.2):
     z = r * np.sin(phi)
     return np.vstack([x, y, z]).T
 
-def save_to_h5(data, path):
-    with h5py.File(path, 'w') as f:
-        dset = f.create_dataset('data', data=data)
-        for i in range(data.shape[1]):
-            dset.attrs[f'x{i}'] = f'Column {i}'
-
-def plot_data(data, plot_dir, plot_name):
-    os.makedirs(plot_dir, exist_ok=True)
-    if data.shape[1] == 2:
-        plt.figure()
-        plt.scatter(data[:, 0], data[:, 1], s=1)
-        plt.title(plot_name)
-        plt.savefig(os.path.join(plot_dir, f'{plot_name}.png'))
-        plt.close()
-    else:
-        df = pd.DataFrame(data, columns=[f'Feature {i+1}' for i in range(data.shape[1])])
-        sns.pairplot(df)
-        plt.savefig(os.path.join(plot_dir, f'{plot_name}.png'))
-        plt.close()
+def save_to_h5_pandas(data, path):
+    columns = [f'x{i}' for i in range(data.shape[1])]
+    df = pd.DataFrame(data, columns=columns)
+    df.to_hdf(path, key='data', mode='w')
 
 def main():
     parser = argparse.ArgumentParser(description='Generate dummy datasets.')
@@ -105,16 +94,17 @@ def main():
         data = generate_toroidal(args.n_samples, args.n_features)
     else:
         raise ValueError('Unknown dataset type')
-
-    save_to_h5(data, args.output)
     
+
+    save_to_h5_pandas(data, args.output)
+    df = pd.DataFrame(data, columns=[f'x{i}' for i in range(data.shape[1])])
     if args.plot:
         if args.plot == 'default':
             plot_dir = os.path.splitext(args.output)[0] + '_plots'
         else:
             plot_dir = args.plot
         plot_name = args.type
-        plot_data(data, plot_dir, plot_name)
+        plot_dataframe(df, plot_dir, plot_name)
 
 if __name__ == '__main__':
     main()

@@ -1,0 +1,17 @@
+data:
+  _target_: twinturbo.src.data.data.InMemoryDataFrameDict
+  file_path: "unit/fixtures/data.h5"
+  processor_cfg: 
+    - _target_: twinturbo.src.data.data.ProcessorApplyCuts
+      scalar_df_name: "data"
+      cuts: ["x1 > 0"]
+
+    # loader_kwargs:
+    #   pin_memory: true
+    #   batch_size: 512
+    #   num_workers: 8 
+    #   drop_last: false
+
+    # _target_: twinturbo.src.data.lhco_simple.SimpleDataModule
+    # train_frac: 0.8
+    # train_data_conf:

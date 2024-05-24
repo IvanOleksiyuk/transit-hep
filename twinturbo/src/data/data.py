@@ -240,6 +240,12 @@ class SimpleDataModule(LightningDataModule):
     def get_dim(self):
         return self.train_data.get_dim()
     
+    def get_var_group_list(self):
+        var_group_list = []
+        for key in self.train_data.list_order:
+            var_group_list.append(self.train_data.data[key].columns.tolist())
+        return var_group_list
+    
 class CombDataset(InMemoryDataFrameDictBase):
     def __init__(self, dataset1, dataset2, length=None, plotting_path=None) -> None:
         if length is None:

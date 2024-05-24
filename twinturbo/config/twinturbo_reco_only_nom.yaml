@@ -2,8 +2,8 @@
 
 defaults:
   - _self_
-  - step_train_template: twinturbo_dev
-  - step_export_template: twinturbo_usem
+  - step_train_template: twinturbo_reco_only_nom
+  - step_export_template: twinturbo_nom
   - step_evaluate: twinturbo
 
 
@@ -15,9 +15,9 @@ do_evaluation: True
 
 
 general:
-  name: twinTURBO_reco_only
+  name: twinturbo_reco_only_nom
   seed: 12345 # For reproducibility
-  run_dir: twinturbo/workspaces/exp_22_05_2024/${general.name}
+  run_dir: twinturbo/workspaces/experiments/${general.name}
 
 
 

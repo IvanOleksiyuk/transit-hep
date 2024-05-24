@@ -13,7 +13,6 @@ decoder_mlp_config:
   act_h: "prelu"
 use_clip: False
 latent_norm: True
-var_group_list: [["x0"], ["x1"]]
 latent_dim: 8
 l1_reg: 0.0
 loss_weights:

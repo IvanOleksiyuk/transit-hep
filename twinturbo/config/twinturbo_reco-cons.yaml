@@ -2,7 +2,7 @@
 
 defaults:
   - _self_
-  - step_train_template: twinturbo_reco_only_mapp0
+  - step_train_template: twinturbo_reco-cons
   - step_export_template: twinturbo
   - step_evaluate: twinturbo
 
@@ -15,7 +15,7 @@ do_evaluation: True
 
 
 general:
-  name: twinturbo_reco_only_mapp0
+  name: twinTURBO_reco-cons
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/experiments/${general.name}
 

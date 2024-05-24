@@ -18,12 +18,12 @@ import numpy as np
 from twinturbo.src.data.lhco_simple import LHCOInMemoryDataset
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from omegaconf import DictConfig, OmegaConf
-import torch as T
+import torch
 from torch.nn.functional import normalize, mse_loss, cosine_similarity
 from scipy.stats import pearsonr
 log = logging.getLogger(__name__)
 
-def to_np(inpt: Union[T.Tensor, tuple]) -> np.ndarray:
+def to_np(inpt: Union[torch.Tensor, tuple]) -> np.ndarray:
     """More consicse way of doing all the necc steps to convert a pytorch
     tensor to numpy array.
 
@@ -31,7 +31,7 @@ def to_np(inpt: Union[T.Tensor, tuple]) -> np.ndarray:
     """
     if isinstance(inpt, (tuple, list)):
         return type(inpt)(to_np(x) for x in inpt)
-    if inpt.dtype == T.bfloat16:  # Numpy conversions don't support bfloat16s
+    if inpt.dtype == torch.bfloat16:  # Numpy conversions don't support bfloat16s
         inpt = inpt.half()
     return inpt.detach().cpu().numpy()
 
@@ -74,6 +74,7 @@ def main(cfg):
 	print(len(target_data.to_numpy()))
 	print(len(template_data.to_numpy()))
 
+	####uncomment
 	pltt.plot_feature_spread(
     target_data[variables].to_numpy(),
     template_data[variables].to_numpy(),
@@ -95,12 +96,14 @@ def plot_matrix(matrix, title, vmin=-1, vmax=1, abs=False):
 	return fig, ax
 
 def evaluate_model(cfg):
+	scatter_alpha=1
+	scatter_s=2
 	if GlobalHydra().is_initialized():
 		GlobalHydra().clear()
 	hydra.initialize(version_base=None, config_path= "../config")
-	cfg = hydra.compose(config_name="twinturbo.yaml")
+
 	log.info("Loading run information")
-	cfg = cfg.export_template
+	cfg = cfg.step_export_template
 	print(cfg.paths.full_path)
 	orig_cfg = reload_original_config(cfg, get_best=True)
 	cfg = orig_cfg
@@ -108,12 +111,14 @@ def evaluate_model(cfg):
 	plot_path= cfg["paths"]["output_dir"]+"/../plots/"
 
 	log.info("Loading best checkpoint")
-	device = "cuda" if T.cuda.is_available() else "cpu"
+	#device = "cuda" if torch.cuda.is_available() else "cpu"
+	device = "cpu"
 	model_class = hydra.utils.get_class(orig_cfg.model._target_)
 	model = model_class.load_from_checkpoint(orig_cfg.ckpt_path, map_location=device)
-
-	log.info("Instantiating original trainer")
-	trainer = hydra.utils.instantiate(orig_cfg.trainer)
+	#model.to(device)
+ 
+	#log.info("Instantiating original trainer")
+	#trainer = hydra.utils.instantiate(orig_cfg.trainer)
 
 	# Instantiate the datamodule use a different config for data then for training
 	if hasattr(orig_cfg, "data"):
@@ -124,33 +129,33 @@ def evaluate_model(cfg):
 	tra_dataloader = datamodule.train_dataloader()
 	batch1 = next(iter(tra_dataloader))
 	print("batch1:", batch1)
- 
-	v1, v2 = batch1
-	# Direc pass
-	w1 = T.cat([v1, v2], dim=1)
-	w2 = v2
-	if model.latent_norm:
-		e1 = normalize(model.encoder1(w1))
-		e2 = normalize(model.encoder2(w2))
+
+	batch_size=batch1[0].shape[0]
+	w1, w2 = batch1
+	m_dn = w2
+	if model.use_m:
+		x = w1[:, :-w2.shape[1]]
 	else:
-		e1 = model.encoder1(w1)
-		e2 = model.encoder2(w2)
-	latent = T.cat([e1, e2], dim=1)
+		x = w1
+
+	e1, e2 = model.encode(w1, w2)
+	latent = torch.cat([e1, e2], dim=1)
 	recon = model.decoder(latent)
-
+	
 	# Reverse pass
-	e1_p = e1[T.randperm(len(e1))]
-	latent_p = T.cat([e1_p, e2], dim=1)
+	e1_p = e1[torch.randperm(batch_size)]
+	latent_p = torch.cat([e1_p, e2], dim=1)
 	recon_p = model.decoder(latent_p)
-	w1_n = recon_p[:]
-
-	w2_n = recon_p[:, v1.shape[1]:]
-	if model.latent_norm:
-		e1_n = normalize(model.encoder1(w1_n))
-		e2_n = normalize(model.encoder2(w2_n))
+	x_n = recon_p[:, :x.shape[1]]
+	m_n = recon_p[:, m_dn.shape[1]:]
+	
+	if model.use_m:
+		w1_n = torch.cat([x_n, m_n*model.use_m], dim=1)
 	else:
-		e1_n = model.encoder1(w1_n)
-		e2_n = model.encoder2(w2_n)
+		w1_n = x_n
+	w2_n = m_n
+
+	e1_n, e2_n = model.encode(w1_n, w2_n)
 
 	matrix = e1 @ e2.T
  
@@ -159,51 +164,41 @@ def evaluate_model(cfg):
 	plt.savefig(plot_path+"e1_at_e2_matrix.png")
 	plt.figure()
 	plt.hist(to_np(matrix).flatten(), bins=100)
+	plt.title("One batch latent embedding product <e1, e2>")
+	plt.xlabel("<e1, e2>")
 	plt.savefig(plot_path+"e1_at_e2_hist.png")
 	plt.figure()
+	plt.title("One batch latent embedding product <e1, e2> only diagonal")
+	plt.xlabel("<e1, e2>")
 	plt.hist(np.diagonal(to_np(matrix)), bins=100)
 	plt.savefig(plot_path+"e1_at_e2_diag_hist.png")
  
 	bins= np.linspace(-3, 3, 30)
-	for i in range(recon.shape[1]):
+	for i in range(w1.shape[1]):
 		plt.figure()
-		plt.hist(to_np(T.cat([v1, v2], dim=1)[:, i]), bins=bins, histtype='step')
-		plt.hist(to_np(recon[:, i]), bins=bins, histtype='step')
-		plt.savefig(plot_path+f"e1_at_e2_{i}.png")
-  
+		plt.hist(to_np(w1[:, i]), bins=bins, histtype='step', label="input")
+		plt.hist(to_np(recon[:, i]), bins=bins, histtype='step', label="reconstruction")
+		plt.xlabel(f"dim{i}")
+		plt.legend()
+		plt.savefig(plot_path+f"w1_reco_hist_{i}.png")
+		plt.figure()
+		plt.scatter(to_np(w1[:, i]), to_np(recon[:, i]), alpha=scatter_alpha, s=scatter_s)
+		plt.xlabel(f"dim{i}_input")
+		plt.xlabel(f"dim{i}_reco")
+		plt.legend()
+		plt.savefig(plot_path+f"w1_reco_scater_{i}.png")
 	# Plot linear correlateion plots for the latent space
 	one_corretation_plot=True
-	if one_corretation_plot:
-		fig, axes = plt.subplots(e1.shape[1], e1.shape[1], figsize=(3*e1.shape[1], 3*e1.shape[1]))
-		fig.suptitle('Scatter plots with Pearson Correlation', fontsize=16)
-		for i in range(e1.shape[1]):
-			for j in range(e1.shape[1]):
-				axes[i, j].scatter(to_np(e1[:, i]), to_np(e2[:, j]), marker="o", label="e1", c=v2, cmap="viridis")
-				pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(e2[:, j]))
-				axes[i, j].set_title(f"Corr={pearson_correlation:.3f}")
-				axes[i, j].set_xlabel(f"dim{i} e1")
-				axes[i, j].set_ylabel(f"dim{j} e2")
-		plt.tight_layout()
-		plt.savefig(plot_path+"corerlations/"+"latent_space_correlations.png")
-	else:
-		for dim1 in range(e1.shape[1]):
-			for dim2 in range(e1.shape[1]):
-				plt.figure()
-				plt.scatter(to_np(e1[:, dim1]), to_np(e2[:, dim2]), marker="o", label="e1", c=v2, cmap="viridis")
-				pearson_correlation, p_value = pearsonr(to_np(e1[:, dim1]), to_np(e2[:, dim2]))
-				plt.title(f"Latent space (color=m) pearson={pearson_correlation}")
-				plt.xlabel(f"dim{dim1} e1")
-				plt.ylabel(f"dim{dim2} e2")
-				os.makedirs(plot_path+"corerlations/", exist_ok=True)
-				plt.savefig(plot_path+"corerlations/"+f"latent_space_{dim1}_{dim2}.png")
+	os.makedirs(plot_path+"corerlations/", exist_ok=True)
+	plot_correlation_plots(e1, e2, plot_path, one_corretation_plot=True, name="latent_space_correlations", c=m_dn)
     
 	# Mass correlation plots
 	if one_corretation_plot:
 		fig, axes = plt.subplots(1, e1.shape[1],  figsize=(3*e1.shape[1], 3))
 		fig.suptitle('Scatter plots with Pearson Correlation', fontsize=16)
 		for i in range(e1.shape[1]):
-			axes[i].scatter(to_np(e1[:, i]), to_np(v2), marker="o", label="e1", c=v2, cmap="viridis")
-			pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(v2).T[0])
+			axes[i].scatter(to_np(e1[:, i]), to_np(m_dn), marker="o", label="e1", c=m_dn, cmap="viridis")
+			pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(m_dn).T[0])
 			axes[i].set_title(f"Corr={pearson_correlation:.3f}")
 			axes[i].set_xlabel(f"dim{i} e1")
 			axes[i].set_ylabel(f"mjj")
@@ -212,7 +207,9 @@ def evaluate_model(cfg):
 
 	# Same mass
 	plt.figure()	
-	plt.scatter(np.diagonal(to_np(matrix)), to_np(v2))
+	plt.scatter(np.diagonal(to_np(matrix)), to_np(m_dn), alpha=scatter_alpha, s=scatter_s)
+	plt.xlabel("e1 @ e2 diagonal elements")
+	plt.ylabel("mjj")
 	plt.savefig(plot_path+"e1_at_e2_diag_vs_mjj.png")
  
 	# Different mass
@@ -221,20 +218,47 @@ def evaluate_model(cfg):
 	diag_mask = np.eye(n, dtype=bool)
 
 	# Invert the mask to get the non-diagonal elements
-	non_diag_mask = ~diag_mask
+	non_diag_mask = np.logical_not(diag_mask)
 	non_diag_elements = to_np(matrix)[non_diag_mask]
-	m_1_non_diag = np.tile(v2, (n, 1))[non_diag_mask]
-	m_2_non_diag = np.tile(v2, (n, 1)).T[non_diag_mask]
+	m_1_non_diag = np.tile(m_dn, (1, n))[non_diag_mask]
+	m_2_non_diag = np.tile(m_dn.T, (n, 1))[non_diag_mask]
 	plt.figure()
-	plt.scatter(non_diag_elements, m_1_non_diag)
+	plt.scatter(non_diag_elements, m_1_non_diag, alpha=scatter_alpha, s=scatter_s)
+	plt.xlabel("e1 @ e2 non-diagonal elements")
+	plt.ylabel("mjj1")
 	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1.png")
 	plt.figure()
-	plt.scatter(non_diag_elements, m_2_non_diag)
+	plt.scatter(non_diag_elements, m_2_non_diag, alpha=scatter_alpha, s=scatter_s)
+	plt.xlabel("e1 @ e2 non-diagonal elements")
+	plt.ylabel("mjj2")
 	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj2.png")
 	plt.figure()
-	plt.scatter(non_diag_elements, m_1_non_diag-m_2_non_diag)
+	plt.scatter(non_diag_elements, m_1_non_diag-m_2_non_diag, alpha=scatter_alpha, s=scatter_s)
+	plt.xlabel("e1 @ e2 non-diagonal elements")
+	plt.ylabel("mjj1 - mjj2")
 	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1-mjj2.png")
- 
-	
 
 
+def plot_correlation_plots(e1, e2, plot_path, name, c=None, one_corretation_plot=True):
+	if one_corretation_plot:
+		fig, axes = plt.subplots(e1.shape[1], e2.shape[1], figsize=(3*e1.shape[1], 3*e1.shape[1]))
+		fig.suptitle('Scatter plots with Pearson Correlation', fontsize=16)
+		for i in range(e1.shape[1]):
+			for j in range(e1.shape[1]):
+				axes[i, j].scatter(to_np(e1[:, i]), to_np(e2[:, j]), marker="o", label="e1", c=c, cmap="viridis")
+				pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(e2[:, j]))
+				axes[i, j].set_title(f"Corr={pearson_correlation:.3f}")
+				axes[i, j].set_xlabel(f"dim{i} e1")
+				axes[i, j].set_ylabel(f"dim{j} e2")
+		plt.tight_layout()
+		plt.savefig(plot_path+"corerlations/"+name+".png")
+	else:
+		for dim1 in range(e1.shape[1]):
+			for dim2 in range(e2.shape[1]):
+				plt.figure()
+				plt.scatter(to_np(e1[:, dim1]), to_np(e2[:, dim2]), marker="o", label="e1", c=c, cmap="viridis")
+				pearson_correlation, p_value = pearsonr(to_np(e1[:, dim1]), to_np(e2[:, dim2]))
+				plt.title(f"Latent space (color=m) pearson={pearson_correlation}")
+				plt.xlabel(f"dim{dim1} e1")
+				plt.ylabel(f"dim{dim2} e2")
+				plt.savefig(plot_path+"corerlations/"+f"{name}_{dim1}_{dim2}.png")

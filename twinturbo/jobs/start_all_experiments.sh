@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Directory containing the .sh files
-JOB_DIR="/path/to/your/folder"
+JOB_DIR="/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments"
 
 # Check if the directory exists
 if [ ! -d "$JOB_DIR" ]; then

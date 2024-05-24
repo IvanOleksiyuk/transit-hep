@@ -11,7 +11,6 @@ encoder_mlp_config:
 decoder_mlp_config:
   hddn_dim: [64, 64, 64, 64]
   act_h: "prelu"
-use_clip: False
 latent_norm: True
 latent_dim: 8
 l1_reg: 0.0

@@ -101,12 +101,13 @@ class TwinTURBO(LightningModule):
 		scheduler: Mapping,
 		var_group_list: list = None,
   		loss_weights: Mapping = None,
-		use_clip: bool = False,
-		clip_logit_scale: float = 1.0,
+
   		l1_reg = 0.0,
-    	use_m = 1,
-    	loss_balancing= 0,
-		vic_reg_conf=None,
+    	use_m = True,
+    	loss_balancing= None,
+
+    	clip_loss_cfg: Mapping = None,
+		vic_reg_cfg=None,
 	) -> None:
 		"""
 		Args:
@@ -129,11 +130,14 @@ class TwinTURBO(LightningModule):
 
 		self.var_group_list = var_group_list
 		self.latent_norm = latent_norm
-		self.use_clip = use_clip
+		
 		self.l1_reg = l1_reg
 		self.loss_balancing = loss_balancing
-		if use_clip:
-			self.clip_loss = CLIPLossNorm(clip_logit_scale)
+		self.clip_loss_cfg = clip_loss_cfg
+		if clip_loss_cfg is not None:
+			self.use_clip = True
+			self.clip_loss = CLIPLossNorm(clip_loss_cfg.clip_logit_scale)
+
 		self.sim_coeff=1
 		self.std_coeff=1
 		self.cov_coeff=1
@@ -141,7 +145,7 @@ class TwinTURBO(LightningModule):
 		self.projector = self.get_projector(latent_dim, [32, 64, 128]) #TODO fix this 
 		self.batch_size = 512 #TODO fix this 
 		self.num_features = 2 # TODO fix this
-		self.vic_reg_conf= vic_reg_conf
+		self.vic_reg_cfg= vic_reg_cfg
 
 	def encode(self, w1, w2) -> torch.Tensor:
 		if self.latent_norm:
@@ -221,12 +225,8 @@ class TwinTURBO(LightningModule):
 		loss_back_vec = mse_loss(e1_p, e1_n) 
 		loss_back_cont = mse_loss(e2, e2_n)
 		loss_reco = mse_loss(recon, torch.cat([x, m_dn], dim=1))
-		if self.use_clip:
-			loss_attractive = -self.clip_loss(e1, e2).mean()
-			loss_repulsive = 0
-		else:
-			loss_attractive = -cosine_similarity(e1, e2[torch.randperm(batch_size)]).mean()
-			loss_repulsive = torch.abs(cosine_similarity(e1, e2)).mean()
+		loss_attractive = -cosine_similarity(e1, e2[torch.randperm(batch_size)]).mean()
+		loss_repulsive = torch.abs(cosine_similarity(e1, e2)).mean()
 		all_params = torch.cat([x.view(-1) for x in self.parameters()])
 		l1_regularization = self.l1_reg*torch.norm(all_params, 1)
 		loss_reco = loss_reco.mean()
@@ -247,7 +247,12 @@ class TwinTURBO(LightningModule):
 		self.log(f"{step_type}/loss_back_vec", loss_back_vec)
 		self.log(f"{step_type}/loss_back_cont", loss_back_cont)
 		self.log(f"{step_type}/l1_regularization", l1_regularization)
-		if self.vic_reg_conf is not None:
+		if self.use_clip:
+			loss_clip = self.clip_loss(e1, e2).mean()
+			self.log(f"{step_type}/clip_loss", loss_clip)
+			total_loss += loss_clip*self.clip_loss_cfg.clip_loss_weight
+   
+		if self.vic_reg_cfg is not None:
 			loss, repr_loss, std_loss, cov_loss = self.VICloss(e1, e2)
 			self.log(f"{step_type}/VIC_repr_loss", repr_loss)
 			self.log(f"{step_type}/VIC_std_loss", std_loss)

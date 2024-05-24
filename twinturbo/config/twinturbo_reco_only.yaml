@@ -3,7 +3,7 @@
 defaults:
   - _self_
   - step_train_template: twinturbo_reco_only
-  - step_export_template: twinturbo
+  - step_export_template: twinturbo_usem
   - step_evaluate: twinturbo
 
 

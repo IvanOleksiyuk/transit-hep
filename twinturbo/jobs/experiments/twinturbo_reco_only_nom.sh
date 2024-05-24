@@ -5,7 +5,7 @@
 #SBATCH --time=1:0:00
 #SBATCH --partition=shared-gpu,private-dpnc-gpu
 #SBATCH --nodes=1
-#SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/output/twinturbo_reco_only_nom-%A-%x_%a.out
+#SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/twinturbo_reco_only_nom-%A-%x_%a.out
 #SBATCH --mem=16GB
 #SBATCH --gres=gpu:1
 

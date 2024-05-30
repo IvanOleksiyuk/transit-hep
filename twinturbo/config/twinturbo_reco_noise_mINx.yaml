@@ -2,8 +2,8 @@
 
 defaults:
   - _self_
-  - data: twinturbo_reco_noise_mINx
-  - step_train_template: twinturbo_reco_only
+  - data: gauss_corr_2_twinturbo_usem
+  - step_train_template: twinturbo_reco_noise_mINx
   - step_export_template: twinturbo
   - step_evaluate: twinturbo
 

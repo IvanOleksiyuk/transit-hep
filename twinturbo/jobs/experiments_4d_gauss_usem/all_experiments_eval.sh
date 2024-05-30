@@ -23,6 +23,10 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif bash 
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-aclip data=gauss_corr_8_twinturbo_usem general.subfolder=gauss_corr_8_twinturbo_usem/ do_train_template=0 do_export_template=0\
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr data=gauss_corr_8_twinturbo_usem general.subfolder=gauss_corr_8_twinturbo_usem/ do_train_template=0 do_export_template=0\
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr-vic data=gauss_corr_8_twinturbo_usem general.subfolder=gauss_corr_8_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-acontr data=gauss_corr_8_twinturbo_usem general.subfolder=gauss_corr_8_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-aclip data=gauss_corr_8_twinturbo_usem general.subfolder=gauss_corr_8_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_noise_mINx data=gauss_corr_8_twinturbo_usem general.subfolder=gauss_corr_8_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_noise_mSEP data=gauss_corr_8_twinturbo_usem general.subfolder=gauss_corr_8_twinturbo_usem/ do_train_template=0 do_export_template=0\
 "
 
 # Record the end time

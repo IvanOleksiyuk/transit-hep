@@ -23,6 +23,10 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif bash 
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-aclip do_train_template=0 do_export_template=0\
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr do_train_template=0 do_export_template=0\
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr-vic do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-acontr do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-aclip do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_noise_mINx do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_noise_mSEP do_train_template=0 do_export_template=0\
 "
 
 # Record the end time

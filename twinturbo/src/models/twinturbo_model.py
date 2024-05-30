@@ -204,8 +204,8 @@ class TwinTURBO(LightningModule):
 		w1, w2 = sample
 		
 		if self.input_noise_cfg is not None:
-			w1 = w1[:, self.input_noise_cfg.w1mpos] + torch.randn_like(w1[:, self.input_noise_cfg.w1mpos]) * self.noise_cfg.noise_std_w1
-			w2 = w2 + torch.randn_like(w2) * self.noise_cfg.noise_std_w2
+			w1 = w1[:, self.input_noise_cfg.w1mpos] + torch.randn_like(w1[:, self.input_noise_cfg.w1mpos]) * self.input_noise_cfg.noise_std_w1
+			w2 = w2 + torch.randn_like(w2) * self.input_noise_cfg.noise_std_w2
 
 		m_dn = w2
 		if self.use_m:

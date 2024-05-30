@@ -2,7 +2,7 @@
 
 defaults:
   - _self_
-  - data: gauss_corr_2_twinturbo_nom
+  - data: twinturbo_reco_noise_mINx
   - step_train_template: twinturbo_reco_only
   - step_export_template: twinturbo
   - step_evaluate: twinturbo
@@ -16,7 +16,7 @@ do_evaluation: True
 
 
 general:
-  name: twinturbo_reco_only_nom
+  name: twinturbo_reco_noise_mINx
   subfolder: experiments/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

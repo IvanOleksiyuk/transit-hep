@@ -78,13 +78,13 @@ def main(cfg):
 	print(len(template_data.to_numpy()))
 
 	####uncomment
-	# pltt.plot_feature_spread(
-    # target_data[variables].to_numpy(),
-    # template_data[variables].to_numpy(),
-    # original_data = original_data[variables].to_numpy(),
-    # feature_nms = variables,
-    # save_dir=Path(cfg.general.run_dir),
-    # plot_mode="")
+	pltt.plot_feature_spread(
+    target_data[variables].to_numpy(),
+    template_data[variables].to_numpy(),
+    original_data = original_data[variables].to_numpy(),
+    feature_nms = variables,
+    save_dir=Path(cfg.general.run_dir),
+    plot_mode="")
  	
 	evaluate_model(cfg)
 
@@ -124,10 +124,7 @@ def evaluate_model(cfg):
 	#trainer = hydra.utils.instantiate(orig_cfg.trainer)
 
 	# Instantiate the datamodule use a different config for data then for training
-	if hasattr(orig_cfg, "data"):
-		datamodule = hydra.utils.instantiate(cfg.data)
-	else:
-		datamodule = hydra.utils.instantiate(orig_cfg.datamodule)
+	datamodule = hydra.utils.instantiate(cfg.data.datamodule)
   
 	tra_dataloader = datamodule.train_dataloader()
 	batch1 = next(iter(tra_dataloader))
@@ -150,7 +147,7 @@ def evaluate_model(cfg):
 	latent_p = torch.cat([e1_p, e2], dim=1)
 	recon_p = model.decoder(latent_p)
 	x_n = recon_p[:, :x.shape[1]]
-	m_n = recon_p[:, m_dn.shape[1]:]
+	m_n = recon_p[:, x.shape[1]:]
 	
 	if model.use_m:
 		w1_n = torch.cat([x_n, m_n*model.use_m], dim=1)

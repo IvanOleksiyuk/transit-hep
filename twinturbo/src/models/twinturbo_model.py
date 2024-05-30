@@ -108,6 +108,7 @@ class TwinTURBO(LightningModule):
 
     	clip_loss_cfg: Mapping = None,
 		vic_reg_cfg=None,
+		input_noise_cfg=None,
 	) -> None:
 		"""
 		Args:
@@ -130,7 +131,8 @@ class TwinTURBO(LightningModule):
 
 		self.var_group_list = var_group_list
 		self.latent_norm = latent_norm
-		
+
+		self.input_noise_cfg = input_noise_cfg
 		self.l1_reg = l1_reg
 		self.loss_balancing = loss_balancing
 		self.clip_loss_cfg = clip_loss_cfg
@@ -200,6 +202,11 @@ class TwinTURBO(LightningModule):
 	def _shared_step(self, sample: tuple, _batch_index = None, step_type="none") -> torch.Tensor:
 		batch_size=sample[0].shape[0]
 		w1, w2 = sample
+		
+		if self.input_noise_cfg is not None:
+			w1 = w1[:, self.input_noise_cfg.w1mpos] + torch.randn_like(w1[:, self.input_noise_cfg.w1mpos]) * self.noise_cfg.noise_std_w1
+			w2 = w2 + torch.randn_like(w2) * self.noise_cfg.noise_std_w2
+
 		m_dn = w2
 		if self.use_m:
 			x = w1[:, :-w2.shape[1]]
@@ -215,7 +222,7 @@ class TwinTURBO(LightningModule):
 		latent_p = torch.cat([e1_p, e2], dim=1)
 		recon_p = self.decoder(latent_p)
 		x_n = recon_p[:, :x.shape[1]]
-		m_n = recon_p[:, m_dn.shape[1]:]
+		m_n = recon_p[:, x.shape[1]:]
 		
 		if self.use_m:
 			w1_n = torch.cat([x_n, m_n*self.use_m], dim=1)
@@ -225,16 +232,18 @@ class TwinTURBO(LightningModule):
 
 		e1_n, e2_n = self.encode(w1_n, w2_n)
 
-		loss_back_vec = mse_loss(e1_p, e1_n) 
-		loss_back_cont = mse_loss(e2, e2_n)
-		loss_reco = mse_loss(recon, torch.cat([x, m_dn], dim=1))
+		#### Losses
+		# Reconstruction loss
+		loss_reco = mse_loss(recon, torch.cat([x, m_dn], dim=1)).mean()
+		# Consistency loss (also backwards loss)
+		loss_back_vec = mse_loss(e1_p, e1_n).mean()
+		loss_back_cont = mse_loss(e2, e2_n).mean()
+		# Attractive and repulsive loss that are parts of triplet loss
 		loss_attractive = -cosine_similarity(e1, e2[torch.randperm(batch_size)]).mean()
 		loss_repulsive = torch.abs(cosine_similarity(e1, e2)).mean()
+		# L1 regularization
 		all_params = torch.cat([x.view(-1) for x in self.parameters()])
 		l1_regularization = self.l1_reg*torch.norm(all_params, 1)
-		loss_reco = loss_reco.mean()
-		loss_back_vec = loss_back_vec.mean()
-		loss_back_cont = loss_back_cont.mean()
   
 		total_loss = sum([l1_regularization,
 					loss_reco*self.loss_weights.loss_reco,

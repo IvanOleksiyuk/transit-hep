@@ -2,21 +2,21 @@
 
 defaults:
   - _self_
-  - data: gauss_corr_2_twinturbo_usem.yaml
-  - step_train_template: twinturbo_reco-cons-acontr-vic
+  - data: gauss_corr_4_twinturbo_usem.yaml
+  - step_train_template: twinturbo_dev
   - step_export_template: twinturbo
   - step_evaluate: twinturbo
 
 
-do_train_template: True
-do_export_template: True
+do_train_template: False
+do_export_template: False
 do_train_cwola: False
 do_evaluate_cwola: False
 do_evaluation: True 
 
 
 general:
-  name: twinturbo_reco-cons-acontr-vic
+  name: twinturbo_reco-cons-acontr-vic4
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/test/${general.name}
 

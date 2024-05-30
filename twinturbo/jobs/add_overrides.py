@@ -51,9 +51,21 @@ def modify_slurm_jobs(source_dir, target_dir, line_part_to_find, addition_to_lin
 
 if __name__ == "__main__":
     source_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_2d_gauss_usem"  # Change this to your source directory
-    target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_4d_gausssph_usem"  # Change this to your target directory
-
     line_part_to_find = "python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py"
-    addition_to_line = "data=gauss_sph_4_twinturbo_usem general/subfolder=gauss_sph_4_twinturbo_usem/"
-
+    
+    target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_2d_gauss_nom"  # Change this to your target directory
+    addition_to_line = "data=gauss_corr_2_twinturbo_nom general.subfolder=gauss_corr_2_twinturbo_nom/"
     modify_slurm_jobs(source_directory, target_directory, line_part_to_find, addition_to_line)
+    
+    target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_4d_gauss_usem"  # Change this to your target directory
+    addition_to_line = "data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/"
+    modify_slurm_jobs(source_directory, target_directory, line_part_to_find, addition_to_line)
+    
+    target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_4d_gauss_usem"  # Change this to your target directory
+    addition_to_line = "data=gauss_corr_8_twinturbo_usem general.subfolder=gauss_corr_8_twinturbo_usem/"
+    modify_slurm_jobs(source_directory, target_directory, line_part_to_find, addition_to_line)
+    
+    target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_4d_gausssph_usem"  # Change this to your target directory
+    addition_to_line = "data=gauss_sph_4_twinturbo_usem general.subfolder=gauss_sph_4_twinturbo_usem/"
+    modify_slurm_jobs(source_directory, target_directory, line_part_to_find, addition_to_line)
+    

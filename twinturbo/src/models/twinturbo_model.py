@@ -137,10 +137,13 @@ class TwinTURBO(LightningModule):
 		if clip_loss_cfg is not None:
 			self.use_clip = True
 			self.clip_loss = CLIPLossNorm(clip_loss_cfg.clip_logit_scale)
+		else:
+			self.use_clip = False
 
-		self.sim_coeff=1
-		self.std_coeff=1
-		self.cov_coeff=1
+		if vic_reg_cfg is not None:
+			self.sim_coeff = vic_reg_cfg.sim_coeff
+			self.std_coeff = vic_reg_cfg.std_coeff
+			self.cov_coeff = vic_reg_cfg.cov_coeff
 		
 		self.projector = self.get_projector(latent_dim, [32, 64, 128]) #TODO fix this 
 		self.batch_size = 512 #TODO fix this 

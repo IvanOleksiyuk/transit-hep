@@ -20,7 +20,10 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from omegaconf import DictConfig, OmegaConf
 import torch
 from torch.nn.functional import normalize, mse_loss, cosine_similarity
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, spearmanr, kendalltau
+import pickle
+import dcor
+from twinturbo.src.utils.hsic import HSIC_np, HSIC_torch
 log = logging.getLogger(__name__)
 
 def to_np(inpt: Union[torch.Tensor, tuple]) -> np.ndarray:
@@ -75,13 +78,13 @@ def main(cfg):
 	print(len(template_data.to_numpy()))
 
 	####uncomment
-	pltt.plot_feature_spread(
-    target_data[variables].to_numpy(),
-    template_data[variables].to_numpy(),
-    original_data = original_data[variables].to_numpy(),
-    feature_nms = variables,
-    save_dir=Path(cfg.general.run_dir),
-    plot_mode="")
+	# pltt.plot_feature_spread(
+    # target_data[variables].to_numpy(),
+    # template_data[variables].to_numpy(),
+    # original_data = original_data[variables].to_numpy(),
+    # feature_nms = variables,
+    # save_dir=Path(cfg.general.run_dir),
+    # plot_mode="")
  	
 	evaluate_model(cfg)
 
@@ -128,7 +131,7 @@ def evaluate_model(cfg):
   
 	tra_dataloader = datamodule.train_dataloader()
 	batch1 = next(iter(tra_dataloader))
-	print("batch1:", batch1)
+	#print("batch1:", batch1)
 
 	batch_size=batch1[0].shape[0]
 	w1, w2 = batch1
@@ -190,15 +193,23 @@ def evaluate_model(cfg):
 	# Plot linear correlateion plots for the latent space
 	one_corretation_plot=True
 	os.makedirs(plot_path+"corerlations/", exist_ok=True)
-	plot_correlation_plots(e1, e2, plot_path, one_corretation_plot=True, name="latent_space_correlations", c=m_dn)
+	person_correlations, spearman_correlations, kendalltaus = plot_correlation_plots(e1, e2, plot_path, one_corretation_plot=True, name="latent_space_correlations", c=m_dn)
     
 	# Mass correlation plots
+	person_correlations_mass = []
+	spearman_correlations_mass = []
+	kendalltaus_mass = []
 	if one_corretation_plot:
 		fig, axes = plt.subplots(1, e1.shape[1],  figsize=(3*e1.shape[1], 3))
 		fig.suptitle('Scatter plots with Pearson Correlation', fontsize=16)
 		for i in range(e1.shape[1]):
 			axes[i].scatter(to_np(e1[:, i]), to_np(m_dn), marker="o", label="e1", c=m_dn, cmap="viridis")
 			pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(m_dn).T[0])
+			person_correlations_mass.append(pearson_correlation)
+			spearman_correlation, p_value = spearmanr(to_np(e1[:, i]), to_np(m_dn).T[0])
+			spearman_correlations_mass.append(spearman_correlation)
+			kendalltau_correlation, p_value = kendalltau(to_np(e1[:, i]), to_np(m_dn).T[0])
+			kendalltaus_mass.append(kendalltau_correlation)
 			axes[i].set_title(f"Corr={pearson_correlation:.3f}")
 			axes[i].set_xlabel(f"dim{i} e1")
 			axes[i].set_ylabel(f"mjj")
@@ -238,8 +249,26 @@ def evaluate_model(cfg):
 	plt.ylabel("mjj1 - mjj2")
 	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1-mjj2.png")
 
+	# Compute some numerical metrics as a summary about model performance
+	results = {"max_abs_pearson": np.max(np.abs(person_correlations)), "min_abs_pearson": np.min(np.abs(person_correlations)), "mean_abs_pearson": np.mean(np.abs(person_correlations))}
+	results.update({"max_abs_spearman": np.max(np.abs(spearman_correlations)), "min_abs_spearman": np.min(np.abs(spearman_correlations)), "mean_abs_spearman": np.mean(np.abs(spearman_correlations))})
+	results["kernel_pearson"] = None
+	results["hilbert_schmidt"] = HSIC_torch(e1, e2, cuda=False).detach().cpu().numpy()
+	results["DisCo"] = dcor.distance_correlation(to_np(e1), to_np(e2))
+	
+	pickle.dump(results, open(plot_path+"results.pkl", "wb"))
+	with open(plot_path+"results.txt", "w") as f:
+		for key, value in results.items():
+			f.write(f"{key}: {value}\n")
+	for key, value in results.items():
+		print(key, value)
+	
+
 
 def plot_correlation_plots(e1, e2, plot_path, name, c=None, one_corretation_plot=True):
+	person_correlations =np.zeros((e1.shape[1], e2.shape[1]))
+	spearman_correlations = np.zeros((e1.shape[1], e2.shape[1]))
+	kendalltaus = np.zeros((e1.shape[1], e2.shape[1]))
 	if one_corretation_plot:
 		fig, axes = plt.subplots(e1.shape[1], e2.shape[1], figsize=(3*e1.shape[1], 3*e1.shape[1]))
 		fig.suptitle('Scatter plots with Pearson Correlation', fontsize=16)
@@ -247,6 +276,11 @@ def plot_correlation_plots(e1, e2, plot_path, name, c=None, one_corretation_plot
 			for j in range(e1.shape[1]):
 				axes[i, j].scatter(to_np(e1[:, i]), to_np(e2[:, j]), marker="o", label="e1", c=c, cmap="viridis")
 				pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(e2[:, j]))
+				person_correlations[i, j] = pearson_correlation
+				spearman_correlation, p_value = spearmanr(to_np(e1[:, i]), to_np(e2[:, j]))
+				spearman_correlations[i, j] = spearman_correlation	
+				kendalltau_correlation, p_value = kendalltau(to_np(e1[:, i]), to_np(e2[:, j]))
+				kendalltaus[i, j] = kendalltau_correlation
 				axes[i, j].set_title(f"Corr={pearson_correlation:.3f}")
 				axes[i, j].set_xlabel(f"dim{i} e1")
 				axes[i, j].set_ylabel(f"dim{j} e2")
@@ -257,8 +291,15 @@ def plot_correlation_plots(e1, e2, plot_path, name, c=None, one_corretation_plot
 			for dim2 in range(e2.shape[1]):
 				plt.figure()
 				plt.scatter(to_np(e1[:, dim1]), to_np(e2[:, dim2]), marker="o", label="e1", c=c, cmap="viridis")
-				pearson_correlation, p_value = pearsonr(to_np(e1[:, dim1]), to_np(e2[:, dim2]))
+				pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(e2[:, j]))
+				person_correlations[i, j] = pearson_correlation
+				spearman_correlation, p_value = spearmanr(to_np(e1[:, i]), to_np(e2[:, j]))
+				spearman_correlations[i, j] = spearman_correlation	
+				kendalltau_correlation, p_value = kendalltau(to_np(e1[:, i]), to_np(e2[:, j]))
+				kendalltaus[i, j] = kendalltau_correlation
 				plt.title(f"Latent space (color=m) pearson={pearson_correlation}")
 				plt.xlabel(f"dim{dim1} e1")
 				plt.ylabel(f"dim{dim2} e2")
 				plt.savefig(plot_path+"corerlations/"+f"{name}_{dim1}_{dim2}.png")
+    
+	return person_correlations, spearman_correlations, kendalltaus

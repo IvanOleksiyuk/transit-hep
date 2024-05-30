@@ -35,7 +35,7 @@ def main(cfg: DictConfig) -> None:
         T.set_float32_matmul_precision(cfg.precision)
 
     log.info("Instantiating the data module")
-    datamodule = hydra.utils.instantiate(cfg.data)
+    datamodule = hydra.utils.instantiate(cfg.data.datamodule)
     
     log.info("Instantiating the model")
     model = hydra.utils.instantiate(cfg.model, inpt_dim=datamodule.get_dim(), var_group_list=datamodule.get_var_group_list())

@@ -9,6 +9,14 @@
 #SBATCH --mem=16GB
 #SBATCH --gres=gpu:1
 
+# Record the start time
+start_time=$(date +%s)
+echo "Job started at: $(date)"
+
 module load GCCcore/12.3.0 Python/3.11.3
 cd scratch/sing_images/
 singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif bash -c "cd /home/users/o/oleksiyu/WORK/hyperproject/ && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr data=gauss_corr_8_twinturbo_usem general.subfolder=gauss_corr_8_twinturbo_usem/"
+
+# Record the end time
+end_time=$(date +%s)
+echo "Job ended at: $(date)"

@@ -36,7 +36,7 @@ if __name__ == "__main__":
     
     # Optional parameters
     selected_metrics = None  # Change to None if you want all metrics
-    sort_by = None  # Change to None if you don't want to sort
+    sort_by = "DisCo"  # Change to None if you don't want to sort
     
     metrics_df = collect_metrics(base_dir, selected_metrics, sort_by)
     print(metrics_df)

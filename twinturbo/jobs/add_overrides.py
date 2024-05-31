@@ -61,7 +61,7 @@ if __name__ == "__main__":
     addition_to_line = "data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/"
     modify_slurm_jobs(source_directory, target_directory, line_part_to_find, addition_to_line)
     
-    target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_4d_gauss_usem"  # Change this to your target directory
+    target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_8d_gauss_usem"  # Change this to your target directory
     addition_to_line = "data=gauss_corr_8_twinturbo_usem general.subfolder=gauss_corr_8_twinturbo_usem/"
     modify_slurm_jobs(source_directory, target_directory, line_part_to_find, addition_to_line)
     

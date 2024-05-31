@@ -1,5 +1,5 @@
 #!/bin/sh
-#SBATCH --job-name=twinturbo_reco_only
+#SBATCH --job-name=all_eval
 #SBATCH --cpus-per-task=16
 #SBATCH --ntasks=1
 #SBATCH --time=1:00:00

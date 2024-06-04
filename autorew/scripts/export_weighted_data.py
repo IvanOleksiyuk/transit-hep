@@ -56,11 +56,14 @@ def main(cfg: DictConfig) -> None:
     # Cycle through the datasets and create the dataloader
     log.info("Running generation")
     outputs = trainer.predict(model=model, datamodule=datamodule)
-    dataset_dict = {var: T.vstack([o[var] for o in outputs]).numpy() for var in outputs[0].keys()}
-    log.info("Saving outputs")
+    class_predicts = T.vstack([o for o in outputs]).numpy()
+    
+    w_xm = class_predicts/(1 - class_predicts)
+    
+    log.info("Saving reweighted template dataset")
     output_dir = Path(orig_cfg.paths.full_path, "outputs")
     output_dir.mkdir(parents=True, exist_ok=True)
-    df = pd.DataFrame({k:v.reshape(-1) for k, v in dataset_dict.items()})
+    df = pd.DataFrame({"w_xm": w_xm})
     df.to_hdf(output_dir / "template_sample.h5", key="template", mode="w")
     
 

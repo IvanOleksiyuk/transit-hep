@@ -167,7 +167,7 @@ class InMemoryDataMerge(InMemoryDataFrameDictBase):
 
 class InMemoryDataMergeClasses(InMemoryDataFrameDictBase):
     """Class for in-memory datasets stored as a dictionary of pandas DataFrames. Merged from 2 or more InMemoryDataFrameDict objects and lable them with class_lables"""
-    def __init__(self, dataset_list, class_lables=None, do_shuffle = False) -> None:
+    def __init__(self, dataset_list, class_lables=None, do_shuffle = False, plotting_path=None) -> None:
         self.list_order = dataset_list[0].list_order
         if isinstance(self.list_order, list):
             self.list_order.append("label")
@@ -185,6 +185,8 @@ class InMemoryDataMergeClasses(InMemoryDataFrameDictBase):
                     self.data["label"] = pd.concat([self.data["label"], pd.DataFrame(np.array([class_lables[i]]*len(value)).reshape(-1, 1), columns=["label"])])
         if do_shuffle:
             self.shuffle()
+        if plotting_path is not None:
+            self.plot_seborn(plotting_path)   
                     
 class SimpleDataModule(LightningDataModule):
     def __init__(self, 

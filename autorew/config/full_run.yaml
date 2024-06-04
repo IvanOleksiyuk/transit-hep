@@ -14,7 +14,7 @@ defaults:
 
 
 seed: 12345 # For reproducibility
-project_name: twinturbo # Determines output directory path and wandb project
+project_name: autorew # Determines output directory path and wandb project
 network_name: ${now:%Y-%m-%d}_${now:%H-%M-%S-%f} # Used for both saving and wandb
 ckpt_path: null # Checkpoint path to resume training
 

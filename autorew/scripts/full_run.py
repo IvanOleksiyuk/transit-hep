@@ -14,16 +14,16 @@ import hydra
 from pathlib import Path
 import os
 from omegaconf import DictConfig, OmegaConf
-from twinturbo.src.utils.hydra_utils import instantiate_collection, log_hyperparameters, print_config, reload_original_config, save_config
+from twinturbo.src.utils.hydra_utils import print_config 
 import twinturbo.scripts.evaluation as evaluation
-import twinturbo.scripts.train as train
-import twinturbo.scripts.generate_teplate as generate_teplate
+import autorew.scripts.train as train
+import autorew.scripts.export_weighted_data as export_weighted_data
 import twinturbo.scripts.export as export
 log = logging.getLogger(__name__)
 
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="twinturbo_def_new"
+    version_base=None, config_path=str('../config'), config_name="autorew_dev"
 )
 def main(cfg: DictConfig) -> None:
 	## 1 - Create a separate folder for the experiment save all the relavant configs there
@@ -39,8 +39,8 @@ def main(cfg: DictConfig) -> None:
 		log.info("Train a model for template generation")
 		train.main(cfg.step_train_template)
 	if cfg.do_export_template:
-		log.info("Generate a template dataset using the model")
-		generate_teplate.main(cfg.step_export_template)
+		log.info("Export the classifier outputs for reweighting")
+		export_weighted_data.main(cfg.step_export_template)
 	if cfg.do_train_cwola:
 		log.info("Train CWOLA model using the template dataset and the real data")
 		train.main(cfg.train_cwola)

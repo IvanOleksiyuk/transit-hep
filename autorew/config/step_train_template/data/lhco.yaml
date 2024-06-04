@@ -1,0 +1,19 @@
+# _target_: twinturbo.src.data.data.BandedData
+_target_: twinturboturboturboturboturbo.data.data.SignalRegionData
+df:
+  _target_: twinturbo.src.data.lhco.get_lhco_df
+  top_dir: '/home/ivanoleksiyuk/DATA/LHCO'
+
+# bands: '4000/4200/4400/4600/4800/5000'
+bands: '1500/2000/3300/3700/4800/5000'
+#bands: '3400/3600/3800/4000/4200/4400'
+#variables: 'mj1/mj2'
+variables: 'mj1/mj2/dR'
+n_signal: 1000
+train_frac: 0.8
+
+loader_kwargs:
+  pin_memory: true
+  batch_size: 512
+  num_workers: 1
+  drop_last: false

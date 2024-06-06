@@ -67,6 +67,13 @@ class MLPClassifier(pl.LightningModule):
             "lr_scheduler": {"scheduler": sched, **self.hparams.scheduler.lightning},
         }
 
+    def predict_step(self, batch: tuple, batch_idx: int, dataloader_idx: int = 0):
+        """Predict step for the model."""
+        inputs = batch["data"].to(dtype=torch.float32)
+        cond = batch["cond"].to(dtype=torch.float32)
+        outputs = self(torch.cat([inputs, cond], dim=1))
+        bkg_prob = torch.nn.functional.softmax(outputs) [:, 0]
+        return bkg_prob
     # Concept:
 
     # def on_fit_start(self, *_args):
@@ -76,9 +83,3 @@ class MLPClassifier(pl.LightningModule):
     #    pass
 
 
-def predict_step(self, batch: tuple, batch_idx: int, dataloader_idx: int = 0):
-    """Predict step for the model."""
-    inputs = batch["data"].to(dtype=torch.float32)
-    cond = batch["cond"].to(dtype=torch.float32)
-    outputs = self(torch.cat([inputs, cond], dim=1))
-    return outputs

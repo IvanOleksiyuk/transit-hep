@@ -2,14 +2,14 @@
 
 defaults:
   - _self_
-  - data: gauss_corr_4_twinturbo_nom.yaml
+  - data: gauss_corr_4_middle_section_debug.yaml
   - step_train_template: autorew_dev
-  - step_export_template: autorew
+  - step_export_weights: autorew
   - step_evaluate: autorew
 
 
-do_train_template: True
-do_export_template: False
+do_train_template: False
+do_export_weighted_data: True
 do_train_cwola: False
 do_evaluate_cwola: False
 do_evaluation: False 
@@ -18,7 +18,7 @@ do_evaluation: False
 general:
   name: autorew1
   seed: 12345 # For reproducibility
-  run_dir: twinturbo/workspaces/autorew/${general.name}
+  run_dir: autorew/workspaces/autorew/${general.name}
 
 
 

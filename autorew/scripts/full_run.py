@@ -38,9 +38,9 @@ def main(cfg: DictConfig) -> None:
 	if cfg.do_train_template:
 		log.info("Train a model for template generation")
 		train.main(cfg.step_train_template)
-	if cfg.do_export_template:
+	if cfg.do_export_weighted_data:
 		log.info("Export the classifier outputs for reweighting")
-		export_weighted_data.main(cfg.step_export_template)
+		export_weighted_data.main(cfg.step_export_weights)
 	if cfg.do_train_cwola:
 		log.info("Train CWOLA model using the template dataset and the real data")
 		train.main(cfg.train_cwola)

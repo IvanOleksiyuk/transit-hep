@@ -22,7 +22,7 @@ loss_weights:
   loss_back_cont: 0
 loss_balancing: 0
 
-DisCO_loss_cfg:
-  dcor_loss_weight: 0.01
+
+
 
 

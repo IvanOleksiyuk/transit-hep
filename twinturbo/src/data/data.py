@@ -1,14 +1,13 @@
-import pandas as pd
-import h5py
+import copy
 import operator
+from pathlib import Path
+
+import matplotlib.pyplot as plt
 import numpy as np
-from twinturbo.src.utils.plot import plot_dataframe
+import pandas as pd
+import seaborn as sns
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
-import copy
-import matplotlib.pyplot as plt
-import seaborn as sns
-import os 
 
 OPERATORS = {
     "==": operator.eq,
@@ -25,23 +24,47 @@ OPERATORS = {
 # Here data is always considered to be a list of pandas dataframes other
 
 ##############################################
-### Collection of functions for data pre-processing
+# Collection of functions for data pre-processing
 ##############################################
 
-class ProcessorApplyCuts():
+class ProcessorIntervals:
+    def __init__(self, scalar_df_name, var_name, intervals):
+        self.scalar_df_name = scalar_df_name
+        self.var_name = var_name
+        self.intervals = intervals
+
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+        # find the events that pass the cuts
+        for interval in self.intervals:
+            min_val, max_val = interval[0], interval[1]
+            bool_indices_new = data[self.scalar_df_name][self.var_name] < max_val
+            bool_indices_new &= data[self.scalar_df_name][self.var_name] >= min_val
+            bool_indices = bool_indices_new if interval == self.intervals[0] else bool_indices | bool_indices_new
+        # apply the cuts to all the dataframes
+        for key, value in data.items():
+            data[key] = value[bool_indices]
+        return data
+
+class ProcessorApplyCuts:
     def __init__(self, scalar_df_name, cuts):
-        self.scalar_df_name=scalar_df_name
-        self.cuts=cuts
+        self.scalar_df_name = scalar_df_name
+        self.cuts = cuts
+
+    @staticmethod
+    def process_cut_string(string):
+        var_name, operator_s, value_s = string.split(" ")
+        return var_name, OPERATORS[operator_s], float(value_s)
+
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
         # find the events that pass the cuts
         for cut in self.cuts:
-            cut = cut.split(" ")
-            indices = OPERATORS[cut[1]](data[self.scalar_df_name][cut[0]], float(cut[2])) 
+            var_name, operator, value = self.process_cut_string(cut)
+            indices = operator(data[self.scalar_df_name][var_name], value)
         # apply the cuts to all the dataframes
         for key, value in data.items():
             data[key] = value[indices]
         return data
-    
+  
 class ProcessorSplitDataFrameVars():
     def __init__(self, frame_name, new_df_dict):
         self.frame_name=frame_name
@@ -72,46 +95,54 @@ class ProcessorShuffle():
         for key, value in data.items():
             data[key] = value.sample(frac=1).reset_index(drop=True)
         return data
+
 ##############################################
 
 class InMemoryDataFrameDictBase(Dataset):
-    """Basic class for in-memory datasets stored as a dictionary of pandas DataFrames.
+    """Basic class for in-memory datasets.
+    data is stored as a dictionary of pandas DataFrames.
     """
 
     def __getitem__(self, item):
         if self.list_order is None:
-            return {key: value.iloc[item].to_numpy() for key, value in self.data.items()}
-        else:
-            return [self.data[it].to_numpy()[item] for it in self.list_order]
-    
+            return {
+                key: value.iloc[item].to_numpy() for key, value in self.data.items()
+            }
+        return [self.data[it].to_numpy() for it in self.list_order]
+
     def __len__(self):
         return len(self.data[list(self.data.keys())[0]])
-    
+
     def get_dim(self):
         if self.list_order is None:
-            return {key: value.iloc[0].to_numpy(dtype=np.float32).shape for key, value in self.data.items()}
-        else:
-            return [self.data[it].to_numpy(dtype=np.float32)[0].shape for it in self.list_order]
-    
+            return {
+                key: value.iloc[0].to_numpy(dtype=np.float32).shape
+                for key, value in self.data.items()
+            }
+        return [
+            self.data[it].to_numpy(dtype=np.float32).shape for it in self.list_order
+        ]
+
     def load(self, file_path: str) -> pd.DataFrame:
         data = {}
-        
+
         # Open the HDF5 file
-        with pd.HDFStore(file_path, 'r') as store:
+        with pd.HDFStore(file_path, "r") as store:
             # Iterate over all the keys (dataset names) in the file
-            for key in store.keys():
+            for key in store:
                 # Read each dataset into a pandas DataFrame and store in the dictionary
                 data[key[1:]] = store[key]
         return data
-    
+
     def shuffle(self, random_state=42):
         for key, value in self.data.items():
-            self.data[key] = value.sample(frac=1, random_state=random_state).reset_index(drop=True)
+            self.data[key] = value.sample(
+                frac=1, random_state=random_state
+            ).reset_index(drop=True)
+        print("Data shuffled, please mind all later combinations!")
 
     def split(self, n_train):
-        """ Very inefficient way to split data """
-        n_data = len(self.data)
-        n_val = n_data - n_train
+        """Very inefficient way to split data."""
         train_data = {key: value.iloc[:n_train] for key, value in self.data.items()}
         val_data = {key: value.iloc[n_train:] for key, value in self.data.items()}
         self.data = train_data
@@ -119,24 +150,26 @@ class InMemoryDataFrameDictBase(Dataset):
         rest.data = val_data
         return self, rest
 
-    def plot_seborn(self, plot_dir):
-        os.makedirs(plot_dir, exist_ok=True)
+    def plot(self, plot_dir):
+        Path(plot_dir).mkdir(parents=True, exist_ok=True)
         for key, value in self.data.items():
             sns.pairplot(value)
-            plt.savefig(os.path.join(plot_dir, f'{key}.png'))
+            plt.savefig(Path(plot_dir) / f"{key}.png")
             plt.close()
-    
+
 class InMemoryDataFrameDict(InMemoryDataFrameDictBase):
-    """Class for in-memory datasets stored as a dictionary of pandas DataFrames. Loaded from an HDF5 file. Preprocessing is applied.
+    """Class for in-memory datasets stored as a dictionary of pandas DataFrames.
+    Loaded from an HDF5 file. Preprocessing is applied.
     """
-    def __init__(self, file_path: str, processor_cfg, list_order=None, plotting_path=None) -> None:
+
+    def __init__(self, file_path: str, processor_cfg, list_order=None, plotting_path= None) -> None:
         self.file_path = file_path
         self.list_order = list_order
         self.init_processors(processor_cfg)
-        self.data = self.load(file_path)  
-        self.data = self.apply_processors(self.data) 
+        self.data = self.load(file_path)
+        self.data = self.apply_processors(self.data)
         if plotting_path is not None:
-            self.plot_seborn(plotting_path)   
+            self.plot(plotting_path)
 
     def init_processors(self, processor_cfg):
         self.processors = []
@@ -149,14 +182,17 @@ class InMemoryDataFrameDict(InMemoryDataFrameDictBase):
         return data
 
 class InMemoryDataMerge(InMemoryDataFrameDictBase):
-    """Class for in-memory datasets stored as a dictionary of pandas DataFrames. Merged from 2 or more InMemoryDataFrameDict objects"""
-    def __init__(self, dataset_list, do_shuffle = False) -> None:
+    """Class for in-memory datasets stored as a dictionary of pandas DataFrames.
+    Merged from 2 or more InMemoryDataFrameDict objects.
+    """
+
+    def __init__(self, dataset_list, do_shuffle=False) -> None:
         self.list_order = dataset_list[0].list_order
         if isinstance(self.list_order, list):
             self.list_order.append("label")
         self.data = {}
         for i, dataset in enumerate(dataset_list):
-            if i==0:
+            if i == 0:
                 for key, value in dataset.data.items():
                     self.data[key] = value
             else:
@@ -166,36 +202,76 @@ class InMemoryDataMerge(InMemoryDataFrameDictBase):
             self.shuffle()
 
 class InMemoryDataMergeClasses(InMemoryDataFrameDictBase):
-    """Class for in-memory datasets stored as a dictionary of pandas DataFrames. Merged from 2 or more InMemoryDataFrameDict objects and lable them with class_lables"""
-    def __init__(self, dataset_list, class_lables=None, do_shuffle = False, plotting_path=None) -> None:
+    """Class for in-memory datasets stored as a dictionary of pandas DataFrames.
+    Merged from 2 or more InMemoryDataFrameDict or simmilar objects.
+    The lable df is added to them with class_lables.
+    """
+
+    def __init__(
+        self, dataset_list, class_lables=None, do_shuffle=True, sample_to_min=True, plotting_path= None 
+    ) -> None:
         self.list_order = dataset_list[0].list_order
         if isinstance(self.list_order, list):
             self.list_order.append("label")
         if class_lables is None:
             class_lables = list(range(len(dataset_list)))
         self.data = {}
-        for i, dataset in enumerate(dataset_list):
-            if i==0:
-                for key, value in dataset.data.items():
-                    self.data[key] = value
-                    self.data["label"] = pd.DataFrame(np.array([class_lables[i]]*len(value)).reshape(-1, 1), columns=["label"])
-            else:
-                for key, value in dataset.data.items():
-                    self.data[key] = pd.concat([self.data[key], value])
-                    self.data["label"] = pd.concat([self.data["label"], pd.DataFrame(np.array([class_lables[i]]*len(value)).reshape(-1, 1), columns=["label"])])
+        if sample_to_min:
+            min_len = min([len(dataset) for dataset in dataset_list])
+            for i, dataset in enumerate(dataset_list):
+                if i == 0:
+                    for key, value in dataset.data.items():
+                        self.data[key] = value.iloc[:min_len]
+                    self.data["label"] = pd.DataFrame(
+                        np.array([class_lables[i]] * min_len).reshape(-1, 1),
+                        columns=["label"],
+                    )
+                else:
+                    for key, value in dataset.data.items():
+                        self.data[key] = pd.concat([
+                            self.data[key],
+                            value.iloc[:min_len],
+                        ])
+                    self.data["label"] = pd.concat([
+                        self.data["label"],
+                        pd.DataFrame(
+                            np.array([class_lables[i]] * min_len).reshape(-1, 1),
+                            columns=["label"],
+                        ),
+                    ])
+        else:
+            for i, dataset in enumerate(dataset_list):
+                if i == 0:
+                    for key, value in dataset.data.items():
+                        self.data[key] = value
+                    self.data["label"] = pd.DataFrame(
+                        np.array([class_lables[i]] * len(value)).reshape(-1, 1),
+                        columns=["label"],
+                    )
+                else:
+                    for key, value in dataset.data.items():
+                        self.data[key] = pd.concat([self.data[key], value])
+                    self.data["label"] = pd.concat([
+                        self.data["label"],
+                        pd.DataFrame(
+                            np.array([class_lables[i]] * len(value)).reshape(-1, 1),
+                            columns=["label"],
+                        ),
+                    ])
         if do_shuffle:
             self.shuffle()
         if plotting_path is not None:
-            self.plot_seborn(plotting_path)   
-                    
+            self.plot(plotting_path)
+
 class SimpleDataModule(LightningDataModule):
-    def __init__(self, 
-                 loader_kwargs,
-                 train_data = None,  
-                 val_data = None,
-                 train_frac: float = 0.8,
-                 test_data = None,) -> None:
-        
+    def __init__(
+        self,
+        loader_kwargs,
+        train_data,
+        val_data=None,
+        train_frac: float = 0.8,
+        test_data=None,
+    ) -> None:
         super().__init__()
         self.loader_kwargs = loader_kwargs
         self.train_data = train_data
@@ -208,46 +284,49 @@ class SimpleDataModule(LightningDataModule):
 
         if val_data is not None:
             print("Validation dataset loaded using cofig")
-        else:
-            if self.train_data is not None:
-                if train_frac is not None:
-                    n_data = len(self.train_data)
-                    n_train = int(train_frac * n_data)
-                    self.train_data, self.val_data = self.train_data.split(n_train)
-                    print(f"Validation dataset is is split from training with fraction {1-train_frac}")
-                else:
-                    self.val_data = None
-                    print("No validation dataset set")
-            else: 
+        elif self.train_data is not None:
+            if train_frac is not None:
+                n_data = len(self.train_data)
+                n_train = int(train_frac * n_data)
+                self.train_data, self.val_data = self.train_data.split(n_train)
+                print(
+                    "Validation dataset is is split "
+                    f"from training with fraction {1 - train_frac}"
+                )
+            else:
                 self.val_data = None
                 print("No validation dataset set")
-                
+        else:
+            self.val_data = None
+            print("No validation dataset set")
+
         if test_data is None:
             print("No test dataset set")
         else:
             print("Test dataset set from config")
-    
+
     def train_dataloader(self) -> DataLoader:
         return DataLoader(self.train_data, **self.loader_kwargs, shuffle=True)
-    
+
     def val_dataloader(self) -> DataLoader:
         return DataLoader(self.val_data, **self.loader_kwargs, shuffle=False)
-    
+
     def test_dataloader(self) -> DataLoader:
         return DataLoader(self.test_data, **self.loader_kwargs, shuffle=False)
-    
+
     def predict_dataloader(self) -> DataLoader:
         return self.test_dataloader()
-    
+
     def get_dim(self):
         return self.train_data.get_dim()
-    
+
     def get_var_group_list(self):
         var_group_list = []
         for key in self.train_data.list_order:
             var_group_list.append(self.train_data.data[key].columns.tolist())
         return var_group_list
-    
+
+
 class CombDataset(InMemoryDataFrameDictBase):
     def __init__(self, dataset1, dataset2, length=None, plotting_path=None) -> None:
         if length is None:
@@ -260,4 +339,3 @@ class CombDataset(InMemoryDataFrameDictBase):
         self.list_order = dataset1.list_order+dataset2.list_order
         if plotting_path is not None:
             self.plot_seborn(plotting_path)
-    

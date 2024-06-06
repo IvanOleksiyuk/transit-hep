@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from torch.nn.functional import normalize, mse_loss, cosine_similarity
 import numpy as np
 import torch.distributed as dist
+import dcor
 
 class CLIPLoss(nn.Module):
     def __init__(self, logit_scale=1.0):
@@ -106,6 +107,7 @@ class TwinTURBO(LightningModule):
     	use_m = True,
     	loss_balancing= None,
 
+		DisCO_loss_cfg: Mapping = None,
     	clip_loss_cfg: Mapping = None,
 		vic_reg_cfg=None,
 		input_noise_cfg=None,
@@ -160,6 +162,9 @@ class TwinTURBO(LightningModule):
 			e1 = self.encoder1(w1)
 			e2 = self.encoder2(w2)
 		return e1, e2
+
+	def DisCO_loss(self, x, y):
+		return dcor.distance_correlation(x, y)
 
 	def VICloss(self, x, y):
 		x = self.projector(x)
@@ -259,6 +264,11 @@ class TwinTURBO(LightningModule):
 		self.log(f"{step_type}/loss_back_vec", loss_back_vec)
 		self.log(f"{step_type}/loss_back_cont", loss_back_cont)
 		self.log(f"{step_type}/l1_regularization", l1_regularization)
+		if self.DisCO_loss_cfg is not None:
+			loss_disco = self.DisCO_loss(e1, e2).mean()
+			self.log(f"{step_type}/DisCO_loss", loss_disco)
+			total_loss += loss_disco*self.DisCO_loss_cfg.dcor_loss_weight
+  
 		if self.use_clip:
 			loss_clip = self.clip_loss(e1, e2).mean()
 			self.log(f"{step_type}/clip_loss", loss_clip)

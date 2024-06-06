@@ -43,10 +43,6 @@ def main(cfg: DictConfig) -> None:
     log.info("Instantiating original trainer")
     trainer = hydra.utils.instantiate(orig_cfg.trainer)
 
-    # Allow running on single process
-    if isinstance(cfg.bands, str):
-        cfg.bands = [cfg.bands]
-
     # Instantiate the datamodule use a different config for data then for training
     if hasattr(orig_cfg, "data"):
         datamodule = hydra.utils.instantiate(cfg.data)
@@ -56,15 +52,15 @@ def main(cfg: DictConfig) -> None:
     # Cycle through the datasets and create the dataloader
     log.info("Running generation")
     outputs = trainer.predict(model=model, datamodule=datamodule)
-    class_predicts = T.vstack([o for o in outputs]).numpy()
+    bkg_prob = T.hstack(outputs).numpy()
     
-    w_xm = class_predicts/(1 - class_predicts)
+    w_xm = bkg_prob/(1 - bkg_prob)
     
     log.info("Saving reweighted template dataset")
     output_dir = Path(orig_cfg.paths.full_path, "outputs")
     output_dir.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame({"w_xm": w_xm})
-    df.to_hdf(output_dir / "template_sample.h5", key="template", mode="w")
+    df.to_hdf(output_dir / "weight_full_data.h5", key="template", mode="w")
     
 
 

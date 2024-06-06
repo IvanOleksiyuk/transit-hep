@@ -1,0 +1,9 @@
+data:
+  _target_: gutils.data.data.InMemoryDataMerge
+  dataset_list:
+    - _target_: gutils.data.data.InMemoryDataFrameDict
+      file_path: "tests/unit/fixtures/data.h5"
+      processor_cfg: []
+    - _target_: gutils.data.data.InMemoryDataFrameDict
+      file_path: "tests/unit/fixtures/data.h5"
+      processor_cfg: []

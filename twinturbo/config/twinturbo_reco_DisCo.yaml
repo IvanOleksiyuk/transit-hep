@@ -16,7 +16,7 @@ do_evaluation: True
 
 
 general:
-  name: twinTURBO_reco_only
+  name: twinTURBO_reco_DisCo
   subfolder: experiments/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

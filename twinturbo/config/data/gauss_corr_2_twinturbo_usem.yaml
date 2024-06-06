@@ -26,6 +26,7 @@ export_template:
     batch_size: 512
     num_workers: 8
     drop_last: false
+  train_data: null
   test_data:
     _target_: twinturbo.src.data.data.CombDataset
     plotting_path: ${general.run_dir}/plots/export/

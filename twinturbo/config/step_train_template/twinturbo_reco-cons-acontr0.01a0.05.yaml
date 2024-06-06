@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - model: twinturbo_reco-cons-acontr0.1both
+  - model: twinturbo_reco-cons-acontr0.01a0.05
   - callbacks: default.yaml
   - loggers: wandb.yaml
   - paths: default.yaml

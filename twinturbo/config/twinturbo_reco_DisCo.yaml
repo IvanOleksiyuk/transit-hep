@@ -2,8 +2,8 @@
 
 defaults:
   - _self_
-  - data: gauss_corr_2_10K_twinturbo_usem.yaml
-  - step_train_template: twinturbo_dev
+  - data: gauss_corr_2_twinturbo_usem
+  - step_train_template: twinturbo_reco_DisCo
   - step_export_template: twinturbo
   - step_evaluate: twinturbo
 
@@ -16,6 +16,8 @@ do_evaluation: True
 
 
 general:
-  name: twinturbo_reco-cons-acontr-vic5
+  name: twinTURBO_reco_only
+  subfolder: experiments/
   seed: 12345 # For reproducibility
-  run_dir: twinturbo/workspaces/test/${general.name}
+  run_dir: twinturbo/workspaces/${general.subfolder}${general.name}
+

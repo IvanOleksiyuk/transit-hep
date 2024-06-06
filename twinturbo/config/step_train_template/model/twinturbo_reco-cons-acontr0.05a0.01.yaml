@@ -16,8 +16,8 @@ latent_dim: 8
 l1_reg: 0.0
 loss_weights:
   loss_reco: 1
-  loss_attractive: 0.02
-  loss_repulsive: 0.01
+  loss_attractive: 0.01
+  loss_repulsive: 0.05
   loss_back_vec: 0.1
   loss_back_cont: 0.1
 loss_balancing: 0

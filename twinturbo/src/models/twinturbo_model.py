@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.nn.functional import normalize, mse_loss, cosine_similarity
 import numpy as np
 import torch.distributed as dist
-import dcor
+import twinturbo.src.models.distance_correlation as dcor
 
 class CLIPLoss(nn.Module):
     def __init__(self, logit_scale=1.0):
@@ -150,9 +150,11 @@ class TwinTURBO(LightningModule):
 			self.cov_coeff = vic_reg_cfg.cov_coeff
 		
 		self.projector = self.get_projector(latent_dim, [32, 64, 128]) #TODO fix this 
-		self.batch_size = 512 #TODO fix this 
 		self.num_features = 2 # TODO fix this
 		self.vic_reg_cfg= vic_reg_cfg
+		self.DisCO_loss_cfg = DisCO_loss_cfg
+		if DisCO_loss_cfg is not None:
+			self.DisCO_loss = dcor.DistanceCorrelation()
 
 	def encode(self, w1, w2) -> torch.Tensor:
 		if self.latent_norm:
@@ -163,13 +165,10 @@ class TwinTURBO(LightningModule):
 			e2 = self.encoder2(w2)
 		return e1, e2
 
-	def DisCO_loss(self, x, y):
-		return dcor.distance_correlation(x, y)
-
 	def VICloss(self, x, y):
 		x = self.projector(x)
 		y = self.projector(y)
-
+		batch_size = x.size(0)
 		repr_loss = F.mse_loss(x, y)
 
 		#x = torch.cat(FullGatherLayer.apply(x), dim=0)
@@ -181,8 +180,8 @@ class TwinTURBO(LightningModule):
 		std_y = torch.sqrt(y.var(dim=0) + 0.0001)
 		std_loss = torch.mean(F.relu(1 - std_x)) / 2 + torch.mean(F.relu(1 - std_y)) / 2
 
-		cov_x = (x.T @ x) / (self.batch_size - 1)
-		cov_y = (y.T @ y) / (self.batch_size - 1)
+		cov_x = (x.T @ x) / (batch_size - 1)
+		cov_y = (y.T @ y) / (batch_size - 1)
 		cov_loss = off_diagonal(cov_x).pow_(2).sum().div(
 			self.num_features
 		) + off_diagonal(cov_y).pow_(2).sum().div(self.num_features)

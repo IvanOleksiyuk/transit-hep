@@ -26,6 +26,15 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif bash 
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-aclip data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_noise_mINx data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_noise_mSEP data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr0.01a0.02 data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr0.01a0.05 data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr0.1both data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr0.02a0.01 data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr0.05a0.01 data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr0.005a0.05 data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_adam data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_DisCo data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_pearson data=gauss_corr_4_twinturbo_usem general.subfolder=gauss_corr_4_twinturbo_usem/ do_train_template=0 do_export_template=0\
 "
 
 # Record the end time

@@ -11,6 +11,7 @@ from torch.nn.functional import normalize, mse_loss, cosine_similarity
 import numpy as np
 import torch.distributed as dist
 import twinturbo.src.models.distance_correlation as dcor
+from twinturbo.src.models.pearson_correlation import PearsonCorrelation
 
 class CLIPLoss(nn.Module):
     def __init__(self, logit_scale=1.0):
@@ -108,6 +109,7 @@ class TwinTURBO(LightningModule):
     	loss_balancing= None,
 
 		DisCO_loss_cfg: Mapping = None,
+		pearson_loss_cfg: Mapping = None,
     	clip_loss_cfg: Mapping = None,
 		vic_reg_cfg=None,
 		input_noise_cfg=None,
@@ -155,6 +157,9 @@ class TwinTURBO(LightningModule):
 		self.DisCO_loss_cfg = DisCO_loss_cfg
 		if DisCO_loss_cfg is not None:
 			self.DisCO_loss = dcor.DistanceCorrelation()
+		self.pearson_loss_cfg = pearson_loss_cfg
+		if pearson_loss_cfg is not None:
+			self.pearson_loss = PearsonCorrelation()
 
 	def encode(self, w1, w2) -> torch.Tensor:
 		if self.latent_norm:
@@ -237,53 +242,102 @@ class TwinTURBO(LightningModule):
 		e1_n, e2_n = self.encode(w1_n, w2_n)
 
 		#### Losses
+		total_loss = 0
+  
 		# Reconstruction loss
 		loss_reco = mse_loss(recon, torch.cat([x, m_dn], dim=1)).mean()
-		# Consistency loss (also backwards loss)
-		loss_back_vec = mse_loss(e1_p, e1_n).mean()
-		loss_back_cont = mse_loss(e2, e2_n).mean()
-		# Attractive and repulsive loss that are parts of triplet loss
-		loss_attractive = -cosine_similarity(e1, e2[torch.randperm(batch_size)]).mean()
-		loss_repulsive = torch.abs(cosine_similarity(e1, e2)).mean()
-		# L1 regularization
-		all_params = torch.cat([x.view(-1) for x in self.parameters()])
-		l1_regularization = self.l1_reg*torch.norm(all_params, 1)
-  
-		total_loss = sum([l1_regularization,
-					loss_reco*self.loss_weights.loss_reco,
-					loss_attractive*self.loss_weights.loss_attractive,
-					loss_repulsive*self.loss_weights.loss_repulsive,
-					loss_back_vec*self.loss_weights.loss_back_vec,
-					loss_back_cont*self.loss_weights.loss_back_cont])
-		self.log(f"{step_type}/total_loss", total_loss)
+		total_loss += loss_reco*self.loss_weights.loss_reco
 		self.log(f"{step_type}/loss_reco", loss_reco)
-		self.log(f"{step_type}/loss_attractive", loss_attractive)
-		self.log(f"{step_type}/loss_attractive+repulsive", loss_attractive+loss_repulsive)
-		self.log(f"{step_type}/loss_repulsive", loss_repulsive)
-		self.log(f"{step_type}/loss_back_vec", loss_back_vec)
-		self.log(f"{step_type}/loss_back_cont", loss_back_cont)
-		self.log(f"{step_type}/l1_regularization", l1_regularization)
-		if self.DisCO_loss_cfg is not None:
-			loss_disco = self.DisCO_loss(e1, e2).mean()
-			self.log(f"{step_type}/DisCO_loss", loss_disco)
-			total_loss += loss_disco*self.DisCO_loss_cfg.dcor_loss_weight
+
+		# Consistency losses 
+		if hasattr(self.loss_weights, "loss_back_vec"):
+			loss_back_vec = mse_loss(e1_p, e1_n).mean()
+			self.log(f"{step_type}/loss_back_vec", loss_back_vec)
+			if self.loss_weights.loss_back_vec is not None:
+				if isinstance(self.loss_weights.loss_back_vec, float) or isinstance(self.loss_weights.loss_back_vec, int):
+					total_loss += loss_back_vec*self.loss_weights.loss_back_vec
+				else:
+					total_loss += loss_back_vec*self.loss_weights.loss_back_vec(_batch_index)
+		if hasattr(self.loss_weights, "loss_back_cont"):
+			loss_back_cont = mse_loss(e2, e2_n).mean()
+			self.log(f"{step_type}/loss_back_cont", loss_back_cont)
+			if self.loss_weights.loss_back_cont is not None:
+				if isinstance(self.loss_weights.loss_back_cont, float) or isinstance(self.loss_weights.loss_back_cont, int):
+					total_loss += loss_back_cont*self.loss_weights.loss_back_cont
+				else:
+					total_loss += loss_back_cont*self.loss_weights.loss_back_cont(_batch_index)
+		
+  		#total_loss += loss_back_vec*self.loss_weights.loss_back_vec
+		#total_loss += loss_back_cont*self.loss_weights.loss_back_cont
+
+		# L1 regularization
+		if self.l1_reg is not None:
+			all_params = torch.cat([x.view(-1) for x in self.parameters()])
+			l1_regularization = self.l1_reg*torch.norm(all_params, 1)
+			total_loss += l1_regularization
+			self.log(f"{step_type}/l1_regularization", l1_regularization)
+
+		# Attractive and repulsive loss that are parts of triplet loss
+		if hasattr(self.loss_weights, "loss_attractive"):
+			loss_attractive = -cosine_similarity(e1, e2[torch.randperm(batch_size)]).mean()
+			self.log(f"{step_type}/loss_attractive", loss_attractive)
+			if self.loss_weights.loss_attractive is not None:
+				if isinstance(self.loss_weights.loss_attractive, float) or isinstance(self.loss_weights.loss_attractive, int):
+					total_loss += loss_attractive*self.loss_weights.loss_attractive
+				else:
+					total_loss += loss_attractive*self.loss_weights.loss_attractive(_batch_index)
+		if hasattr(self.loss_weights, "loss_repulsive"):
+			loss_repulsive = torch.abs(cosine_similarity(e1, e2)).mean()
+			self.log(f"{step_type}/loss_repulsive", loss_repulsive)
+			if self.loss_weights.loss_repulsive is not None:
+				if isinstance(self.loss_weights.loss_repulsive, float) or isinstance(self.loss_weights.loss_repulsive, int):
+					total_loss += loss_repulsive*self.loss_weights.loss_repulsive
+				else:
+					total_loss += loss_repulsive*self.loss_weights.loss_repulsive(_batch_index)
+		if hasattr(self.loss_weights, "loss_attractive") and hasattr(self.loss_weights, "loss_repulsive"):
+			self.log(f"{step_type}/loss_attractive+repulsive", loss_attractive+loss_repulsive)
+			# Loss balancing for tripplet loss
+			if step_type=="train":
+				self.loss_balabcing(loss_repulsive)
+			self.log("train/l_atr_weight", self.loss_weights.loss_attractive)	
+			self.log("train/l_rep_weight", self.loss_weights.loss_repulsive)
   
+		# DisCO loss
+		if self.DisCO_loss_cfg is not None:
+			loss_disco = self.DisCO_loss(e1, e2)
+			self.log(f"{step_type}/DisCO_loss", loss_disco)
+			if self.DisCO_loss_cfg.DisCO_loss_weight is not None:
+				if isinstance(self.DisCO_loss_cfg.DisCO_loss_weight, float) or isinstance(self.DisCO_loss_cfg.DisCO_loss_weight, int):
+						total_loss += loss_disco*self.DisCO_loss_cfg.DisCO_loss_weight
+				else:
+					total_loss += loss_disco*self.DisCO_loss_cfg.DisCO_loss_weight(_batch_index)
+
+		# Pearson loss
+		if self.pearson_loss_cfg is not None:
+			loss_disco = self.pearson_loss(e1, e2)
+			self.log(f"{step_type}/pearson_loss", loss_disco)
+			if self.pearson_loss_cfg.pearson_loss_weight is not None:
+				if isinstance(self.pearson_loss_cfg.pearson_loss_weight, float) or isinstance(self.pearson_loss_cfg.pearson_loss_weight, int):
+						total_loss += loss_disco*self.pearson_loss_cfg.pearson_loss_weight
+				else:
+					total_loss += loss_disco*self.pearson_loss_cfg.pearson_loss_weight(_batch_index)
+
+		# CLIP loss
 		if self.use_clip:
 			loss_clip = self.clip_loss(e1, e2).mean()
 			self.log(f"{step_type}/clip_loss", loss_clip)
 			total_loss += loss_clip*self.clip_loss_cfg.clip_loss_weight
-   
+
+		# VIC loss
 		if self.vic_reg_cfg is not None:
 			loss, repr_loss, std_loss, cov_loss = self.VICloss(e1, e2)
 			self.log(f"{step_type}/VIC_repr_loss", repr_loss)
 			self.log(f"{step_type}/VIC_std_loss", std_loss)
 			self.log(f"{step_type}/VIC_cov_loss", cov_loss)
 			total_loss += loss
-	
-		if step_type=="train":
-			self.loss_balabcing(loss_repulsive)
-		self.log("train/l_atr_weight", self.loss_weights.loss_attractive)	
-		self.log("train/l_rep_weight", self.loss_weights.loss_repulsive)
+  
+		# Log the total loss
+		self.log(f"{step_type}/total_loss", total_loss)
 		return total_loss
 
 	def loss_balabcing(self, loss_repulsive):

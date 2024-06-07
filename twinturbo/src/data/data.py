@@ -338,4 +338,4 @@ class CombDataset(InMemoryDataFrameDictBase):
             self.data[key]=value[:length]
         self.list_order = dataset1.list_order+dataset2.list_order
         if plotting_path is not None:
-            self.plot_seborn(plotting_path)
+            self.plot(plotting_path)

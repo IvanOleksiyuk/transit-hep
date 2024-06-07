@@ -25,6 +25,8 @@ import pickle
 import dcor
 from twinturbo.src.utils.hsic import HSIC_np, HSIC_torch
 log = logging.getLogger(__name__)
+from lazypredict.Supervised import LazyClassifier
+from sklearn.model_selection import train_test_split
 
 def to_np(inpt: Union[torch.Tensor, tuple]) -> np.ndarray:
     """More consicse way of doing all the necc steps to convert a pytorch
@@ -86,7 +88,7 @@ def main(cfg):
     save_dir=Path(cfg.general.run_dir),
     plot_mode="")
  	
-	evaluate_model(cfg)
+	evaluate_model(cfg, target_data, template_data)
 
 def plot_matrix(matrix, title, vmin=-1, vmax=1, abs=False):
 	fig, ax = plt.subplots(figsize=(8, 8))
@@ -98,7 +100,7 @@ def plot_matrix(matrix, title, vmin=-1, vmax=1, abs=False):
 	fig.colorbar(im, ax=ax)
 	return fig, ax
 
-def evaluate_model(cfg):
+def evaluate_model(cfg, target_data, template_data):
 	scatter_alpha=1
 	scatter_s=2
 	if GlobalHydra().is_initialized():
@@ -252,7 +254,21 @@ def evaluate_model(cfg):
 	results["kernel_pearson"] = None
 	results["hilbert_schmidt"] = HSIC_torch(e1, e2, cuda=False).detach().cpu().numpy()
 	results["DisCo"] = dcor.distance_correlation(to_np(e1), to_np(e2))
-	
+
+	# Do some fast calassification
+	print("starting lazy perdict block")
+	print(len(target_data))
+	print(len(template_data))
+	use_n=10000
+	X = pd.concat((target_data[:use_n], template_data[:use_n]))
+	y = np.concatenate((np.ones(len(target_data[:use_n])), np.zeros(len(template_data[:use_n]))))
+	X_train, X_test, y_train, y_test = train_test_split(X, y,test_size=.5,random_state =123)
+	clf = LazyClassifier(verbose=0,ignore_warnings=True, custom_metric=None)
+	models,predictions = clf.fit(X_train, X_test, y_train, y_test)
+
+	results["template_max_lazy_Accuracy"] = np.max(models["Accuracy"])
+	results["template_max_lazy_ROCAUC"] = np.max(models["ROC AUC"])
+
 	pickle.dump(results, open(plot_path+"results.pkl", "wb"))
 	with open(plot_path+"results.txt", "w") as f:
 		for key, value in results.items():
@@ -260,7 +276,6 @@ def evaluate_model(cfg):
 	for key, value in results.items():
 		print(key, value)
 	
-
 
 def plot_correlation_plots(e1, e2, plot_path, name, c=None, one_corretation_plot=True):
 	person_correlations =np.zeros((e1.shape[1], e2.shape[1]))

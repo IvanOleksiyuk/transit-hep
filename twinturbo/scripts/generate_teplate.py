@@ -43,10 +43,6 @@ def main(cfg: DictConfig) -> None:
     log.info("Instantiating original trainer")
     trainer = hydra.utils.instantiate(orig_cfg.trainer)
 
-    # Allow running on single process
-    if isinstance(cfg.bands, str):
-        cfg.bands = [cfg.bands]
-
     # Instantiate the datamodule use a different config for data then for training
     if hasattr(orig_cfg, "data"):
         datamodule = hydra.utils.instantiate(cfg.data)

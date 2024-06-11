@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="twinturbo_def_new"
+    version_base=None, config_path=str('../config'), config_name="twinturbo_reco_DisCo_LHCO_CURTAINS"
 )
 def main(cfg: DictConfig) -> None:
 	## 1 - Create a separate folder for the experiment save all the relavant configs there
@@ -32,7 +32,7 @@ def main(cfg: DictConfig) -> None:
 	os.makedirs(run_dir, exist_ok=True)
 	os.makedirs(cfg.step_train_template.paths.full_path, exist_ok=True)
 	print_config(cfg)
-	OmegaConf.save(cfg, Path(cfg.general.run_dir, "twinturbo_def_new.yaml"), resolve=True)
+	OmegaConf.save(cfg, Path(cfg.general.run_dir, "full_config.yaml"), resolve=True)
 
 	# run all the steps
 	if cfg.do_train_template:

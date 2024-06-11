@@ -80,13 +80,17 @@ def main(cfg):
 	print(len(template_data.to_numpy()))
 
 	####uncomment
+	if cfg.step_evaluate.debug_eval:
+		plot_mode="diagnose"
+	else:
+		plot_mode=""
 	pltt.plot_feature_spread(
     target_data[variables].to_numpy(),
     template_data[variables].to_numpy(),
     original_data = original_data[variables].to_numpy(),
     feature_nms = variables,
     save_dir=Path(cfg.general.run_dir),
-    plot_mode="")
+    plot_mode=plot_mode)
  	
 	evaluate_model(cfg, target_data, template_data)
 
@@ -259,7 +263,7 @@ def evaluate_model(cfg, target_data, template_data):
 	print("starting lazy perdict block")
 	print(len(target_data))
 	print(len(template_data))
-	use_n=10000
+	use_n=min(10000, len(target_data), len(template_data))
 	X = pd.concat((target_data[:use_n], template_data[:use_n]))
 	y = np.concatenate((np.ones(len(target_data[:use_n])), np.zeros(len(template_data[:use_n]))))
 	X_train, X_test, y_train, y_test = train_test_split(X, y,test_size=.5,random_state =123)

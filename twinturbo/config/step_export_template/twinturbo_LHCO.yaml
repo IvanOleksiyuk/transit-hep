@@ -6,7 +6,7 @@ paths:
   full_path:  ${general.run_dir}/template
   output_dir:  ${general.run_dir}/template
 
-signal_contamination_ns: [0]
+signal_contamination_ns: [0, 1000, 1500, 2000, 2500, 3000, 4000]
 
 get_best: false
 project_name: CATHODE_LHCO

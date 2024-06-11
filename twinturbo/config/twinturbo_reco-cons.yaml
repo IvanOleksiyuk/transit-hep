@@ -14,6 +14,8 @@ do_train_cwola: False
 do_evaluate_cwola: False
 do_evaluation: True 
 
+step_evaluate:
+  debug_eval: True
 
 general:
   name: twinTURBO_reco-cons

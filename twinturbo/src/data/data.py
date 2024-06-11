@@ -8,6 +8,8 @@ import pandas as pd
 import seaborn as sns
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
+import pickle
+from twinturbo.src.data.lhco_curtains import convert_lhco_to_curtain_format
 
 OPERATORS = {
     "==": operator.eq,
@@ -27,7 +29,7 @@ OPERATORS = {
 # Collection of functions for data pre-processing
 ##############################################
 
-class ProcessorIntervals:
+class ProcessorIntervals():
     def __init__(self, scalar_df_name, var_name, intervals):
         self.scalar_df_name = scalar_df_name
         self.var_name = var_name
@@ -45,7 +47,7 @@ class ProcessorIntervals:
             data[key] = value[bool_indices]
         return data
 
-class ProcessorApplyCuts:
+class ProcessorApplyCuts():
     def __init__(self, scalar_df_name, cuts):
         self.scalar_df_name = scalar_df_name
         self.cuts = cuts
@@ -96,6 +98,77 @@ class ProcessorShuffle():
             data[key] = value.sample(frac=1).reset_index(drop=True)
         return data
 
+class ProcessorNormalize():
+    def __init__(self, frame_names = None, load_normaliser_file= None, save_normaliser_file=None):
+        self.frame_names = frame_names
+        self.load_normaliser_file = load_normaliser_file
+        self.save_normaliser_file = save_normaliser_file
+
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+        if self.load_normaliser_file is not None:
+            with open(self.load_normaliser_file, "rb") as f:
+                normaliser = pickle.load(f)
+            use_loaded = True
+        else:
+            normaliser = {}
+            use_loaded = False
+        frame_names = self.frame_names
+        if frame_names is None:
+            if use_loaded: # if no frame names are provided but normaliser is loaded, use the loaded frame names
+                frame_names = normaliser.keys()
+            else: # if no frame names are provided and no normaliser is loaded, use all the frames
+                frame_names = data.keys()
+        for name in frame_names:
+            if use_loaded:
+                mean = normaliser[name]["mean"]
+                std = normaliser[name]["std"]
+            else:
+                mean = data[name].mean()
+                std = data[name].std()
+            #Scale the data accordingly 
+            data[name] = (data[name] - mean) / std
+            normaliser.update({name: {"mean": mean, "std": std}})
+        if self.save_normaliser_file is not None:
+            with open(self.save_normaliser_file, "wb") as f:
+                pickle.dump(normaliser, f)
+        return data
+
+class ProcessorLHCOcurtains():
+    def __init__(self, frame_name):
+        self.frame_name = frame_name
+    
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+        data[self.frame_name] = convert_lhco_to_curtain_format(data[self.frame_name])
+        return data
+    
+class ProcessorSignalContamination():
+    def __init__(self, frame_name, var_name=None, n_contamination=0):
+        self.frame_name = frame_name
+        if var_name is None:
+            self.var_name = frame_name
+        else:
+            self.var_name = var_name
+        self.n_contamination = n_contamination
+
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+
+        indices_bkg = pd.where(data[self.frame_name]["label"] == False)
+        indices_sig = pd.where(data[self.frame_name]["label"] == True) 
+        indices_sig = indices_sig.sample(n=self.n_contamination, replace=False)
+            
+        # apply the cuts to all the dataframes
+        for key, value in data.items():
+            data[key] = pd.concat([value[indices_bkg], value[indices_sig]])
+        return data
+
+class ProcessorRemoveFrames():
+    def __init__(self, frame_names):
+        self.frame_names = frame_names
+
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+        for name in self.frame_names:
+            data.pop(name)
+        return data
 ##############################################
 
 class InMemoryDataFrameDictBase(Dataset):
@@ -325,7 +398,6 @@ class SimpleDataModule(LightningDataModule):
         for key in self.train_data.list_order:
             var_group_list.append(self.train_data.data[key].columns.tolist())
         return var_group_list
-
 
 class CombDataset(InMemoryDataFrameDictBase):
     def __init__(self, dataset1, dataset2, length=None, plotting_path=None) -> None:

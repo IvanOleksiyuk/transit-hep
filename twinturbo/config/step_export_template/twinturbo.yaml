@@ -6,6 +6,7 @@ paths:
   full_path:  ${general.run_dir}/template
   output_dir:  ${general.run_dir}/template
 
+output_name: template_sample_con
 signal_contamination_ns: [0]
 
 get_best: false

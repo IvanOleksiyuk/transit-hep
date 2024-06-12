@@ -10,6 +10,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 import pickle
 from twinturbo.src.data.lhco_curtains import convert_lhco_to_curtain_format
+from twinturbo.src.data.cathode_preprocessing import CathodePreprocess
 
 OPERATORS = {
     "==": operator.eq,
@@ -151,14 +152,12 @@ class ProcessorSignalContamination():
         self.n_contamination = n_contamination
 
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
-
-        indices_bkg = pd.where(data[self.frame_name]["label"] == False)
-        indices_sig = pd.where(data[self.frame_name]["label"] == True) 
-        indices_sig = indices_sig.sample(n=self.n_contamination, replace=False)
-            
+        indices_bkg = data[self.frame_name].index[data[self.frame_name][self.var_name]==False].tolist()
+        indices_sig = data[self.frame_name].index[data[self.frame_name][self.var_name]==True].tolist()
+        indices_all = indices_bkg + indices_sig[:self.n_contamination]
         # apply the cuts to all the dataframes
         for key, value in data.items():
-            data[key] = pd.concat([value[indices_bkg], value[indices_sig]])
+            data[key] = value.loc[indices_all]
         return data
 
 class ProcessorRemoveFrames():
@@ -168,6 +167,32 @@ class ProcessorRemoveFrames():
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
         for name in self.frame_names:
             data.pop(name)
+        return data
+
+class ProcessorCATHODE():
+    def __init__(self, frame_name, save_pkl=None, load_pkl=None):
+        self.frame_name = frame_name
+        self.load_pkl = load_pkl
+        self.save_pkl = save_pkl
+        
+
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+
+        np_data = data[self.frame_name].to_numpy()
+        cathode_preprocessor = CathodePreprocess()
+        if self.load_pkl is not None:
+            with open(self.load_normaliser_file, "rb") as f:
+                normaliser = pickle.load(f)
+        else:
+            cathode_preprocessor.fit(np_data)
+        
+        column_names = data[self.frame_name].columns
+        np_processed = cathode_preprocessor.transform(np_data)
+        data[self.frame_name] = pd.DataFrame(np_processed, columns=column_names)
+        
+        if self.save_pkl is not None:
+            with open(self.save_pkl, "wb") as f:
+                pickle.dump(cathode_preprocessor, f)
         return data
 ##############################################
 
@@ -224,8 +249,10 @@ class InMemoryDataFrameDictBase(Dataset):
         return self, rest
 
     def plot(self, plot_dir):
+        print("Plotting the data")
         Path(plot_dir).mkdir(parents=True, exist_ok=True)
         for key, value in self.data.items():
+            plt.figure()
             sns.pairplot(value)
             plt.savefig(Path(plot_dir) / f"{key}.png")
             plt.close()

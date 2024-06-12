@@ -2,13 +2,13 @@
 
 defaults:
   - _self_
-  - data: LHCO_twinturbo
+  - data: LHCO_twinturbo_CATHODE
   - step_train_template: twinturbo_reco_DisCo
-  - step_export_template: twinturbo
-  - step_evaluate: twinturbo
+  - step_export_template: twinturbo_LHCO
+  - step_evaluate: twinturbo_LHCO
 
 
-do_train_template: False
+do_train_template: True
 do_export_template: True
 do_train_cwola: False
 do_evaluate_cwola: False

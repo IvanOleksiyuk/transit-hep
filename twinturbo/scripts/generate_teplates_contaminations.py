@@ -57,15 +57,9 @@ def main(cfg: DictConfig) -> None:
     output_dir = Path(orig_cfg.paths.full_path, "outputs")
     output_dir.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame({k:v.reshape(-1) for k, v in dataset_dict.items()})
-    if hasattr(cfg, "output_name"):
-        output_name = cfg.output_name
-    else:
-        output_name = "template_sample"
-    df.to_hdf(output_dir / f"{output_name}.h5", key="template", mode="w")
-    print(f"Saved template to {output_dir / f'{output_name}.h5'}")
+    df.to_hdf(output_dir / "template_sample.h5", key="template", mode="w")
     
-    
-    
+
 
 if __name__ == "__main__":
     main()

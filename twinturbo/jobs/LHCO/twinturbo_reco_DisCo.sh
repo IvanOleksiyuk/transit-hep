@@ -2,7 +2,7 @@
 #SBATCH --job-name=twinturbo_reco_DisCo_LHCO_CURTAINS
 #SBATCH --cpus-per-task=16
 #SBATCH --ntasks=1
-#SBATCH --time=10:00:00
+#SBATCH --time=3:00:00
 #SBATCH --partition=shared-gpu,private-dpnc-gpu
 #SBATCH --nodes=1
 #SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/twinturbo_reco_DisCo_LHCO_CURTAINS-%A-%x_%a.out

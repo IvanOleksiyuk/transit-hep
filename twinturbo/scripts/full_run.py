@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="twinturbo_reco_DisCo_LHCO_CURTAINS"
+    version_base=None, config_path=str('../config'), config_name="twinturbo_def_new"
 )
 def main(cfg: DictConfig) -> None:
 	## 1 - Create a separate folder for the experiment save all the relavant configs there
@@ -40,7 +40,15 @@ def main(cfg: DictConfig) -> None:
 		train.main(cfg.step_train_template)
 	if cfg.do_export_template:
 		log.info("Generate a template dataset using the model")
-		generate_teplate.main(cfg.step_export_template)
+		name = cfg.step_export_template.output_name
+		if hasattr(cfg.step_export_template, "signal_contamination_ns"):
+			for cont_n in cfg.step_export_template.signal_contamination_ns:
+				cfg.step_export_template["data"]["test_data"]["dataset2"]["processor_cfg"][2]["n_contamination"]=cont_n
+				cfg.step_export_template["output_name"] = name + f"{cont_n}"
+				generate_teplate.main(cfg.step_export_template)
+		else:
+			generate_teplate.main(cfg.step_export_template)
+
 	if cfg.do_train_cwola:
 		log.info("Train CWOLA model using the template dataset and the real data")
 		train.main(cfg.train_cwola)

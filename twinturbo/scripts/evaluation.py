@@ -71,9 +71,12 @@ def reload_original_config(cfg: OmegaConf, get_best: bool = False) -> OmegaConf:
 def main(cfg):
 	print("Starting evaluation")
 	# Get two dataframes to compare	
+	print("Loading original data")
 	original_data = hydra.utils.instantiate(cfg.step_evaluate.original_data).data["data"]
+	print("Loading target data")
 	target_data = hydra.utils.instantiate(cfg.step_evaluate.target_data).data["data"]
-	template_data = pd.read_hdf(cfg.step_export_template.paths.full_path + "/outputs/template_sample.h5")
+	print("Loading template data")
+	template_data = pd.read_hdf(cfg.step_evaluate.template_file)
 
 	variables = original_data.columns.tolist()
 	print(len(target_data.to_numpy()))
@@ -91,7 +94,7 @@ def main(cfg):
     feature_nms = variables,
     save_dir=Path(cfg.general.run_dir),
     plot_mode=plot_mode)
- 	
+	print("contour plot is done")
 	evaluate_model(cfg, target_data, template_data)
 
 def plot_matrix(matrix, title, vmin=-1, vmax=1, abs=False):

@@ -218,7 +218,7 @@ def plot_feature_spread(
             target_data = shuffle_tensor(target_data)
             sampled = shuffle_tensor(sampled)
             original_data = shuffle_tensor(original_data)
-        if plot_mode.casefold() == "diagnose":
+        if plot_mode == "diagnose":
             n_sample = 1000
         else:
             n_sample = 40_000

@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader, Dataset
 import pickle
 from twinturbo.src.data.lhco_curtains import convert_lhco_to_curtain_format
 from twinturbo.src.data.cathode_preprocessing import CathodePreprocess
+import torch
 
 OPERATORS = {
     "==": operator.eq,
@@ -184,10 +185,10 @@ class ProcessorCATHODE():
             with open(self.load_normaliser_file, "rb") as f:
                 normaliser = pickle.load(f)
         else:
-            cathode_preprocessor.fit(np_data)
+            cathode_preprocessor.fit(torch.Tensor(np_data))
         
         column_names = data[self.frame_name].columns
-        np_processed = cathode_preprocessor.transform(np_data)
+        np_processed = cathode_preprocessor.transform(torch.Tensor(np_data)).numpy()
         data[self.frame_name] = pd.DataFrame(np_processed, columns=column_names)
         
         if self.save_pkl is not None:

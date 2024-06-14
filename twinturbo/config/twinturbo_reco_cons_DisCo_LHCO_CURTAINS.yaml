@@ -2,6 +2,7 @@
 
 defaults:
   - _self_
+  - path: user
   - data: LHCO_twinturbo_CATHODE
   - step_train_template: twinturbo_reco_cons_DisCo
   - step_export_template: twinturbo_LHCO

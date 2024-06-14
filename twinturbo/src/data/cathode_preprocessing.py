@@ -207,9 +207,10 @@ class CathodePreprocess(BaseMassSeparate):
         self.final_transform = ReCenter(2)
 
     def _fit(self, data, **kwargs):
-        rest_data = self.features_preprocess.fit_transform(rest_data)
-        mass = self.mass_transformer.fit_transform(mass)
-        rest_data = torch.cat((rest_data, mass), 1)
+        data, mass = data[:, :-1], data[:, -1:]
+        rest_data = self.features_preprocess.fit_transform(data)
+        rest_mass = self.mass_transformer.fit_transform(mass)
+        rest_data = torch.cat((rest_data, rest_mass), 1)
         self.final_transform.fit(rest_data)
         return torch.tensor(0)
 

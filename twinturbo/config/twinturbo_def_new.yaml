@@ -2,8 +2,8 @@
 
 defaults:
   - _self_
-  - path: io_surface_wsl
-  - data: gauss_corr_2_10K_twinturbo_usem
+  - path: user
+  - data: LHCO_twinturbo_CATHODE
   - step_train_template: twinturbo_dev
   - step_export_template: twinturbo_LHCO
   - step_evaluate: twinturbo_LHCO_debug

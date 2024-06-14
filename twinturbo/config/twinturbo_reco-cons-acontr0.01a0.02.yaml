@@ -2,6 +2,7 @@
 
 defaults:
   - _self_
+  - path: user
   - data: gauss_corr_2_twinturbo_usem
   - step_train_template: twinturbo_reco-cons-acontr0.01a0.02
   - step_export_template: twinturbo

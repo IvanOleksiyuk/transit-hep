@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
     version_base=None, config_path=str('../conf'), config_name="train"
 )
 def main(cfg: DictConfig) -> None:
-    wandb_key = open("/home/users/o/oleksiyu/WORK/keys/wandb.key", "r").read()
+    wandb_key = open(cfg.paths.wandbkey, "r").read()
     wandb.login(key=wandb_key)
     log.info("Setting up full job config")
     if cfg.full_resume:

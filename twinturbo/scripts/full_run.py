@@ -16,9 +16,9 @@ import os
 from omegaconf import DictConfig, OmegaConf
 from twinturbo.src.utils.hydra_utils import instantiate_collection, log_hyperparameters, print_config, reload_original_config, save_config
 import twinturbo.scripts.evaluation as evaluation
-import twinturbo.scripts.train as train
+import scripts.train_ptl as train_ptl
 import twinturbo.scripts.generate_teplate as generate_teplate
-import twinturbo.scripts.export as export
+import twinturbo.scripts.run_cwola_curtains2 as run_cwola_curtains2
 log = logging.getLogger(__name__)
 
 # TODO pyroot utils will remove the need for ../configs
@@ -37,7 +37,7 @@ def main(cfg: DictConfig) -> None:
 	# run all the steps
 	if cfg.do_train_template:
 		log.info("Train a model for template generation")
-		train.main(cfg.step_train_template)
+		train_ptl.main(cfg.step_train_template)
 	if cfg.do_export_template:
 		log.info("Generate a template dataset using the model")
 		name = cfg.step_export_template.output_name
@@ -49,12 +49,9 @@ def main(cfg: DictConfig) -> None:
 		else:
 			generate_teplate.main(cfg.step_export_template)
 
-	if cfg.do_train_cwola:
+	if cfg.do_cwola:
 		log.info("Train CWOLA model using the template dataset and the real data")
-		train.main(cfg.train_cwola)
-	if cfg.do_evaluate_cwola:
-		log.info("Evaluate the performance and plot the results")
-		export.main(cfg.evaluate_cwola)
+		run_cwola_curtains2.main(cfg.step_cwola)
 	if cfg.do_evaluation:
 		log.info("Evaluate the performance and plot the results")
 		evaluation.main(cfg)

@@ -17,7 +17,7 @@ def main(cfg: DictConfig) -> None:
     print_config(cfg)
     data_cfg = cfg.data.template_training.train_data
     dataset_name = "train_data_cathode"
-    data_cfg.plotting_path = "plot/inspect/" + dataset_name
+    data_cfg.plotting_path = "plot/user/inspect_data/" + dataset_name
     log.info("Instantiating the data module")
     dataset = hydra.utils.instantiate(data_cfg)
 

@@ -11,17 +11,20 @@ template_training:
       frame_name: "df"
     - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
       frame_name: "df"
-      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"], "mass": ["m_jj"], "is_signal": ["is_signal"]}
+      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"], "is_signal": ["is_signal"]}
     - _target_: twinturbo.src.data.data.ProcessorApplyCuts
       scalar_df_name: "is_signal"
       cuts: ["is_signal == 0"]
     - _target_: twinturbo.src.data.data.ProcessorIntervals
-      scalar_df_name: "mass"
+      scalar_df_name: "data"
       var_name: "m_jj"
       intervals: [[3000, 3300], [3700, 4600]]
     - _target_: twinturbo.src.data.data.ProcessorCATHODE
       frame_name: "data"
       save_pkl: ${general.run_dir}/cathode_preprocessor.pkl
+    - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+      frame_name: "data"
+      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"], "mass": ["m_jj"]}
     - _target_: twinturbo.src.data.data.ProcessorToFloat32
       frame_names: ["data", "mass"]
   loader_kwargs:
@@ -51,19 +54,22 @@ export_template:
         frame_name: "df"
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
         frame_name: "df"
-        new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "mass": ["m_jj"], "is_signal": ["is_signal"]}
+        new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "is_signal": ["is_signal"]}
       - _target_: twinturbo.src.data.data.ProcessorSignalContamination
         frame_name: "is_signal"
         n_contamination: 0
       - _target_: twinturbo.src.data.data.ProcessorIntervals
-        scalar_df_name: "mass"
+        scalar_df_name: "data"
         var_name: "m_jj"
         intervals: [[3000, 3300], [3700, 4600]]
-      - _target_: twinturbo.src.data.data.ProcessorNormalize
-        frame_names: ["data"]
-        load_normaliser_file: ${general.run_dir}/normalizer.pkl
+      - _target_: twinturbo.src.data.data.ProcessorCATHODE
+        frame_name: "data"
+        load_pkl: ${general.run_dir}/cathode_preprocessor.pkl
       - _target_: twinturbo.src.data.data.ProcessorToFloat32
         frame_names: ["data"]
+      - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+        frame_name: "data"
+        new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"], "mass": ["m_jj"]}
       - _target_: twinturbo.src.data.data.ProcessorRemoveFrames
         frame_names: ["mass", "is_signal"]
     dataset2:
@@ -76,17 +82,20 @@ export_template:
         frame_name: "df"
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
         frame_name: "df"
-        new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "mass": ["m_jj"], "is_signal": ["is_signal"]}
+        new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "is_signal": ["is_signal"]}
       - _target_: twinturbo.src.data.data.ProcessorSignalContamination
         frame_name: "is_signal"
         n_contamination: 0
       - _target_: twinturbo.src.data.data.ProcessorIntervals
-        scalar_df_name: "mass"
+        scalar_df_name: "data"
         var_name: "m_jj"
         intervals: [[3300, 3700]]
-      - _target_: twinturbo.src.data.data.ProcessorNormalize
-        frame_names: ["data", "mass"]
-        load_normaliser_file: ${general.run_dir}/normalizer.pkl
+      - _target_: twinturbo.src.data.data.ProcessorCATHODE
+        frame_name: "data"
+        load_pkl: ${general.run_dir}/cathode_preprocessor.pkl
+      - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+        frame_name: "data"
+        new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"], "mass": ["m_jj"]}
       - _target_: twinturbo.src.data.data.ProcessorToFloat32
         frame_names: ["data", "mass"]
       - _target_: twinturbo.src.data.data.ProcessorRemoveFrames
@@ -103,17 +112,20 @@ evaluation:
       frame_name: "df"
     - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
       frame_name: "df"
-      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "mass": ["m_jj"], "is_signal": ["is_signal"]}
+      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "is_signal": ["is_signal"]}
     - _target_: twinturbo.src.data.data.ProcessorSignalContamination
       frame_name: "is_signal"
       n_contamination: 0
     - _target_: twinturbo.src.data.data.ProcessorIntervals
-      scalar_df_name: "mass"
+      scalar_df_name: "data"
       var_name: "m_jj"
       intervals: [[3000, 3300], [3700, 4600]]
-    - _target_: twinturbo.src.data.data.ProcessorNormalize
-      frame_names: ["data", "mass"]
-      load_normaliser_file: ${general.run_dir}/normalizer.pkl
+    - _target_: twinturbo.src.data.data.ProcessorCATHODE
+      frame_name: "data"
+      load_pkl: ${general.run_dir}/cathode_preprocessor.pkl
+    - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+      frame_name: "data"
+      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"], "mass": ["m_jj"]}
     - _target_: twinturbo.src.data.data.ProcessorToFloat32
       frame_names: ["data", "mass"]
 
@@ -127,42 +139,48 @@ evaluation:
       frame_name: "df"
     - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
       frame_name: "df"
-      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "mass": ["m_jj"], "is_signal": ["is_signal"]}
+      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "is_signal": ["is_signal"]}
     - _target_: twinturbo.src.data.data.ProcessorSignalContamination
       frame_name: "is_signal"
       n_contamination: 0
     - _target_: twinturbo.src.data.data.ProcessorIntervals
-      scalar_df_name: "mass"
+      scalar_df_name: "data"
       var_name: "m_jj"
       intervals: [[3300, 3700]]
-    - _target_: twinturbo.src.data.data.ProcessorNormalize
-      frame_names: ["data", "mass"]
-      load_normaliser_file: ${general.run_dir}/normalizer.pkl
+    - _target_: twinturbo.src.data.data.ProcessorCATHODE
+      frame_name: "data"
+      load_pkl: ${general.run_dir}/cathode_preprocessor.pkl
+    - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+      frame_name: "data"
+      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"], "mass": ["m_jj"]}
     - _target_: twinturbo.src.data.data.ProcessorToFloat32
       frame_names: ["data", "mass"]
 
 train_cwola:
-  data:
+  experimental_data:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
-    list_order: ["data", "mass"]
+    list_order: ["data"]
     file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features.h5"
-    plotting_path: ${general.run_dir}/plots/train/
+    plotting_path: ${general.run_dir}/plots/cwola_experimental/
     processor_cfg: 
     - _target_: twinturbo.src.data.data.ProcessorLHCOcurtains
       frame_name: "df"
     - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
       frame_name: "df"
-      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "mass": ["m_jj"], "is_signal": ["is_signal"]}
+      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "is_signal": ["is_signal"]}
     - _target_: twinturbo.src.data.data.ProcessorSignalContamination
       frame_name: "is_signal"
       n_contamination: 0
     - _target_: twinturbo.src.data.data.ProcessorIntervals
-      scalar_df_name: "mass"
+      scalar_df_name: "data"
       var_name: "m_jj"
       intervals: [[3300, 3700]]
-    - _target_: twinturbo.src.data.data.ProcessorNormalize
-      frame_names: ["data", "mass"]
-      load_normaliser_file: ${general.run_dir}/normalizer.pkl
+    - _target_: twinturbo.src.data.data.ProcessorCATHODE
+      frame_name: "data"
+      load_pkl: ${general.run_dir}/cathode_preprocessor.pkl
+    - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+      frame_name: "data"
+      new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"], "mass": ["m_jj"]}
     - _target_: twinturbo.src.data.data.ProcessorToFloat32
-      frame_names: ["data", "mass"]
+      frame_names: ["data"]
     

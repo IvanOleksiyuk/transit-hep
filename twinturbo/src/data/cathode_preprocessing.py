@@ -207,8 +207,8 @@ class CathodePreprocess(BaseMassSeparate):
         self.final_transform = ReCenter(2)
 
     def _fit(self, data, **kwargs):
-        data, mass = data[:, :-1], data[:, -1:]
-        rest_data = self.features_preprocess.fit_transform(data)
+        rest_data, mass = data[:, :-1], data[:, -1:]
+        rest_data = self.features_preprocess.fit_transform(rest_data)
         rest_mass = self.mass_transformer.fit_transform(mass)
         rest_data = torch.cat((rest_data, rest_mass), 1)
         self.final_transform.fit(rest_data)
@@ -217,16 +217,16 @@ class CathodePreprocess(BaseMassSeparate):
     def _forward_method(self, data, info, **kwargs):
 
         if len(data.shape) > 1:
-            data, mass = data[:, :-1], data[:, -1:]
-            data = self.features_preprocess.transform(data)
+            rest_data, mass = data[:, :-1], data[:, -1:]
+            rest_data = self.features_preprocess.transform(rest_data)
             mass = self.mass_transformer.transform(mass)
-            data = torch.cat((data, mass), 1)
-            data = self.final_transform.transform(data)
-            return data
+            rest_data = torch.cat((rest_data, mass), 1)
+            rest_data = self.final_transform.transform(rest_data)
+            return rest_data
         else:
-            data = self.mass_transformer.transform(data)
-            data = self.final_transform.transform(data)
-            return data
+            rest_data = self.mass_transformer.transform(rest_data)
+            rest_data = self.final_transform.transform(rest_data)
+            return rest_data
 
     def _inverse_method(self, data, info, **kwargs):
 

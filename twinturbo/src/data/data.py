@@ -180,11 +180,11 @@ class ProcessorCATHODE():
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
 
         np_data = data[self.frame_name].to_numpy()
-        cathode_preprocessor = CathodePreprocess()
         if self.load_pkl is not None:
-            with open(self.load_normaliser_file, "rb") as f:
-                normaliser = pickle.load(f)
+            with open(self.load_pkl, "rb") as f:
+                cathode_preprocessor = pickle.load(f)
         else:
+            cathode_preprocessor = CathodePreprocess()
             cathode_preprocessor.fit(torch.Tensor(np_data))
         
         column_names = data[self.frame_name].columns
@@ -194,6 +194,15 @@ class ProcessorCATHODE():
         if self.save_pkl is not None:
             with open(self.save_pkl, "wb") as f:
                 pickle.dump(cathode_preprocessor, f)
+        return data
+
+class ProcessorMergeFrames():
+    def __init__(self, frame_names, new_frame_name):
+        self.frame_names = frame_names
+        self.new_frame_name = new_frame_name
+
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+        data[self.new_frame_name] = pd.concat([data[name] for name in self.frame_names], axis=1)
         return data
 ##############################################
 
@@ -258,17 +267,30 @@ class InMemoryDataFrameDictBase(Dataset):
             plt.savefig(Path(plot_dir) / f"{key}.png")
             plt.close()
 
+    # Functions that you casn call if you really need them not in configs
+    def merge_dataframes(self, frame_names, new_frame_name):
+        self.data[new_frame_name] = pd.concat([self.data[name] for name in frame_names], axis=1)
+        self.list_order.append(new_frame_name)
+
+    def write_npy(self, file_path: str, keys=None):
+        if keys is None:
+            keys = self.data.keys()
+        for key in keys:
+            np.save(file_path + key + ".npy", self.data[key].to_numpy())
+
 class InMemoryDataFrameDict(InMemoryDataFrameDictBase):
     """Class for in-memory datasets stored as a dictionary of pandas DataFrames.
     Loaded from an HDF5 file. Preprocessing is applied.
     """
 
-    def __init__(self, file_path: str, processor_cfg, list_order=None, plotting_path= None) -> None:
+    def __init__(self, file_path: str, processor_cfg=[], list_order=None, plotting_path= None) -> None:
         self.file_path = file_path
         self.list_order = list_order
-        self.init_processors(processor_cfg)
         self.data = self.load(file_path)
+        
+        self.init_processors(processor_cfg)
         self.data = self.apply_processors(self.data)
+        
         if plotting_path is not None:
             self.plot(plotting_path)
 
@@ -309,7 +331,7 @@ class InMemoryDataMergeClasses(InMemoryDataFrameDictBase):
     """
 
     def __init__(
-        self, dataset_list, class_lables=None, do_shuffle=True, sample_to_min=True, plotting_path= None 
+        self, dataset_list, class_lables=None, do_shuffle=True, sample_to_min=True, plotting_path= None, processor_cfg=[], 
     ) -> None:
         self.list_order = dataset_list[0].list_order
         if isinstance(self.list_order, list):
@@ -361,6 +383,10 @@ class InMemoryDataMergeClasses(InMemoryDataFrameDictBase):
                     ])
         if do_shuffle:
             self.shuffle()
+
+        self.init_processors(processor_cfg)
+        self.data = self.apply_processors(self.data)
+
         if plotting_path is not None:
             self.plot(plotting_path)
 

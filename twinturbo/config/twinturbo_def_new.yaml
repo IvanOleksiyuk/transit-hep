@@ -7,16 +7,16 @@ defaults:
   - step_train_template: twinturbo_dev
   - step_export_template: twinturbo_LHCO
   - step_evaluate: twinturbo_LHCO_debug
+  - step_cwola: BDT_LHCO.yaml
 
 
-do_train_template: True
-do_export_template: True
-do_train_cwola: False
-do_evaluate_cwola: False
-do_evaluation: True 
+do_train_template: False
+do_export_template: False
+do_cwola: True
+do_evaluation: False 
 
 general:
-  name: twinTURBO_test
+  name: twinTURBO_CURTAINS_test5
   subfolder: test/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

@@ -30,5 +30,5 @@ full_resume: False
 run_dir: runs/test
 do_train_template: True
 do_export_template: True
-do_train_cwola: True
+do_cwola: True
 do_evaluate_cwola: True

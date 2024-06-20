@@ -11,13 +11,13 @@ defaults:
 
 do_train_template: True
 do_export_template: True
-do_train_cwola: False
+do_cwola: False
 do_evaluate_cwola: False
 do_evaluation: True 
 
 
 general:
-  name: twinTURBO_reco_DisCo
+  name: twinTURBO_reco_cons_DisCo
   subfolder: experiments/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

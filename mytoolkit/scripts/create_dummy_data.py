@@ -56,9 +56,16 @@ def generate_uniform_sphere(n_samples, n_features):
 def generate_moons(n_samples, noise=0.1, seed=None):
     return make_moons(n_samples=n_samples, noise=noise, random_state=seed)[0]
 
-def generate_swiss_roll(n_samples, noise=0.5, seed=None):
+def generate_swiss_roll(n_samples, noise=0.5, seed=None, standardize=False, n_features=3):
     data, _ = make_swiss_roll(n_samples=n_samples, noise=noise, random_state=seed)
-    return data[:, [0, 2]]  # Use only the first and third columns for a 2D representation
+    if standardize:
+        data = (data - data.mean(axis=0)) / data.std(axis=0)
+    if n_features == 3:
+        return data
+    elif n_features == 2:
+        return data[:, [0, 2]]  # Use only the first and third columns for a 2D representation
+    else:
+        raise ValueError('Invalid number of features')
 
 def generate_toroidal(n_samples, n_features, R=1.0, r=0.2):
     theta = np.random.uniform(0, 2*np.pi, n_samples)
@@ -101,7 +108,7 @@ def main():
     elif args.type == 'moons':
         data = generate_moons(args.n_samples, seed=args.seed)
     elif args.type == 'swiss_roll':
-        data = generate_swiss_roll(args.n_samples, seed=args.seed)
+        data = generate_swiss_roll(args.n_samples, seed=args.seed, n_features=args.n_features, standardize=True)
     elif args.type == 'toroidal':
         data = generate_toroidal(args.n_samples, args.n_features)
     else:

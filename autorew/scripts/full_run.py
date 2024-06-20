@@ -41,7 +41,7 @@ def main(cfg: DictConfig) -> None:
 	if cfg.do_export_weighted_data:
 		log.info("Export the classifier outputs for reweighting")
 		export_weighted_data.main(cfg.step_export_weights)
-	if cfg.do_train_cwola:
+	if cfg.do_cwola:
 		log.info("Train CWOLA model using the template dataset and the real data")
 		train.main(cfg.train_cwola)
 	if cfg.do_evaluate_cwola:

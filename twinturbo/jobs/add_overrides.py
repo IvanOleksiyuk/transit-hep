@@ -76,4 +76,8 @@ if __name__ == "__main__":
     target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/powers_5_gap_twinturbo_usem"  # Change this to your target directory
     addition_to_line = "data=powers_5_gap_twinturbo_usem general.subfolder=powers_5_gap_twinturbo_usem/"
     modify_slurm_jobs(source_directory, target_directory, line_part_to_find, addition_to_line)
+
+    target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/swiss_roll_gap_twinturbo_usem"  # Change this to your target directory
+    addition_to_line = "data=swiss_roll_gap_twinturbo_usem general.subfolder=swiss_roll_gap_twinturbo_usem/"
+    modify_slurm_jobs(source_directory, target_directory, line_part_to_find, addition_to_line)
     

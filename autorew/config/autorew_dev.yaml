@@ -10,7 +10,7 @@ defaults:
 
 do_train_template: False
 do_export_weighted_data: True
-do_train_cwola: False
+do_cwola: False
 do_evaluate_cwola: False
 do_evaluation: False 
 

@@ -2,7 +2,7 @@
 
 do_train_template: True
 do_export_template: False
-do_train_cwola: False
+do_cwola: False
 do_evaluate_cwola: False
 do_evaluation: True
 

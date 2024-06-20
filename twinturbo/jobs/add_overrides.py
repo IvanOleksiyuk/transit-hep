@@ -68,4 +68,12 @@ if __name__ == "__main__":
     target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_4d_gausssph_usem"  # Change this to your target directory
     addition_to_line = "data=gauss_sph_4_twinturbo_usem general.subfolder=gauss_sph_4_twinturbo_usem/"
     modify_slurm_jobs(source_directory, target_directory, line_part_to_find, addition_to_line)
+
+    target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/gauss_corr_4_gap_twinturbo_usem"  # Change this to your target directory
+    addition_to_line = "data=gauss_corr_4_gap_twinturbo_usem general.subfolder=gauss_corr_4_gap_twinturbo_usem/"
+    modify_slurm_jobs(source_directory, target_directory, line_part_to_find, addition_to_line)
+
+    target_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/powers_5_gap_twinturbo_usem"  # Change this to your target directory
+    addition_to_line = "data=powers_5_gap_twinturbo_usem general.subfolder=powers_5_gap_twinturbo_usem/"
+    modify_slurm_jobs(source_directory, target_directory, line_part_to_find, addition_to_line)
     

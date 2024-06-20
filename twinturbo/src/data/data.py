@@ -267,6 +267,16 @@ class InMemoryDataFrameDictBase(Dataset):
             plt.savefig(Path(plot_dir) / f"{key}.png")
             plt.close()
 
+    def init_processors(self, processor_cfg):
+        self.processors = []
+        for processor in processor_cfg:
+            self.processors.append(processor)
+
+    def apply_processors(self, data):
+        for processor in self.processors:
+            data = processor(data)
+        return data
+
     # Functions that you casn call if you really need them not in configs
     def merge_dataframes(self, frame_names, new_frame_name):
         self.data[new_frame_name] = pd.concat([self.data[name] for name in frame_names], axis=1)
@@ -293,16 +303,6 @@ class InMemoryDataFrameDict(InMemoryDataFrameDictBase):
         
         if plotting_path is not None:
             self.plot(plotting_path)
-
-    def init_processors(self, processor_cfg):
-        self.processors = []
-        for processor in processor_cfg:
-            self.processors.append(processor)
-
-    def apply_processors(self, data):
-        for processor in self.processors:
-            data = processor(data)
-        return data
 
 class InMemoryDataMerge(InMemoryDataFrameDictBase):
     """Class for in-memory datasets stored as a dictionary of pandas DataFrames.
@@ -389,13 +389,14 @@ class InMemoryDataMergeClasses(InMemoryDataFrameDictBase):
 
         if plotting_path is not None:
             self.plot(plotting_path)
+    
 
 class SimpleDataModule(LightningDataModule):
     def __init__(
         self,
         loader_kwargs,
-        train_data,
-        val_data=None,
+        train_data = None,
+        val_data = None,
         train_frac: float = 0.8,
         test_data=None,
     ) -> None:

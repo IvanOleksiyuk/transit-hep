@@ -29,6 +29,16 @@ def generate_gaussian_with_covariance(n_samples, n_features, correlation=0.8):
     mean = np.zeros(n_features)
     return np.random.multivariate_normal(mean, covariance_matrix, n_samples)
 
+def generate_gaussian_mass_powers(n_samples, n_features, correlation=0.8):
+    sample =  np.random.randn(n_samples, n_features)
+    for i in range(n_features):
+        sample[:, i] = sample[:, 0] ** (i)
+        if i > 0:
+            sample[:, i] = (sample[:, i]-np.mean(sample[:, i])) / np.std(sample[:, i])
+        sample[:, i] = sample[:, i] + np.random.randn(n_samples)
+        sample[:, i] = (sample[:, i]-np.mean(sample[:, i])) / np.std(sample[:, i])
+    return sample
+
 def generate_uniform_cube(n_samples, n_features, low=0.0, high=1.0):
     return np.random.uniform(low, high, size=(n_samples, n_features))
 
@@ -65,7 +75,7 @@ def save_to_h5_pandas(data, path):
 
 def main():
     parser = argparse.ArgumentParser(description='Generate dummy datasets.')
-    parser.add_argument('--type', type=str, required=True, choices=['spherical_gaussian', 'gaussian_with_covariance', 'uniform_cube', 'uniform_ball', 'uniform_sphere', 'moons', 'swiss_roll', 'toroidal'], help='Type of dataset to generate')
+    parser.add_argument('--type', type=str, required=True, choices=['spherical_gaussian', 'gaussian_with_covariance', 'powers', 'uniform_cube', 'uniform_ball', 'uniform_sphere', 'moons', 'swiss_roll', 'toroidal'], help='Type of dataset to generate')
     parser.add_argument('--output', type=str, required=True, help='Output path for the HDF5 file')
     parser.add_argument('--plot', type=str, nargs='?', const='default', help='Plot directory for the dataset')
     parser.add_argument('--n_samples', type=int, default=1000, help='Number of samples')
@@ -80,6 +90,8 @@ def main():
         data = generate_spherical_gaussian(args.n_samples, args.n_features)
     elif args.type == 'gaussian_with_covariance':
         data = generate_gaussian_with_covariance(args.n_samples, args.n_features)
+    elif args.type == 'powers':
+        data = generate_gaussian_mass_powers(args.n_samples, args.n_features)
     elif args.type == 'uniform_cube':
         data = generate_uniform_cube(args.n_samples, args.n_features)
     elif args.type == 'uniform_ball':

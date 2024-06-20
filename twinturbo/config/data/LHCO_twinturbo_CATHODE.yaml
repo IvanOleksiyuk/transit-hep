@@ -156,7 +156,7 @@ evaluation:
     - _target_: twinturbo.src.data.data.ProcessorToFloat32
       frame_names: ["data", "mass"]
 
-train_cwola:
+cwola:
   experimental_data:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data"]

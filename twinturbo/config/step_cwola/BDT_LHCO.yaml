@@ -1,22 +1,25 @@
+cwola_path: ${general.run_dir}/cwola/
+
 datamodule:
   _target_: twinturbo.src.data.data.SimpleDataModule
-  train_frac: 0.8
+  train_frac: 1
   train_data:
     _target_: twinturbo.src.data.data.InMemoryDataMergeClasses
-    do_shuffle: true
-    plotting_path: ${general.run_dir}/plots/train_autorev_data_gauss4/
     dataset_list:
-      - ${data.train_cwola.experimental_data}
+      - ${data.cwola.experimental_data}
       - _target_: twinturbo.src.data.data.InMemoryDataFrameDict
-        file_path: "/home/users/o/oleksiyu/WORK/hyperproject/dummydata/gauss_sph_4.h5"
-        plotting_path: ${general.run_dir}/plots/cwola_template/
         list_order: ["data"]
+        file_path: ${general.run_dir}/template/outputs/template_sample_con3000.h5
+        processor_cfg:
+          - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+            frame_name: "template"
+            new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"]}
   loader_kwargs:
     pin_memory: true
     batch_size: 512
     num_workers: 8 
     drop_last: false
-  
+
 
 input_path: /srv/beegfs/scratch/users/l/leighm/linearresults/
 mode: standard

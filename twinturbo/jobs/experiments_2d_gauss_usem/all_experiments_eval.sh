@@ -34,6 +34,7 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif bash 
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco-cons-acontr0.005a0.05 do_train_template=0 do_export_template=0\
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_adam do_train_template=0 do_export_template=0\
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_DisCo do_train_template=0 do_export_template=0\
+&& python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_cons_DisCo do_train_template=0 do_export_template=0\
 && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_pearson do_train_template=0 do_export_template=0\
 "
 

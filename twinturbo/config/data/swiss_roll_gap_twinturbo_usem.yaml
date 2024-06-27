@@ -42,7 +42,10 @@ export_template:
       - _target_: twinturbo.src.data.data.ProcessorIntervals
         scalar_df_name: "data"
         var_name: "x0"
-        intervals: [[-100000, -0.5], [0.5, 100000]]      
+        intervals: [[-100000, -0.5], [0.5, 100000]]   
+      - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+        frame_name: "data"
+        new_df_dict: {"data": ["x1", "x2", "x0"]}   
       - _target_: twinturbo.src.data.data.ProcessorToFloat32
         frame_names: ["data"]
     dataset2:

@@ -35,6 +35,9 @@ export_template:
       file_path: ${path.hyperproject}/dummydata/gauss_corr_2_10K.h5
       plotting_path: ${general.run_dir}/plots/train/
       processor_cfg: 
+      - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+        frame_name: "data"
+        new_df_dict: {"data": ["x1", "x0"], "mass": ["x0"]}
       - _target_: twinturbo.src.data.data.ProcessorToFloat32
         frame_names: ["data"]
     dataset2:

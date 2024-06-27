@@ -17,7 +17,14 @@ def submit_slurm_jobs(directory, filename_prefix):
                     print(f"Failed to submit job: {result.stderr}")
 
 if __name__ == "__main__":
-    directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_8d_gauss_usem"  # Change this to your specific folder
+    # directories = ["/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_2d_gauss_nom_EXPEVAL",
+    #                "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_4d_gauss_usem_EXPEVAL",
+    #                "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_8d_gauss_usem_EXPEVAL",
+    #                "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/gauss_corr_4_gap_twinturbo_usem_EXPEVAL",
+    #                "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/powers_5_gap_twinturbo_usem_EXPEVAL",
+    #                "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/swiss_roll_gap_twinturbo_usem_EXPEVAL",]  # Change this to your specific folder
+    directories = ["/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/experiments_8d_gauss_usem_EXPEVAL"]
+    
     filename_prefix = "twinturbo"
-
-    submit_slurm_jobs(directory, filename_prefix)
+    for directory in directories:
+        submit_slurm_jobs(directory, filename_prefix)

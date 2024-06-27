@@ -21,6 +21,13 @@ python mytoolkit/scripts/create_dummy_data.py --type spherical_gausssian --outpu
 python mytoolkit/scripts/create_dummy_data.py --type gaussian_with_covariance --output /home/users/o/oleksiyu/WORK/hyperproject/dummydata/gauss_corr_2.h5 --plot --n_samples 1000000 --n_features 2 --seed 42
 
 python mytoolkit/scripts/create_dummy_data.py --type gaussian_with_covariance --output /home/users/o/oleksiyu/WORK/hyperproject/dummydata/gauss_corr_4.h5 --plot --n_samples 1000000 --n_features 4 --seed 42
+python mytoolkit/scripts/create_dummy_data.py --type gaussian_with_covariance --output /home/users/o/oleksiyu/WORK/hyperproject/dummydata/gauss_corr_4_10K.h5 --plot --n_samples 10000 --n_features 4 --seed 42
 
 python mytoolkit/scripts/create_dummy_data.py --type gaussian_with_covariance --output /home/users/o/oleksiyu/WORK/hyperproject/dummydata/gauss_corr_8.h5 --plot --n_samples 1000000 --n_features 8 --seed 42
 
+python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_DisCo data=gauss_corr_4_gap_twinturbo_usem general.subfolder=gauss_corr_4_gap_twinturbo_usem/ do_train_template=0
+python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_cons_DisCo data=gauss_corr_4_gap_twinturbo_usem general.subfolder=gauss_corr_4_gap_twinturbo_usem/ do_train_template=0
+python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_DisCo data=swiss_roll_gap_twinturbo_usem general.subfolder=swiss_roll_gap_twinturbo_usem/ do_train_template=0
+python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_cons_DisCo data=swiss_roll_gap_twinturbo_usem general.subfolder=swiss_roll_gap_twinturbo_usem/ do_train_template=0
+python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_DisCo data=powers_5_gap_twinturbo_usem general.subfolder=powers_5_gap_twinturbo_usem/ do_train_template=0
+python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_cons_DisCo data=powers_5_gap_twinturbo_usem general.subfolder=powers_5_gap_twinturbo_usem/ do_train_template=0

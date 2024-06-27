@@ -3,20 +3,22 @@
 defaults:
   - _self_
   - path: user
-  - data: gauss_corr_4_gap_twinturbo_usem
-  - step_train_template: twinturbo_dev
+  - data: twinturbo_reco_cons_DisCo_wide_cons1_adam
+  - step_train_template: twinturbo_reco_cons_DisCo
   - step_export_template: twinturbo
   - step_evaluate: twinturbo
-  - step_cwola: BDT_LHCO.yaml
 
 
 do_train_template: True
 do_export_template: True
 do_cwola: False
+do_evaluate_cwola: False
 do_evaluation: True 
 
+
 general:
-  name: twinTURBO_KAN2
-  subfolder: test/
+  name: twinturbo_reco_cons_DisCo_wide_cons1
+  subfolder: experiments/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}
+

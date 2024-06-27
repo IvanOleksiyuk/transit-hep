@@ -88,14 +88,15 @@ def main(cfg):
 	else:
 		plot_mode=""
 	pltt.plot_feature_spread(
-    target_data[variables].to_numpy(),
-    template_data[variables].to_numpy(),
-    original_data = original_data[variables].to_numpy(),
-    feature_nms = variables,
-    save_dir=Path(cfg.general.run_dir),
-    plot_mode=plot_mode)
+		target_data[variables].to_numpy(),
+		template_data[variables].to_numpy(),
+		original_data = original_data[variables].to_numpy(),
+		feature_nms = variables,
+		save_dir=Path(cfg.general.run_dir),
+		plot_mode=plot_mode)
 	print("contour plot is done")
 	evaluate_model(cfg, target_data, template_data)
+	plt.close("all")
 
 def plot_matrix(matrix, title, vmin=-1, vmax=1, abs=False):
 	fig, ax = plt.subplots(figsize=(8, 8))
@@ -134,7 +135,8 @@ def evaluate_model(cfg, target_data, template_data):
 
 	# Instantiate the datamodule use a different config for data then for training
 	datamodule = hydra.utils.instantiate(cfg.data.datamodule)
-  
+	var_group_list=datamodule.get_var_group_list()
+ 
 	tra_dataloader = datamodule.train_dataloader()
 	batch1 = next(iter(tra_dataloader))
 	#print("batch1:", batch1)
@@ -282,7 +284,29 @@ def evaluate_model(cfg, target_data, template_data):
 			f.write(f"{key}: {value}\n")
 	for key, value in results.items():
 		print(key, value)
+	w1, w2 = batch1
+	for var in range(w1.shape[1]):
+		draw_event_transport_trajectories(model, plot_path, w1, var=var, var_name=var_group_list[0][var], masses=np.linspace(-5, 5, 1000), max_traj=20)
 	
+def draw_event_transport_trajectories(model, plot_path, w1, var, var_name, masses=np.linspace(-4, 4, 1000), max_traj=20):
+	recons = []
+	for m in masses:
+		w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float()
+		e1, e2 = model.encode(w1, w2)
+		latent = torch.cat([e1, e2], dim=1)
+		recon = model.decoder(latent)
+
+		recons.append(recon)
+	
+	plt.figure()
+	if max_traj is None:
+		max_traj = w1.shape[0]
+	for i in range(max_traj):
+		plt.plot(masses, [float(recon[i, var].detach().numpy()) for recon in recons], "r")
+	plt.scatter(to_np(w1[:, -1])[:max_traj], to_np(w1[:, var])[:max_traj],  marker="x", label="originals", c="green")
+	plt.xlabel("mass")
+	plt.ylabel(f"dim{var}")
+	plt.savefig(plot_path+f"event_transport_trajectories{var}.png")
 
 def plot_correlation_plots(e1, e2, plot_path, name, c=None, one_corretation_plot=True):
 	person_correlations =np.zeros((e1.shape[1], e2.shape[1]))

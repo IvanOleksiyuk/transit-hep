@@ -32,11 +32,11 @@ def collect_metrics(base_dir, selected_metrics=None, sort_by=None):
     return df
 
 if __name__ == "__main__":
-    base_dir = '/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/experiments'  # Change this to your base directory
+    base_dir = '/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/LHCO'  # Change this to your base directory
     
     # Optional parameters
     selected_metrics = ["max_abs_pearson",  "min_abs_pearson",  "mean_abs_pearson", "hilbert_schmidt", "DisCo", "template_max_lazy_ROCAUC"]  # Change to None if you want all metrics
-    sort_by = "DisCo"  # Change to None if you don't want to sort
+    sort_by = "template_max_lazy_ROCAUC"  # Change to None if you don't want to sort
     
     metrics_df = collect_metrics(base_dir, selected_metrics, sort_by)
     print(metrics_df)

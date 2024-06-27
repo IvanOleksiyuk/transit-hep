@@ -2,6 +2,7 @@ from torch import nn
 import wandb
 from mltools.torch_utils import get_sched, get_loss_fn
 from mltools.mlp import MLP
+from kan import KAN
 import torch 
 from pytorch_lightning import LightningModule
 from functools import partial
@@ -95,12 +96,13 @@ class TwinTURBO(LightningModule):
 		self,
 		*,
 		inpt_dim: int,
-		encoder_mlp_config: Mapping,
-		decoder_mlp_config: Mapping,
+
 		latent_dim: int,
 		latent_norm: bool,
 		optimizer: partial,
 		scheduler: Mapping,
+		encoder_mlp_config: Mapping,
+		decoder_mlp_config: Mapping,
 		var_group_list: list = None,
   		loss_weights: Mapping = None,
 
@@ -113,6 +115,7 @@ class TwinTURBO(LightningModule):
     	clip_loss_cfg: Mapping = None,
 		vic_reg_cfg=None,
 		input_noise_cfg=None,
+		consistency_cof=None,
 	) -> None:
 		"""
 		Args:
@@ -126,16 +129,31 @@ class TwinTURBO(LightningModule):
 		self.use_m = use_m
 		self.loss_weights=loss_weights
 		self.save_hyperparameters(logger=False)
-		self.encoder1 = MLP(inpt_dim=inpt_dim[0][0], outp_dim=latent_dim, **encoder_mlp_config)
-		self.encoder2 = MLP(inpt_dim=inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
-		if self.use_m:
-			self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0], **decoder_mlp_config)
+		if encoder_mlp_config.get("network_type") == "KAN":
+			self.encoder1 = KAN(width=[inpt_dim[0][0]]+encoder_mlp_config.hddn_dim+[latent_dim], grid=encoder_mlp_config.grid, k=encoder_mlp_config.k, device=torch.device('cuda')) #model = KAN(width=[2,5,1], grid=5, k=3, seed=0) 
+			self.encoder2 = KAN(width=[inpt_dim[1][0]]+encoder_mlp_config.hddn_dim+[latent_dim], grid=encoder_mlp_config.grid, k=encoder_mlp_config.k, device=torch.device('cuda'))
+			if self.use_m:
+				self.decoder = KAN(width=[latent_dim*2]+decoder_mlp_config.hddn_dim+[inpt_dim[0][0]], grid=decoder_mlp_config.grid, k=decoder_mlp_config.k, device=torch.device('cuda'))
+			else:
+				self.decoder = KAN(width=[latent_dim*2]+decoder_mlp_config.hddn_dim+[inpt_dim[0][0]+inpt_dim[1][0]], grid=decoder_mlp_config.grid, k=decoder_mlp_config.k, device=torch.device('cuda'))
+			# self.encoder1.to(device=torch.device('cuda'))
+			# self.encoder1.device=torch.device('cuda')
+			# self.encoder2.to(device=torch.device('cuda'))
+			# self.encoder1.device=torch.device('cuda')
+			# self.decoder.to(device=torch.device('cuda'))
+			# self.decoder.device = torch.device('cuda')
+
 		else:
-			self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0]+inpt_dim[1][0], **decoder_mlp_config)
+			self.encoder1 = MLP(inpt_dim=inpt_dim[0][0], outp_dim=latent_dim, **encoder_mlp_config)
+			self.encoder2 = MLP(inpt_dim=inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
+			if self.use_m:
+				self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0], **decoder_mlp_config)
+			else:
+				self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0]+inpt_dim[1][0], **decoder_mlp_config)
 
 		self.var_group_list = var_group_list
 		self.latent_norm = latent_norm
-
+		self.consistency_cof = consistency_cof
 		self.input_noise_cfg = input_noise_cfg
 		self.l1_reg = l1_reg
 		self.loss_balancing = loss_balancing
@@ -227,8 +245,11 @@ class TwinTURBO(LightningModule):
 		recon = self.decoder(latent)
 		
 		# Reverse pass
-		e1_p = e1[torch.randperm(batch_size)]
-		latent_p = torch.cat([e1_p, e2], dim=1)
+		if self.consistency_cof is None:
+			e2_p = e2[torch.randperm(batch_size)]
+		else:
+			e2_p = e2[torch.randperm(batch_size)] + self.consistency_cof.noise_scale * torch.randn_like(e2)
+		latent_p = torch.cat([e1, e2_p], dim=1)
 		recon_p = self.decoder(latent_p)
 		x_n = recon_p[:, :x.shape[1]]
 		m_n = recon_p[:, x.shape[1]:]
@@ -251,7 +272,7 @@ class TwinTURBO(LightningModule):
 
 		# Consistency losses 
 		if hasattr(self.loss_weights, "loss_back_vec"):
-			loss_back_vec = mse_loss(e1_p, e1_n).mean()
+			loss_back_vec = mse_loss(e1, e1_n).mean()
 			self.log(f"{step_type}/loss_back_vec", loss_back_vec)
 			if self.loss_weights.loss_back_vec is not None:
 				if isinstance(self.loss_weights.loss_back_vec, float) or isinstance(self.loss_weights.loss_back_vec, int):
@@ -259,7 +280,7 @@ class TwinTURBO(LightningModule):
 				else:
 					total_loss += loss_back_vec*self.loss_weights.loss_back_vec(_batch_index)
 		if hasattr(self.loss_weights, "loss_back_cont"):
-			loss_back_cont = mse_loss(e2, e2_n).mean()
+			loss_back_cont = mse_loss(e2_p, e2_n).mean()
 			self.log(f"{step_type}/loss_back_cont", loss_back_cont)
 			if self.loss_weights.loss_back_cont is not None:
 				if isinstance(self.loss_weights.loss_back_cont, float) or isinstance(self.loss_weights.loss_back_cont, int):

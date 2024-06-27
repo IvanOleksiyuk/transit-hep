@@ -183,6 +183,7 @@ class ProcessorCATHODE():
         if self.load_pkl is not None:
             with open(self.load_pkl, "rb") as f:
                 cathode_preprocessor = pickle.load(f)
+            print("preprocessor is loadded from a file")
         else:
             cathode_preprocessor = CathodePreprocess()
             cathode_preprocessor.fit(torch.Tensor(np_data))

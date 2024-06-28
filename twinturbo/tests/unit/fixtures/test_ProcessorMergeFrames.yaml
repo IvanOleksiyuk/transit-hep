@@ -2,6 +2,9 @@ data:
   _target_: twinturbo.src.data.data.InMemoryDataFrameDict
   file_path: "tests/unit/fixtures/data.h5"
   processor_cfg:
-    - _target_: twinturbo.src.data.data.ProcessorSplitDataFrame
+    - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
       frame_name: "data"
       new_df_dict: {"data": ["x0"], "aux": ["x1"]}
+    - _target_: twinturbo.src.data.data.ProcessorMergeFrames
+      frame_names: ["data", "aux"]
+      new_frame_name: "data"

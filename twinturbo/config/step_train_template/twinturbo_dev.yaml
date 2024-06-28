@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - model: twinturboKAN_reco_DisCo.yaml
+  - model: twinturbo_reco_DisCo.yaml
   - callbacks: default.yaml
   - loggers: wandb.yaml
   - paths: default.yaml

@@ -1,4 +1,6 @@
 data:
   _target_: twinturbo.src.data.data.InMemoryDataFrameDict
   file_path: "tests/unit/fixtures/data.h5"
-  processor_cfg: []
+  processor_cfg:
+    - _target_: twinturbo.src.data.data.ProcessorRemoveFrames
+      frame_names: ["data"]

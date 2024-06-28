@@ -23,6 +23,7 @@ from torch.nn.functional import normalize, mse_loss, cosine_similarity
 from scipy.stats import pearsonr, spearmanr, kendalltau
 import pickle
 import dcor
+from twinturbo.src.models.distance_correlation import DistanceCorrelation
 from twinturbo.src.utils.hsic import HSIC_np, HSIC_torch
 log = logging.getLogger(__name__)
 from lazypredict.Supervised import LazyClassifier
@@ -138,6 +139,7 @@ def evaluate_model(cfg, target_data, template_data):
 	var_group_list=datamodule.get_var_group_list()
  
 	tra_dataloader = datamodule.train_dataloader()
+	torch.manual_seed(0)
 	batch1 = next(iter(tra_dataloader))
 	#print("batch1:", batch1)
 
@@ -172,17 +174,17 @@ def evaluate_model(cfg, target_data, template_data):
  
 	plt.figure()
 	plot_matrix(to_np(matrix), "e1 @ e2")
-	plt.savefig(plot_path+"e1_at_e2_matrix.png")
+	plt.savefig(plot_path+"e1_at_e2_matrix.png", bbox_inches="tight")
 	plt.figure()
 	plt.hist(to_np(matrix).flatten(), bins=100)
 	plt.title("One batch latent embedding product <e1, e2>")
 	plt.xlabel("<e1, e2>")
-	plt.savefig(plot_path+"e1_at_e2_hist.png")
+	plt.savefig(plot_path+"e1_at_e2_hist.png", bbox_inches="tight")
 	plt.figure()
 	plt.title("One batch latent embedding product <e1, e2> only diagonal")
 	plt.xlabel("<e1, e2>")
 	plt.hist(np.diagonal(to_np(matrix)), bins=100)
-	plt.savefig(plot_path+"e1_at_e2_diag_hist.png")
+	plt.savefig(plot_path+"e1_at_e2_diag_hist.png", bbox_inches="tight")
  
 	bins= np.linspace(-3, 3, 30)
 	for i in range(w1.shape[1]):
@@ -191,13 +193,13 @@ def evaluate_model(cfg, target_data, template_data):
 		plt.hist(to_np(recon[:, i]), bins=bins, histtype='step', label="reconstruction")
 		plt.xlabel(f"dim{i}")
 		plt.legend()
-		plt.savefig(plot_path+f"w1_reco_hist_{i}.png")
+		plt.savefig(plot_path+f"w1_reco_hist_{i}.png", bbox_inches="tight")
 		plt.figure()
 		plt.scatter(to_np(w1[:, i]), to_np(recon[:, i]), alpha=scatter_alpha, s=scatter_s)
 		plt.xlabel(f"dim{i}_input")
 		plt.xlabel(f"dim{i}_reco")
 		plt.legend()
-		plt.savefig(plot_path+f"w1_reco_scater_{i}.png")
+		plt.savefig(plot_path+f"w1_reco_scater_{i}.png", bbox_inches="tight")
 	# Plot linear correlateion plots for the latent space
 	one_corretation_plot=True
 	os.makedirs(plot_path+"corerlations/", exist_ok=True)
@@ -222,14 +224,14 @@ def evaluate_model(cfg, target_data, template_data):
 			axes[i].set_xlabel(f"dim{i} e1")
 			axes[i].set_ylabel(f"mjj")
 		plt.tight_layout()
-		plt.savefig(plot_path+"corerlations/"+"latent_space_e1_mass_correlations.png")
+		plt.savefig(plot_path+"corerlations/"+"latent_space_e1_mass_correlations.png", bbox_inches="tight")
 
 	# Same mass
 	plt.figure()	
 	plt.scatter(np.diagonal(to_np(matrix)), to_np(m_dn), alpha=scatter_alpha, s=scatter_s)
 	plt.xlabel("e1 @ e2 diagonal elements")
 	plt.ylabel("mjj")
-	plt.savefig(plot_path+"e1_at_e2_diag_vs_mjj.png")
+	plt.savefig(plot_path+"e1_at_e2_diag_vs_mjj.png", bbox_inches="tight")
  
 	# Different mass
 	n = to_np(matrix).shape[0]
@@ -245,17 +247,17 @@ def evaluate_model(cfg, target_data, template_data):
 	plt.scatter(non_diag_elements, m_1_non_diag, alpha=scatter_alpha, s=scatter_s)
 	plt.xlabel("e1 @ e2 non-diagonal elements")
 	plt.ylabel("mjj1")
-	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1.png")
+	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1.png", bbox_inches="tight")
 	plt.figure()
 	plt.scatter(non_diag_elements, m_2_non_diag, alpha=scatter_alpha, s=scatter_s)
 	plt.xlabel("e1 @ e2 non-diagonal elements")
 	plt.ylabel("mjj2")
-	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj2.png")
+	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj2.png", bbox_inches="tight")
 	plt.figure()
 	plt.scatter(non_diag_elements, m_1_non_diag-m_2_non_diag, alpha=scatter_alpha, s=scatter_s)
 	plt.xlabel("e1 @ e2 non-diagonal elements")
 	plt.ylabel("mjj1 - mjj2")
-	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1-mjj2.png")
+	plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1-mjj2.png", bbox_inches="tight")
 
 	# Compute some numerical metrics as a summary about model performance
 	results = {"max_abs_pearson": np.max(np.abs(person_correlations)), "min_abs_pearson": np.min(np.abs(person_correlations)), "mean_abs_pearson": np.mean(np.abs(person_correlations))}
@@ -263,6 +265,8 @@ def evaluate_model(cfg, target_data, template_data):
 	results["kernel_pearson"] = None
 	results["hilbert_schmidt"] = HSIC_torch(e1, e2, cuda=False).detach().cpu().numpy()
 	results["DisCo"] = dcor.distance_correlation(to_np(e1), to_np(e2))
+	dcor_torch = DistanceCorrelation()
+	results["dcor_torch"] = dcor_torch(e1, e2)
 
 	# Do some fast calassification
 	print("starting lazy perdict block")
@@ -306,7 +310,7 @@ def draw_event_transport_trajectories(model, plot_path, w1, var, var_name, masse
 	plt.scatter(to_np(w1[:, -1])[:max_traj], to_np(w1[:, var])[:max_traj],  marker="x", label="originals", c="green")
 	plt.xlabel("mass")
 	plt.ylabel(f"dim{var}")
-	plt.savefig(plot_path+f"event_transport_trajectories{var}.png")
+	plt.savefig(plot_path+f"event_transport_trajectories{var}.png", bbox_inches="tight")
 
 def plot_correlation_plots(e1, e2, plot_path, name, c=None, one_corretation_plot=True):
 	person_correlations =np.zeros((e1.shape[1], e2.shape[1]))
@@ -328,7 +332,7 @@ def plot_correlation_plots(e1, e2, plot_path, name, c=None, one_corretation_plot
 				axes[i, j].set_xlabel(f"dim{i} e1")
 				axes[i, j].set_ylabel(f"dim{j} e2")
 		plt.tight_layout()
-		plt.savefig(plot_path+"corerlations/"+name+".png")
+		plt.savefig(plot_path+"corerlations/"+name+".png", bbox_inches="tight")
 	else:
 		for dim1 in range(e1.shape[1]):
 			for dim2 in range(e2.shape[1]):
@@ -343,6 +347,6 @@ def plot_correlation_plots(e1, e2, plot_path, name, c=None, one_corretation_plot
 				plt.title(f"Latent space (color=m) pearson={pearson_correlation}")
 				plt.xlabel(f"dim{dim1} e1")
 				plt.ylabel(f"dim{dim2} e2")
-				plt.savefig(plot_path+"corerlations/"+f"{name}_{dim1}_{dim2}.png")
+				plt.savefig(plot_path+"corerlations/"+f"{name}_{dim1}_{dim2}.png", bbox_inches="tight")
     
 	return person_correlations, spearman_correlations, kendalltaus

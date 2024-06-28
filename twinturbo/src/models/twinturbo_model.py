@@ -287,9 +287,6 @@ class TwinTURBO(LightningModule):
 					total_loss += loss_back_cont*self.loss_weights.loss_back_cont
 				else:
 					total_loss += loss_back_cont*self.loss_weights.loss_back_cont(_batch_index)
-		
-  		#total_loss += loss_back_vec*self.loss_weights.loss_back_vec
-		#total_loss += loss_back_cont*self.loss_weights.loss_back_cont
 
 		# L1 regularization
 		if self.l1_reg is not None:

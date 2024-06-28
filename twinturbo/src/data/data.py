@@ -31,7 +31,8 @@ OPERATORS = {
 # Collection of functions for data pre-processing
 ##############################################
 
-class ProcessorIntervals():
+
+class ProcessorIntervals:
     def __init__(self, scalar_df_name, var_name, intervals):
         self.scalar_df_name = scalar_df_name
         self.var_name = var_name
@@ -43,13 +44,16 @@ class ProcessorIntervals():
             min_val, max_val = interval[0], interval[1]
             bool_indices_new = data[self.scalar_df_name][self.var_name] < max_val
             bool_indices_new &= data[self.scalar_df_name][self.var_name] >= min_val
-            bool_indices = bool_indices_new if interval == self.intervals[0] else bool_indices | bool_indices_new
+            if interval == self.intervals[0]:
+                bool_indices = bool_indices_new
+            else:  # combine the intervals
+                bool_indices |= bool_indices_new
         # apply the cuts to all the dataframes
         for key, value in data.items():
             data[key] = value[bool_indices]
         return data
 
-class ProcessorApplyCuts():
+class ProcessorApplyCuts:
     def __init__(self, scalar_df_name, cuts):
         self.scalar_df_name = scalar_df_name
         self.cuts = cuts
@@ -69,10 +73,11 @@ class ProcessorApplyCuts():
             data[key] = value[indices]
         return data
   
-class ProcessorSplitDataFrameVars():
+class ProcessorSplitDataFrameVars:
     def __init__(self, frame_name, new_df_dict):
-        self.frame_name=frame_name
-        self.new_df_list=new_df_dict
+        self.frame_name = frame_name
+        self.new_df_list = new_df_dict
+
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
         data_new = {}
         for key, value in data.items():
@@ -83,22 +88,29 @@ class ProcessorSplitDataFrameVars():
                 data_new[key] = value
         return data_new
 
-class ProcessorToFloat32():
+
+class ProcessorToFloat32:
     def __init__(self, frame_names):
-        self.frame_names=frame_names
+        self.frame_names = frame_names
+
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
         for name in self.frame_names:
             data[name] = data[name].astype(np.float32)
         return data
 
-class ProcessorShuffle():
-    def __init__(self):
-        pass
+
+class ProcessorShuffle:
+    def __init__(self, random_state=42):
+        self.random_state = random_state
+
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
         # find the events that pass the cuts
         for key, value in data.items():
-            data[key] = value.sample(frac=1).reset_index(drop=True)
+            data[key] = value.sample(
+                frac=1, random_state=self.random_state
+            ).reset_index(drop=True)
         return data
+
 
 class ProcessorNormalize():
     def __init__(self, frame_names = None, load_normaliser_file= None, save_normaliser_file=None):

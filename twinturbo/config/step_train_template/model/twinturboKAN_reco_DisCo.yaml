@@ -27,7 +27,7 @@ loss_weights:
 loss_balancing: 0
 
 DisCO_loss_cfg:
-  DisCO_loss_weight: 0.01
+  weight: 0.01
 
 
 

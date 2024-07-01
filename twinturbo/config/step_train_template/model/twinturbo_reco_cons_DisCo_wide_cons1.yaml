@@ -13,17 +13,18 @@ decoder_mlp_config:
   act_h: "prelu"
 latent_norm: True
 latent_dim: 8
-l1_reg: 0.0
-loss_weights:
-  loss_reco: 1
-  loss_attractive: 0
-  loss_repulsive: 0
-  loss_back_vec: 1
-  loss_back_cont: 1
-loss_balancing: 0
+loss_cfg:
+  l1_reg: 0.0
+  loss_weights:
+    loss_reco: 1
+    loss_attractive: 0
+    loss_repulsive: 0
+    loss_back_vec: 1
+    loss_back_cont: 1
+  loss_balancing: 0
 
-DisCO_loss_cfg:
-  DisCO_loss_weight: 0.01
+  DisCO_loss_cfg:
+    weight: 0.01
 
 
 

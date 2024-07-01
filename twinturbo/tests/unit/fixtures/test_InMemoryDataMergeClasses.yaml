@@ -4,8 +4,8 @@ data:
   do_shuffle: false
   dataset_list:
     - _target_: twinturbo.src.data.data.InMemoryDataFrameDict
-      file_path: "tests/unit/fixtures/data.h5"
+      file_path: "twinturbo/tests/unit/fixtures/data.h5"
       processor_cfg: []
     - _target_: twinturbo.src.data.data.InMemoryDataFrameDict
-      file_path: "tests/unit/fixtures/data.h5"
+      file_path: "twinturbo/tests/unit/fixtures/data.h5"
       processor_cfg: []

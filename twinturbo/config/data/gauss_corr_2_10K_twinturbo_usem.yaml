@@ -95,3 +95,17 @@ evaluation:
       cuts: ["x0 > 0"]
     - _target_: twinturbo.src.data.data.ProcessorToFloat32
       frame_names: ["data"]
+
+
+cwola:
+  experimental_data:
+    _target_: twinturbo.src.data.data.InMemoryDataFrameDict
+    list_order: ["data"]
+    file_path: ${path.hyperproject}/dummydata/gauss_corr_2_10K.h5
+    plotting_path: ${general.run_dir}/plots/train/
+    processor_cfg: 
+    - _target_: twinturbo.src.data.data.ProcessorApplyCuts
+      scalar_df_name: "data"
+      cuts: ["x0 > 0"]
+    - _target_: twinturbo.src.data.data.ProcessorToFloat32
+      frame_names: ["data"] 

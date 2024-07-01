@@ -104,13 +104,8 @@ class TwinTURBO(LightningModule):
 		encoder_mlp_config: Mapping,
 		decoder_mlp_config: Mapping,
 		var_group_list: list = None,
-  		loss_weights: Mapping = None,
-
-  		l1_reg = 0.0,
+		loss_cfg: Mapping = None,
     	use_m = True,
-    	loss_balancing= None,
-
-		DisCO_loss_cfg: Mapping = None,
 		pearson_loss_cfg: Mapping = None,
     	clip_loss_cfg: Mapping = None,
 		vic_reg_cfg=None,
@@ -127,7 +122,7 @@ class TwinTURBO(LightningModule):
 		super().__init__()
 		# TODO need to preprocess the data properly!
 		self.use_m = use_m
-		self.loss_weights=loss_weights
+		self.loss_cfg = loss_cfg
 		self.save_hyperparameters(logger=False)
 		if encoder_mlp_config.get("network_type") == "KAN":
 			self.encoder1 = KAN(width=[inpt_dim[0][0]]+encoder_mlp_config.hddn_dim+[latent_dim], grid=encoder_mlp_config.grid, k=encoder_mlp_config.k, device=torch.device('cuda')) #model = KAN(width=[2,5,1], grid=5, k=3, seed=0) 
@@ -136,12 +131,6 @@ class TwinTURBO(LightningModule):
 				self.decoder = KAN(width=[latent_dim*2]+decoder_mlp_config.hddn_dim+[inpt_dim[0][0]], grid=decoder_mlp_config.grid, k=decoder_mlp_config.k, device=torch.device('cuda'))
 			else:
 				self.decoder = KAN(width=[latent_dim*2]+decoder_mlp_config.hddn_dim+[inpt_dim[0][0]+inpt_dim[1][0]], grid=decoder_mlp_config.grid, k=decoder_mlp_config.k, device=torch.device('cuda'))
-			# self.encoder1.to(device=torch.device('cuda'))
-			# self.encoder1.device=torch.device('cuda')
-			# self.encoder2.to(device=torch.device('cuda'))
-			# self.encoder1.device=torch.device('cuda')
-			# self.decoder.to(device=torch.device('cuda'))
-			# self.decoder.device = torch.device('cuda')
 
 		else:
 			self.encoder1 = MLP(inpt_dim=inpt_dim[0][0], outp_dim=latent_dim, **encoder_mlp_config)
@@ -155,8 +144,6 @@ class TwinTURBO(LightningModule):
 		self.latent_norm = latent_norm
 		self.consistency_cof = consistency_cof
 		self.input_noise_cfg = input_noise_cfg
-		self.l1_reg = l1_reg
-		self.loss_balancing = loss_balancing
 		self.clip_loss_cfg = clip_loss_cfg
 		if clip_loss_cfg is not None:
 			self.use_clip = True
@@ -172,11 +159,9 @@ class TwinTURBO(LightningModule):
 		self.projector = self.get_projector(latent_dim, [32, 64, 128]) #TODO fix this 
 		self.num_features = 2 # TODO fix this
 		self.vic_reg_cfg= vic_reg_cfg
-		self.DisCO_loss_cfg = DisCO_loss_cfg
-		if DisCO_loss_cfg is not None:
+		if hasattr(loss_cfg, "DisCO_loss_cfg"):
 			self.DisCO_loss = dcor.DistanceCorrelation()
-		self.pearson_loss_cfg = pearson_loss_cfg
-		if pearson_loss_cfg is not None:
+		if hasattr(loss_cfg, "pearson_loss_cfg"):
 			self.pearson_loss = PearsonCorrelation()
 
 	def encode(self, w1, w2) -> torch.Tensor:
@@ -267,78 +252,87 @@ class TwinTURBO(LightningModule):
   
 		# Reconstruction loss
 		loss_reco = mse_loss(recon, torch.cat([x, m_dn], dim=1)).mean()
-		total_loss += loss_reco*self.loss_weights.loss_reco
+		total_loss += loss_reco*self.loss_cfg.loss_weights.loss_reco
 		self.log(f"{step_type}/loss_reco", loss_reco)
 
 		# Consistency losses 
-		if hasattr(self.loss_weights, "loss_back_vec"):
+		if hasattr(self.loss_cfg.loss_weights, "loss_back_vec"):
 			loss_back_vec = mse_loss(e1, e1_n).mean()
 			self.log(f"{step_type}/loss_back_vec", loss_back_vec)
-			if self.loss_weights.loss_back_vec is not None:
-				if isinstance(self.loss_weights.loss_back_vec, float) or isinstance(self.loss_weights.loss_back_vec, int):
-					total_loss += loss_back_vec*self.loss_weights.loss_back_vec
+			if self.loss_cfg.loss_weights.loss_back_vec is not None:
+				if isinstance(self.loss_cfg.loss_weights.loss_back_vec, float) or isinstance(self.loss_cfg.loss_weights.loss_back_vec, int):
+					total_loss += loss_back_vec*self.loss_cfg.loss_weights.loss_back_vec
 				else:
-					total_loss += loss_back_vec*self.loss_weights.loss_back_vec(_batch_index)
-		if hasattr(self.loss_weights, "loss_back_cont"):
+					total_loss += loss_back_vec*self.loss_cfg.loss_weights.loss_back_vec(_batch_index)
+		if hasattr(self.loss_cfg.loss_weights, "loss_back_cont"):
 			loss_back_cont = mse_loss(e2_p, e2_n).mean()
 			self.log(f"{step_type}/loss_back_cont", loss_back_cont)
-			if self.loss_weights.loss_back_cont is not None:
-				if isinstance(self.loss_weights.loss_back_cont, float) or isinstance(self.loss_weights.loss_back_cont, int):
-					total_loss += loss_back_cont*self.loss_weights.loss_back_cont
+			if self.loss_cfg.loss_weights.loss_back_cont is not None:
+				if isinstance(self.loss_cfg.loss_weights.loss_back_cont, float) or isinstance(self.loss_cfg.loss_weights.loss_back_cont, int):
+					total_loss += loss_back_cont*self.loss_cfg.loss_weights.loss_back_cont
 				else:
-					total_loss += loss_back_cont*self.loss_weights.loss_back_cont(_batch_index)
+					total_loss += loss_back_cont*self.loss_cfg.loss_weights.loss_back_cont(_batch_index)
+
+  		# variance loss
+		if hasattr(self.loss_cfg, "latent_variance_cfg"):
+			std_e1 = torch.sqrt(e1.var(dim=0) + 0.0001)
+			std_e2 = torch.sqrt(e2.var(dim=0) + 0.0001)
+			loss_latent_variance = torch.mean(torch.abs(1 - std_e1)**self.loss_cfg.latent_variance_cfg.pow) / 2 + torch.mean(torch.square(1 - std_e2)**self.loss_cfg.latent_variance_cfg.pow) / 2
+			if self.loss_cfg.latent_variance_cfg.weight is not None:
+				total_loss += loss_latent_variance*self.loss_cfg.latent_variance_cfg.weight
+			self.log(f"{step_type}/l1_regularization", loss_latent_variance)
 
 		# L1 regularization
-		if self.l1_reg is not None:
+		if hasattr(self.loss_cfg, "l1_reg"):
 			all_params = torch.cat([x.view(-1) for x in self.parameters()])
-			l1_regularization = self.l1_reg*torch.norm(all_params, 1)
+			l1_regularization = self.loss_cfg.l1_reg*torch.norm(all_params, 1)
 			total_loss += l1_regularization
 			self.log(f"{step_type}/l1_regularization", l1_regularization)
 
 		# Attractive and repulsive loss that are parts of triplet loss
-		if hasattr(self.loss_weights, "loss_attractive"):
+		if hasattr(self.loss_cfg.loss_weights, "loss_attractive"):
 			loss_attractive = -cosine_similarity(e1, e2[torch.randperm(batch_size)]).mean()
 			self.log(f"{step_type}/loss_attractive", loss_attractive)
-			if self.loss_weights.loss_attractive is not None:
-				if isinstance(self.loss_weights.loss_attractive, float) or isinstance(self.loss_weights.loss_attractive, int):
-					total_loss += loss_attractive*self.loss_weights.loss_attractive
+			if self.loss_cfg.loss_weights.loss_attractive is not None:
+				if isinstance(self.loss_cfg.loss_weights.loss_attractive, float) or isinstance(self.loss_cfg.loss_weights.loss_attractive, int):
+					total_loss += loss_attractive*self.loss_cfg.loss_weights.loss_attractive
 				else:
-					total_loss += loss_attractive*self.loss_weights.loss_attractive(_batch_index)
-		if hasattr(self.loss_weights, "loss_repulsive"):
+					total_loss += loss_attractive*self.loss_cfg.loss_weights.loss_attractive(_batch_index)
+		if hasattr(self.loss_cfg.loss_weights, "loss_repulsive"):
 			loss_repulsive = torch.abs(cosine_similarity(e1, e2)).mean()
 			self.log(f"{step_type}/loss_repulsive", loss_repulsive)
-			if self.loss_weights.loss_repulsive is not None:
-				if isinstance(self.loss_weights.loss_repulsive, float) or isinstance(self.loss_weights.loss_repulsive, int):
-					total_loss += loss_repulsive*self.loss_weights.loss_repulsive
+			if self.loss_cfg.loss_weights.loss_repulsive is not None:
+				if isinstance(self.loss_cfg.loss_weights.loss_repulsive, float) or isinstance(self.loss_cfg.loss_weights.loss_repulsive, int):
+					total_loss += loss_repulsive*self.loss_cfg.loss_weights.loss_repulsive
 				else:
-					total_loss += loss_repulsive*self.loss_weights.loss_repulsive(_batch_index)
-		if hasattr(self.loss_weights, "loss_attractive") and hasattr(self.loss_weights, "loss_repulsive"):
+					total_loss += loss_repulsive*self.loss_cfg.loss_weights.loss_repulsive(_batch_index)
+		if hasattr(self.loss_cfg.loss_weights, "loss_attractive") and hasattr(self.loss_cfg.loss_weights, "loss_repulsive"):
 			self.log(f"{step_type}/loss_attractive+repulsive", loss_attractive+loss_repulsive)
 			# Loss balancing for tripplet loss
 			if step_type=="train":
 				self.loss_balabcing(loss_repulsive)
-			self.log("train/l_atr_weight", self.loss_weights.loss_attractive)	
-			self.log("train/l_rep_weight", self.loss_weights.loss_repulsive)
+			self.log("train/l_atr_weight", self.loss_cfg.loss_weights.loss_attractive)	
+			self.log("train/l_rep_weight", self.loss_cfg.loss_weights.loss_repulsive)
   
 		# DisCO loss
-		if self.DisCO_loss_cfg is not None:
+		if hasattr(self.loss_cfg, "DisCO_loss_cfg"):
 			loss_disco = self.DisCO_loss(e1, e2)
 			self.log(f"{step_type}/DisCO_loss", loss_disco)
-			if self.DisCO_loss_cfg.DisCO_loss_weight is not None:
-				if isinstance(self.DisCO_loss_cfg.DisCO_loss_weight, float) or isinstance(self.DisCO_loss_cfg.DisCO_loss_weight, int):
-						total_loss += loss_disco*self.DisCO_loss_cfg.DisCO_loss_weight
+			if self.loss_cfg.DisCO_loss_cfg.weight is not None:
+				if isinstance(self.loss_cfg.DisCO_loss_cfg.weight, float) or isinstance(self.loss_cfg.DisCO_loss_cfg.weight, int):
+						total_loss += loss_disco*self.loss_cfg.DisCO_loss_cfg.weight
 				else:
-					total_loss += loss_disco*self.DisCO_loss_cfg.DisCO_loss_weight(_batch_index)
+					total_loss += loss_disco*self.loss_cfg.DisCO_loss_cfg.weight(_batch_index)
 
 		# Pearson loss
-		if self.pearson_loss_cfg is not None:
+		if hasattr(self.loss_cfg, "pearson_loss_cfg"):
 			loss_disco = self.pearson_loss(e1, e2)
 			self.log(f"{step_type}/pearson_loss", loss_disco)
-			if self.pearson_loss_cfg.pearson_loss_weight is not None:
-				if isinstance(self.pearson_loss_cfg.pearson_loss_weight, float) or isinstance(self.pearson_loss_cfg.pearson_loss_weight, int):
-						total_loss += loss_disco*self.pearson_loss_cfg.pearson_loss_weight
+			if self.loss_cfg.pearson_loss_cfg.pearson_loss_weight is not None:
+				if isinstance(self.loss_cfg.pearson_loss_cfg.pearson_loss_weight, float) or isinstance(self.loss_cfg.pearson_loss_cfg.pearson_loss_weight, int):
+						total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.pearson_loss_weight
 				else:
-					total_loss += loss_disco*self.pearson_loss_cfg.pearson_loss_weight(_batch_index)
+					total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.pearson_loss_weight(_batch_index)
 
 		# CLIP loss
 		if self.use_clip:
@@ -360,37 +354,37 @@ class TwinTURBO(LightningModule):
 
 	def loss_balabcing(self, loss_repulsive):
 		if self.loss_balancing==1:
-			sum=self.loss_weights.loss_repulsive+self.loss_weights.loss_attractive
+			sum=self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive
 			if loss_repulsive>0.9:
-				self.loss_weights.loss_repulsive = self.loss_weights.loss_repulsive*1.01
-				self.loss_weights.loss_attractive = self.loss_weights.loss_attractive*0.99
-				self.loss_weights.loss_repulsive = sum*self.loss_weights.loss_repulsive/(self.loss_weights.loss_repulsive+self.loss_weights.loss_attractive)
-				self.loss_weights.loss_attractive = sum*self.loss_weights.loss_attractive/(self.loss_weights.loss_repulsive+self.loss_weights.loss_attractive)
+				self.loss_cfg.loss_weights.loss_repulsive = self.loss_cfg.loss_weights.loss_repulsive*1.01
+				self.loss_cfg.loss_weights.loss_attractive = self.loss_cfg.loss_weights.loss_attractive*0.99
+				self.loss_cfg.loss_weights.loss_repulsive = sum*self.loss_cfg.loss_weights.loss_repulsive/(self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive)
+				self.loss_cfg.loss_weights.loss_attractive = sum*self.loss_cfg.loss_weights.loss_attractive/(self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive)
 			if loss_repulsive<0.1:
-				self.loss_weights.loss_repulsive = self.loss_weights.loss_repulsive*0.99
-				self.loss_weights.loss_attractive = self.loss_weights.loss_attractive*1.01
-				self.loss_weights.loss_repulsive = sum*self.loss_weights.loss_repulsive/(self.loss_weights.loss_repulsive+self.loss_weights.loss_attractive)
-				self.loss_weights.loss_attractive = sum*self.loss_weights.loss_attractive/(self.loss_weights.loss_repulsive+self.loss_weights.loss_attractive)
+				self.loss_cfg.loss_weights.loss_repulsive = self.loss_cfg.loss_weights.loss_repulsive*0.99
+				self.loss_cfg.loss_weights.loss_attractive = self.loss_cfg.loss_weights.loss_attractive*1.01
+				self.loss_cfg.loss_weights.loss_repulsive = sum*self.loss_cfg.loss_weights.loss_repulsive/(self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive)
+				self.loss_cfg.loss_weights.loss_attractive = sum*self.loss_cfg.loss_weights.loss_attractive/(self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive)
 		if self.loss_balancing==2:
-			sum=self.loss_weights.loss_repulsive+self.loss_weights.loss_attractive
+			sum=self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive
 			if loss_repulsive>0.9:
-				loss_repulsive_ = self.loss_weights.loss_repulsive*1.1
-				loss_attractive_ = self.loss_weights.loss_attractive*0.9
-				self.loss_weights.loss_repulsive = sum*loss_repulsive_/(loss_repulsive_+loss_attractive_)
-				self.loss_weights.loss_attractive = sum*loss_attractive_/(loss_repulsive_+loss_attractive_)
+				loss_repulsive_ = self.loss_cfg.loss_weights.loss_repulsive*1.1
+				loss_attractive_ = self.loss_cfg.loss_weights.loss_attractive*0.9
+				self.loss_cfg.loss_weights.loss_repulsive = sum*loss_repulsive_/(loss_repulsive_+loss_attractive_)
+				self.loss_cfg.loss_weights.loss_attractive = sum*loss_attractive_/(loss_repulsive_+loss_attractive_)
 			if loss_repulsive<0.1:
-				loss_repulsive_ = self.loss_weights.loss_repulsive*0.9
-				loss_attractive_ = self.loss_weights.loss_attractive*1.1
-				self.loss_weights.loss_repulsive = sum*loss_repulsive_/(loss_repulsive_+loss_attractive_)
-				self.loss_weights.loss_attractive = sum*loss_attractive_/(loss_repulsive_+loss_attractive_)
+				loss_repulsive_ = self.loss_cfg.loss_weights.loss_repulsive*0.9
+				loss_attractive_ = self.loss_cfg.loss_weights.loss_attractive*1.1
+				self.loss_cfg.loss_weights.loss_repulsive = sum*loss_repulsive_/(loss_repulsive_+loss_attractive_)
+				self.loss_cfg.loss_weights.loss_attractive = sum*loss_attractive_/(loss_repulsive_+loss_attractive_)
 		if self.loss_balancing==3:
-			sum=self.loss_weights.loss_repulsive+self.loss_weights.loss_attractive
+			sum=self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive
 			if loss_repulsive>0.9:
-				self.loss_weights.loss_repulsive = sum*3/4
-				self.loss_weights.loss_attractive = sum/4
+				self.loss_cfg.loss_weights.loss_repulsive = sum*3/4
+				self.loss_cfg.loss_weights.loss_attractive = sum/4
 			if loss_repulsive<0.1:
-				self.loss_weights.loss_repulsive = sum*1/4
-				self.loss_weights.loss_attractive = sum*3/4
+				self.loss_cfg.loss_weights.loss_repulsive = sum*1/4
+				self.loss_cfg.loss_weights.loss_attractive = sum*3/4
 
 	def training_step(self, sample: tuple, batch_idx: int) -> torch.Tensor:
 		total_loss = self._shared_step(sample, step_type="train")

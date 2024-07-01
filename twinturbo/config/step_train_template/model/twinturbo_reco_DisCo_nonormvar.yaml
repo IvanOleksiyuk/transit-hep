@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - optimizer: adam.yaml
+  - optimizer: default.yaml
   - scheduler: cyclic.yaml
 
 _target_: twinturbo.src.models.twinturbo_model.TwinTURBO
@@ -11,17 +11,20 @@ encoder_mlp_config:
 decoder_mlp_config:
   hddn_dim: [64, 64, 64, 64]
   act_h: "prelu"
+latent_norm: False
+latent_dim: 8
+
+
 loss_cfg:
-  latent_norm: True
-  latent_dim: 8
-  l1_reg: 0.0
   loss_weights:
     loss_reco: 1
-    loss_attractive: 0
-    loss_repulsive: 0
-    loss_back_vec: 0
-    loss_back_cont: 0
+  l1_reg: 0.0
+  latent_variance_cfg:
+    weight: 1
+    pow: 1
+  DisCO_loss_cfg:
+    weight: 0.01
   loss_balancing: 0
 
 
-
+# twinturbo_reco_DisCo_nonormvar

@@ -1,16 +1,15 @@
 # Standard block for correct import
-import sys
+import pyrootutils
+root = pyrootutils.setup_root(search_from=__file__, pythonpath=True, cwd=True, indicator=".project-root")
+
 from pathlib import Path
 
 current_dir = Path.cwd()
-src_path = current_dir / "src"
-sys.path.append(str(src_path))
 
 import unittest
-
 import hydra
 import numpy as np
-
+from twinturbo.src.data.data import InMemoryDataFrameDict
 
 class TestProcessors(unittest.TestCase):
     def test_ProcessorApplyCuts(self):

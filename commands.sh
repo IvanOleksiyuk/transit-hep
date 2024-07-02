@@ -1,6 +1,8 @@
 # Test with 10 samples
 python mytoolkit/scripts/create_dummy_data.py --type spherical_gausssian --output /home/users/o/oleksiyu/WORK/hyperproject/dummydata/data.h5 --plot --n_samples 10 --n_features 2 --seed 42
 
+python mytoolkit/scripts/create_dummy_data.py --type gaussian_with_covariance --output dummydata/gauss_corr_2_1K.h5 --plot --n_samples 1000 --n_features 2 --seed 42
+
 # Small dataset for debugging purposes 10K
 python mytoolkit/scripts/create_dummy_data.py --type spherical_gaussian --output dummydata/gauss_sph_2_10K.h5 --plot --n_samples 10000 --n_features 2 --seed 42
 python mytoolkit/scripts/create_dummy_data.py --type gaussian_with_covariance --output dummydata/gauss_corr_2_10K.h5 --plot --n_samples 10000 --n_features 2 --seed 42

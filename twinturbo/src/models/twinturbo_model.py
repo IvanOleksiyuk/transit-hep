@@ -306,13 +306,13 @@ class TwinTURBO(LightningModule):
 					total_loss += loss_repulsive*self.loss_cfg.loss_weights.loss_repulsive
 				else:
 					total_loss += loss_repulsive*self.loss_cfg.loss_weights.loss_repulsive(_batch_index)
-		if hasattr(self.loss_cfg.loss_weights, "loss_attractive") and hasattr(self.loss_cfg.loss_weights, "loss_repulsive"):
-			self.log(f"{step_type}/loss_attractive+repulsive", loss_attractive+loss_repulsive)
-			# Loss balancing for tripplet loss
-			if step_type=="train":
-				self.loss_balabcing(loss_repulsive)
-			self.log("train/l_atr_weight", self.loss_cfg.loss_weights.loss_attractive)	
-			self.log("train/l_rep_weight", self.loss_cfg.loss_weights.loss_repulsive)
+		# if hasattr(self.loss_cfg.loss_weights, "loss_attractive") and hasattr(self.loss_cfg.loss_weights, "loss_repulsive"):
+		# 	self.log(f"{step_type}/loss_attractive+repulsive", loss_attractive+loss_repulsive)
+		# 	# Loss balancing for tripplet loss
+		# 	if step_type=="train" and hasattr(self.loss_cfg, "loss_balancing"):
+		# 		self.loss_balabcing(loss_repulsive)
+		# 		self.log("train/l_atr_weight", self.loss_cfg.loss_weights.loss_attractive)	
+		# 		self.log("train/l_rep_weight", self.loss_cfg.loss_weights.loss_repulsive)
   
 		# DisCO loss
 		if hasattr(self.loss_cfg, "DisCO_loss_cfg"):
@@ -353,7 +353,7 @@ class TwinTURBO(LightningModule):
 		return total_loss
 
 	def loss_balabcing(self, loss_repulsive):
-		if self.loss_balancing==1:
+		if self.loss_cfg.loss_balancing==1:
 			sum=self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive
 			if loss_repulsive>0.9:
 				self.loss_cfg.loss_weights.loss_repulsive = self.loss_cfg.loss_weights.loss_repulsive*1.01
@@ -365,7 +365,7 @@ class TwinTURBO(LightningModule):
 				self.loss_cfg.loss_weights.loss_attractive = self.loss_cfg.loss_weights.loss_attractive*1.01
 				self.loss_cfg.loss_weights.loss_repulsive = sum*self.loss_cfg.loss_weights.loss_repulsive/(self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive)
 				self.loss_cfg.loss_weights.loss_attractive = sum*self.loss_cfg.loss_weights.loss_attractive/(self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive)
-		if self.loss_balancing==2:
+		if self.loss_cfg.loss_balancing==2:
 			sum=self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive
 			if loss_repulsive>0.9:
 				loss_repulsive_ = self.loss_cfg.loss_weights.loss_repulsive*1.1

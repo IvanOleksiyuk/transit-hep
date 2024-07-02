@@ -13,14 +13,12 @@ decoder_mlp_config:
   act_h: "prelu"
 latent_norm: True
 latent_dim: 8
-
 loss_cfg:
   loss_weights:
     loss_reco: 1
+    loss_attractive: 0.01
+    loss_repulsive: 0.01
 
-  clip_loss_cfg:
-    clip_logit_scale: 1
-    clip_loss_weight: -0.1 # negative value for anti-clip loss
 
 
 

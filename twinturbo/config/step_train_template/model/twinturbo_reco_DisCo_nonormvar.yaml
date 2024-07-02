@@ -18,13 +18,11 @@ latent_dim: 8
 loss_cfg:
   loss_weights:
     loss_reco: 1
-  l1_reg: 0.0
   latent_variance_cfg:
     weight: 1
     pow: 1
   DisCO_loss_cfg:
     weight: 0.01
-  loss_balancing: 0
 
 
 # twinturbo_reco_DisCo_nonormvar

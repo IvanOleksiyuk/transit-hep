@@ -16,7 +16,7 @@ do_cwola: False
 do_evaluation: False 
 
 general:
-  name: twinTURBO_DisCo_1
-  subfolder: dev/
+  name: twinTURBO_test
+  subfolder: test/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

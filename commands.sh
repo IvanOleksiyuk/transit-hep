@@ -32,4 +32,6 @@ python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --
 python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_DisCo data=swiss_roll_gap_twinturbo_usem general.subfolder=swiss_roll_gap_twinturbo_usem/ do_train_template=0
 python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_cons_DisCo data=swiss_roll_gap_twinturbo_usem general.subfolder=swiss_roll_gap_twinturbo_usem/ do_train_template=0
 python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_DisCo data=powers_5_gap_twinturbo_usem general.subfolder=powers_5_gap_twinturbo_usem/ do_train_template=0
-python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_cons_DisCo data=powers_5_gap_twinturbo_usem general.subfolder=powers_5_gap_twinturbo_usem/ do_train_template=0
+
+python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_DisCo_nonormvar data=gauss_corr_4_gap_twinturbo_usem general.subfolder=gauss_corr_4_gap_twinturbo_usem/ do_train_template=0
+python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_DisCo_nonormvar data=gauss_corr_4_gap_twinturbo_usem_nogap_train general.subfolder=gauss_corr_4_gap_twinturbo_usem_nogap_train/ do_train_template=0

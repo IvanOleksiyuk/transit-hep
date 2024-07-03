@@ -15,12 +15,16 @@ latent_norm: True
 latent_dim: 8
 
 loss_cfg:
-  loss_weights:
-    loss_reco: 1
-    loss_attractive: 0.001
-    loss_repulsive: 0.001
-    loss_back_vec: 0.1
-    loss_back_cont: 0.1
+  reco:
+    w: 1
+  attractive:
+    w: 0.001
+  repulsive:
+    w: 0.001
+  consistency_x:
+    w: 0.1
+  consistency_cont:
+    w: 0.1
 
 
 

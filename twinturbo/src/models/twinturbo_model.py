@@ -106,9 +106,6 @@ class TwinTURBO(LightningModule):
 		var_group_list: list = None,
 		loss_cfg: Mapping = None,
     	use_m = True,
-		pearson_loss_cfg: Mapping = None,
-    	clip_loss_cfg: Mapping = None,
-		vic_reg_cfg=None,
 		input_noise_cfg=None,
 		consistency_cof=None,
 	) -> None:
@@ -144,25 +141,41 @@ class TwinTURBO(LightningModule):
 		self.latent_norm = latent_norm
 		self.consistency_cof = consistency_cof
 		self.input_noise_cfg = input_noise_cfg
-		self.clip_loss_cfg = clip_loss_cfg
-		if clip_loss_cfg is not None:
-			self.use_clip = True
-			self.clip_loss = CLIPLossNorm(clip_loss_cfg.clip_logit_scale)
-		else:
-			self.use_clip = False
-
-		if vic_reg_cfg is not None:
-			self.sim_coeff = vic_reg_cfg.sim_coeff
-			self.std_coeff = vic_reg_cfg.std_coeff
-			self.cov_coeff = vic_reg_cfg.cov_coeff
 		
 		self.projector = self.get_projector(latent_dim, [32, 64, 128]) #TODO fix this 
 		self.num_features = 2 # TODO fix this
-		self.vic_reg_cfg= vic_reg_cfg
+		if hasattr(loss_cfg, "clip_loss_cfg") and loss_cfg.clip_loss_cfg is not None:
+			self.clip_loss = CLIPLossNorm(loss_cfg.clip_loss_cfg.clip_logit_scale)
 		if hasattr(loss_cfg, "DisCO_loss_cfg"):
 			self.DisCO_loss = dcor.DistanceCorrelation()
 		if hasattr(loss_cfg, "pearson_loss_cfg"):
 			self.pearson_loss = PearsonCorrelation()
+		if hasattr(loss_cfg, "vic_reg_cfg") and loss_cfg.vic_reg_cfg is not None:
+			self.sim_coeff = loss_cfg.vic_reg_cfg.sim_coeff
+			self.std_coeff = loss_cfg.vic_reg_cfg.std_coeff
+			self.cov_coeff = loss_cfg.vic_reg_cfg.cov_coeff
+
+		# For more stable checks in the shared step
+		expected_attrs = ["reco", 
+                    	"consistency_x", 
+                     	"consistency_cont", 
+                      	"latent_variance_cfg", 
+                       	"l1_reg", 
+                        "DisCO_loss_cfg", 
+                        "pearson_loss_cfg", 
+                        "clip_loss_cfg", 
+                        "attractive", 
+                        "repulsive", 
+                        "vic_reg_cfg",
+                        "loss_balancing"]
+		for attr in list(self.loss_cfg.keys()):
+			if attr in expected_attrs:
+				setattr(self.loss_cfg, attr, getattr(self.loss_cfg, attr, None))
+			else:
+				assert False, f"Unexpected loss config attribute: {attr}"
+		for attr in expected_attrs:
+			if not hasattr(self.loss_cfg, attr):
+				setattr(self.loss_cfg, attr, None)
 
 	def encode(self, w1, w2) -> torch.Tensor:
 		if self.latent_norm:
@@ -252,60 +265,62 @@ class TwinTURBO(LightningModule):
   
 		# Reconstruction loss
 		loss_reco = mse_loss(recon, torch.cat([x, m_dn], dim=1)).mean()
-		total_loss += loss_reco*self.loss_cfg.loss_weights.loss_reco
+		total_loss += loss_reco*self.loss_cfg.reco.w
 		self.log(f"{step_type}/loss_reco", loss_reco)
 
 		# Consistency losses 
-		if hasattr(self.loss_cfg.loss_weights, "loss_back_vec"):
+		if self.loss_cfg.consistency_x is not None:
 			loss_back_vec = mse_loss(e1, e1_n).mean()
 			self.log(f"{step_type}/loss_back_vec", loss_back_vec)
-			if self.loss_cfg.loss_weights.loss_back_vec is not None:
-				if isinstance(self.loss_cfg.loss_weights.loss_back_vec, float) or isinstance(self.loss_cfg.loss_weights.loss_back_vec, int):
-					total_loss += loss_back_vec*self.loss_cfg.loss_weights.loss_back_vec
+			if self.loss_cfg.consistency_x.w is not None:
+				if isinstance(self.loss_cfg.consistency_x.w, float) or isinstance(self.loss_cfg.consistency_x.w, int):
+					total_loss += loss_back_vec*self.loss_cfg.consistency_x.w
 				else:
-					total_loss += loss_back_vec*self.loss_cfg.loss_weights.loss_back_vec(_batch_index)
-		if hasattr(self.loss_cfg.loss_weights, "loss_back_cont"):
+					total_loss += loss_back_vec*self.loss_cfg.consistency_x.w(_batch_index)
+		
+		if self.loss_cfg.consistency_cont is not None:
 			loss_back_cont = mse_loss(e2_p, e2_n).mean()
 			self.log(f"{step_type}/loss_back_cont", loss_back_cont)
-			if self.loss_cfg.loss_weights.loss_back_cont is not None:
-				if isinstance(self.loss_cfg.loss_weights.loss_back_cont, float) or isinstance(self.loss_cfg.loss_weights.loss_back_cont, int):
-					total_loss += loss_back_cont*self.loss_cfg.loss_weights.loss_back_cont
+			if self.loss_cfg.consistency_cont.w is not None:
+				if isinstance(self.loss_cfg.consistency_cont.w, float) or isinstance(self.loss_cfg.consistency_cont.w, int):
+					total_loss += loss_back_cont*self.loss_cfg.consistency_cont.w
 				else:
-					total_loss += loss_back_cont*self.loss_cfg.loss_weights.loss_back_cont(_batch_index)
+					total_loss += loss_back_cont*self.loss_cfg.consistency_cont.w(_batch_index)
 
   		# variance loss
-		if hasattr(self.loss_cfg, "latent_variance_cfg"):
+		if self.loss_cfg.latent_variance_cfg is not None:
 			std_e1 = torch.sqrt(e1.var(dim=0) + 0.0001)
 			std_e2 = torch.sqrt(e2.var(dim=0) + 0.0001)
 			loss_latent_variance = torch.mean(torch.abs(1 - std_e1)**self.loss_cfg.latent_variance_cfg.pow) / 2 + torch.mean(torch.square(1 - std_e2)**self.loss_cfg.latent_variance_cfg.pow) / 2
-			if self.loss_cfg.latent_variance_cfg.weight is not None:
-				total_loss += loss_latent_variance*self.loss_cfg.latent_variance_cfg.weight
-			self.log(f"{step_type}/l1_regularization", loss_latent_variance)
+			if self.loss_cfg.latent_variance_cfg.w is not None:
+				total_loss += loss_latent_variance*self.loss_cfg.latent_variance_cfg.w
+			self.log(f"{step_type}/variance_regularization", loss_latent_variance)
 
 		# L1 regularization
-		if hasattr(self.loss_cfg, "l1_reg"):
+		if self.loss_cfg.l1_reg is not None:
 			all_params = torch.cat([x.view(-1) for x in self.parameters()])
 			l1_regularization = self.loss_cfg.l1_reg*torch.norm(all_params, 1)
 			total_loss += l1_regularization
 			self.log(f"{step_type}/l1_regularization", l1_regularization)
 
 		# Attractive and repulsive loss that are parts of triplet loss
-		if hasattr(self.loss_cfg.loss_weights, "loss_attractive"):
+		if self.loss_cfg.attractive is not None:
 			loss_attractive = -cosine_similarity(e1, e2[torch.randperm(batch_size)]).mean()
 			self.log(f"{step_type}/loss_attractive", loss_attractive)
-			if self.loss_cfg.loss_weights.loss_attractive is not None:
-				if isinstance(self.loss_cfg.loss_weights.loss_attractive, float) or isinstance(self.loss_cfg.loss_weights.loss_attractive, int):
-					total_loss += loss_attractive*self.loss_cfg.loss_weights.loss_attractive
+			if self.loss_cfg.attractive.w is not None:
+				if isinstance(self.loss_cfg.attractive.w, float) or isinstance(self.loss_cfg.attractive.w, int):
+					total_loss += loss_attractive*self.loss_cfg.attractive.w
 				else:
-					total_loss += loss_attractive*self.loss_cfg.loss_weights.loss_attractive(_batch_index)
-		if hasattr(self.loss_cfg.loss_weights, "loss_repulsive"):
+					total_loss += loss_attractive*self.loss_cfg.attractive.w(_batch_index)
+		
+		if self.loss_cfg.repulsive is not None:
 			loss_repulsive = torch.abs(cosine_similarity(e1, e2)).mean()
 			self.log(f"{step_type}/loss_repulsive", loss_repulsive)
-			if self.loss_cfg.loss_weights.loss_repulsive is not None:
-				if isinstance(self.loss_cfg.loss_weights.loss_repulsive, float) or isinstance(self.loss_cfg.loss_weights.loss_repulsive, int):
-					total_loss += loss_repulsive*self.loss_cfg.loss_weights.loss_repulsive
+			if self.loss_cfg.repulsive.w is not None:
+				if isinstance(self.loss_cfg.repulsive.w, float) or isinstance(self.loss_cfg.repulsive.w, int):
+					total_loss += loss_repulsive*self.loss_cfg.repulsive.w
 				else:
-					total_loss += loss_repulsive*self.loss_cfg.loss_weights.loss_repulsive(_batch_index)
+					total_loss += loss_repulsive*self.loss_cfg.repulsive.w(_batch_index)
 		# if hasattr(self.loss_cfg.loss_weights, "loss_attractive") and hasattr(self.loss_cfg.loss_weights, "loss_repulsive"):
 		# 	self.log(f"{step_type}/loss_attractive+repulsive", loss_attractive+loss_repulsive)
 		# 	# Loss balancing for tripplet loss
@@ -315,33 +330,34 @@ class TwinTURBO(LightningModule):
 		# 		self.log("train/l_rep_weight", self.loss_cfg.loss_weights.loss_repulsive)
   
 		# DisCO loss
-		if hasattr(self.loss_cfg, "DisCO_loss_cfg"):
+		if self.loss_cfg.DisCO_loss_cfg is not None:
 			loss_disco = self.DisCO_loss(e1, e2)
 			self.log(f"{step_type}/DisCO_loss", loss_disco)
-			if self.loss_cfg.DisCO_loss_cfg.weight is not None:
-				if isinstance(self.loss_cfg.DisCO_loss_cfg.weight, float) or isinstance(self.loss_cfg.DisCO_loss_cfg.weight, int):
-						total_loss += loss_disco*self.loss_cfg.DisCO_loss_cfg.weight
+			if self.loss_cfg.DisCO_loss_cfg.w is not None:
+				if isinstance(self.loss_cfg.DisCO_loss_cfg.w, float) or isinstance(self.loss_cfg.DisCO_loss_cfg.w, int):
+						total_loss += loss_disco*self.loss_cfg.DisCO_loss_cfg.w
 				else:
-					total_loss += loss_disco*self.loss_cfg.DisCO_loss_cfg.weight(_batch_index)
+					total_loss += loss_disco*self.loss_cfg.DisCO_loss_cfg.w(_batch_index)
 
 		# Pearson loss
-		if hasattr(self.loss_cfg, "pearson_loss_cfg"):
+		if self.loss_cfg.pearson_loss_cfg is not None:
 			loss_disco = self.pearson_loss(e1, e2)
 			self.log(f"{step_type}/pearson_loss", loss_disco)
-			if self.loss_cfg.pearson_loss_cfg.pearson_loss_weight is not None:
-				if isinstance(self.loss_cfg.pearson_loss_cfg.pearson_loss_weight, float) or isinstance(self.loss_cfg.pearson_loss_cfg.pearson_loss_weight, int):
-						total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.pearson_loss_weight
+			if self.loss_cfg.pearson_loss_cfg.w is not None:
+				if isinstance(self.loss_cfg.pearson_loss_cfg.w, float) or isinstance(self.loss_cfg.pearson_loss_cfg.w, int):
+						total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.w
 				else:
-					total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.pearson_loss_weight(_batch_index)
+					total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.w(_batch_index)
 
 		# CLIP loss
-		if self.use_clip:
+		if self.loss_cfg.clip_loss_cfg is not None:
 			loss_clip = self.clip_loss(e1, e2).mean()
 			self.log(f"{step_type}/clip_loss", loss_clip)
-			total_loss += loss_clip*self.clip_loss_cfg.clip_loss_weight
+			if self.loss_cfg.clip_loss_cfg.w is not None:
+				total_loss += loss_clip*self.loss_cfg.clip_loss_cfg.w
 
 		# VIC loss
-		if self.vic_reg_cfg is not None:
+		if self.loss_cfg.vic_reg_cfg is not None:
 			loss, repr_loss, std_loss, cov_loss = self.VICloss(e1, e2)
 			self.log(f"{step_type}/VIC_repr_loss", repr_loss)
 			self.log(f"{step_type}/VIC_std_loss", std_loss)

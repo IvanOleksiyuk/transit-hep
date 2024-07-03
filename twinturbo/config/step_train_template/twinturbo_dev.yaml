@@ -1,8 +1,8 @@
 defaults:
   - _self_
-  - model: twinturboKAN_reco_DisCo.yaml
+  - model: twinturbo_reco-aclip.yaml
   - callbacks: default.yaml
-  - loggers: csv.yaml
+  - loggers: wandb.yaml
   - paths: default.yaml
   - trainer: 1e.yaml
   - data: default.yaml

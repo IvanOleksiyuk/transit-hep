@@ -20,3 +20,4 @@ general:
   subfolder: dev/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}
+

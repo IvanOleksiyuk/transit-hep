@@ -15,12 +15,11 @@ latent_norm: True
 latent_dim: 8
 
 loss_cfg:
-  loss_weights:
-    loss_reco: 1
-
+  reco:
+    w: 1
   clip_loss_cfg:
     clip_logit_scale: 1
-    clip_loss_weight: -0.1 # negative value for anti-clip loss
+    w: -0.1 # negative value for anti-clip loss
 
 
 

@@ -31,6 +31,6 @@ class SigmoidAnnealing():
         if (self.start is not None) and batch < self.start:
             return self.min_val
         elif (self.end is not None) and batch > self.end:
-            return self.min_val + self.amplitude / (1 + np.exp(-self.slope * (self.end - self.middle)+self.steepness))
+            return self.min_val + self.amplitude / (1 + np.exp(-self.slope * (self.end - self.middle)))
         else:
             return self.min_val + self.amplitude / (1 + np.exp(-self.slope * (batch - self.middle))) 

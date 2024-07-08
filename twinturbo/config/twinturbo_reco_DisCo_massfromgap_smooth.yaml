@@ -7,6 +7,7 @@ defaults:
   - step_train_template: twinturbo_reco_DisCo_smooth
   - step_export_template: twinturbo
   - step_evaluate: twinturbo
+  - override step_train_template/callbacks: default_noearly.yaml
 
 
 do_train_template: True

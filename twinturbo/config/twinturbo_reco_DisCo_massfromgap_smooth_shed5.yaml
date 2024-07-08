@@ -9,6 +9,7 @@ defaults:
   - step_evaluate: twinturbo
   - override step_train_template/model: twinturbo_reco_DisCo_smooth_shed5
   - override step_train_template/trainer: 200e.yaml
+  - override step_train_template/callbacks: default_noearly.yaml
 
 do_train_template: True
 do_export_template: True

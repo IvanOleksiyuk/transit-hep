@@ -7,7 +7,7 @@ defaults:
   - step_train_template: twinturbo_reco_DisCo_smooth
   - step_export_template: twinturbo
   - step_evaluate: twinturbo
-  - override step_train_template/model: twinturbo_reco_DisCo_smooth_shed2
+  - override step_train_template/model: twinturbo_reco_DisCo_smooth0.01step0.001
   - override step_train_template/trainer: 200e.yaml
   - override step_train_template/callbacks: default_noearly.yaml
 
@@ -19,7 +19,7 @@ do_evaluation: True
 
 
 general:
-  name: twinturbo_reco_DisCo_smooth_shed2
+  name: twinturbo_reco_DisCo_massfromgap_smooth0.01step0.001
   subfolder: experiments/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

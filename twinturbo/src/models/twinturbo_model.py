@@ -107,7 +107,7 @@ class TwinTURBO(LightningModule):
 		loss_cfg: Mapping = None,
     	use_m = True,
 		input_noise_cfg=None,
-		consistency_cof=None,
+		reverse_pass_mode=None,
 	) -> None:
 		"""
 		Args:
@@ -139,7 +139,7 @@ class TwinTURBO(LightningModule):
 
 		self.var_group_list = var_group_list
 		self.latent_norm = latent_norm
-		self.consistency_cof = consistency_cof
+		self.reverse_pass_mode = reverse_pass_mode
 		self.input_noise_cfg = input_noise_cfg
 		
 		self.projector = self.get_projector(latent_dim, [32, 64, 128]) #TODO fix this 
@@ -167,7 +167,8 @@ class TwinTURBO(LightningModule):
                         "attractive", 
                         "repulsive", 
                         "vic_reg_cfg",
-                        "loss_balancing"]
+                        "loss_balancing",
+                        "second_derivative_smoothness"]
 		for attr in list(self.loss_cfg.keys()):
 			if attr in expected_attrs:
 				setattr(self.loss_cfg, attr, getattr(self.loss_cfg, attr, None))
@@ -185,6 +186,20 @@ class TwinTURBO(LightningModule):
 			e1 = self.encoder1(w1)
 			e2 = self.encoder2(w2)
 		return e1, e2
+
+	def encode_w1(self, w1) -> torch.Tensor:
+		if self.latent_norm:
+			e1 = normalize(self.encoder1(w1))
+		else:
+			e1 = self.encoder1(w1)
+		return e1
+
+	def encode_w2(self, w2) -> torch.Tensor:
+		if self.latent_norm:
+			e2 = normalize(self.encoder2(w2))
+		else:
+			e2 = self.encoder2(w2)
+		return e2
 
 	def VICloss(self, x, y):
 		x = self.projector(x)
@@ -225,8 +240,10 @@ class TwinTURBO(LightningModule):
 		return nn.Sequential(*layers)
 
 	def _shared_step(self, sample: tuple, _batch_index = None, step_type="none") -> torch.Tensor:
+		self.log(f"{step_type}_debug/global_step", self.global_step)
 		batch_size=sample[0].shape[0]
-		w1, w2 = sample
+		w1 = sample[0]
+		w2 = sample[1]
 		
 		if self.input_noise_cfg is not None:
 			w1[:, self.input_noise_cfg.w1mpos] += torch.randn_like(w1[:, self.input_noise_cfg.w1mpos]) * self.input_noise_cfg.noise_std_w1
@@ -243,10 +260,15 @@ class TwinTURBO(LightningModule):
 		recon = self.decoder(latent)
 		
 		# Reverse pass
-		if self.consistency_cof is None:
+		if self.reverse_pass_mode is None:
 			e2_p = e2[torch.randperm(batch_size)]
+		elif self.reverse_pass_mode == "noise":
+			e2_p = e2[torch.randperm(batch_size)] + self.reverse_pass_mode.noise_scale * torch.randn_like(e2)
+		elif self.reverse_pass_mode == "additional_input":
+			e2_p = self.encode_w2(sample[2])[torch.randperm(batch_size)]
 		else:
-			e2_p = e2[torch.randperm(batch_size)] + self.consistency_cof.noise_scale * torch.randn_like(e2)
+			e2_p = e2[torch.randperm(batch_size)]
+   
 		latent_p = torch.cat([e1, e2_p], dim=1)
 		recon_p = self.decoder(latent_p)
 		x_n = recon_p[:, :x.shape[1]]
@@ -267,6 +289,29 @@ class TwinTURBO(LightningModule):
 		loss_reco = mse_loss(recon, torch.cat([x, m_dn], dim=1)).mean()
 		total_loss += loss_reco*self.loss_cfg.reco.w
 		self.log(f"{step_type}/loss_reco", loss_reco)
+		
+		# Second derivative smoothmess
+		if self.loss_cfg.second_derivative_smoothness is not None:
+			e2_p_pl = e2_p + self.loss_cfg.second_derivative_smoothness.step
+			e2_p_mi = e2_p - self.loss_cfg.second_derivative_smoothness.step
+			latent_p_pl = torch.cat([e1, e2_p_pl], dim=1)
+			recon_p_pl = self.decoder(latent_p_pl)
+			x_n_pl = recon_p_pl[:, :x.shape[1]]
+			m_n_pl = recon_p_pl[:, x.shape[1]:]
+			latent_p_mi = torch.cat([e1, e2_p_mi], dim=1)
+			recon_p_mi = self.decoder(latent_p_mi)
+			x_n_mi = recon_p_mi[:, :x.shape[1]]
+			m_n_mi = recon_p_mi[:, x.shape[1]:]	
+			loss_sec_der = (x_n_pl+x_n_mi-2*x_n)/(self.loss_cfg.second_derivative_smoothness.step**2) + (m_n_pl+m_n_mi-2*m_n)/(self.loss_cfg.second_derivative_smoothness.step**2)
+			loss_sec_der = loss_sec_der.abs().mean()
+			self.log(f"{step_type}/loss_sec_der_smooth", loss_sec_der)
+			if self.loss_cfg.second_derivative_smoothness.w is not None:
+				if isinstance(self.loss_cfg.second_derivative_smoothness.w, float) or isinstance(self.loss_cfg.second_derivative_smoothness.w, int):
+					total_loss += loss_sec_der*self.loss_cfg.second_derivative_smoothness.w
+				else:
+					w = self.loss_cfg.second_derivative_smoothness.w(self.global_step)
+					total_loss += loss_sec_der*w
+					self.log(f"{step_type}_debug/second_derivative_smoothnessw", w)
 
 		# Consistency losses 
 		if self.loss_cfg.consistency_x is not None:
@@ -276,7 +321,7 @@ class TwinTURBO(LightningModule):
 				if isinstance(self.loss_cfg.consistency_x.w, float) or isinstance(self.loss_cfg.consistency_x.w, int):
 					total_loss += loss_back_vec*self.loss_cfg.consistency_x.w
 				else:
-					total_loss += loss_back_vec*self.loss_cfg.consistency_x.w(_batch_index)
+					total_loss += loss_back_vec*self.loss_cfg.consistency_x.w(self.global_step)
 		
 		if self.loss_cfg.consistency_cont is not None:
 			loss_back_cont = mse_loss(e2_p, e2_n).mean()
@@ -285,7 +330,7 @@ class TwinTURBO(LightningModule):
 				if isinstance(self.loss_cfg.consistency_cont.w, float) or isinstance(self.loss_cfg.consistency_cont.w, int):
 					total_loss += loss_back_cont*self.loss_cfg.consistency_cont.w
 				else:
-					total_loss += loss_back_cont*self.loss_cfg.consistency_cont.w(_batch_index)
+					total_loss += loss_back_cont*self.loss_cfg.consistency_cont.w(self.global_step)
 
   		# variance loss
 		if self.loss_cfg.latent_variance_cfg is not None:
@@ -311,7 +356,7 @@ class TwinTURBO(LightningModule):
 				if isinstance(self.loss_cfg.attractive.w, float) or isinstance(self.loss_cfg.attractive.w, int):
 					total_loss += loss_attractive*self.loss_cfg.attractive.w
 				else:
-					total_loss += loss_attractive*self.loss_cfg.attractive.w(_batch_index)
+					total_loss += loss_attractive*self.loss_cfg.attractive.w(self.global_step)
 		
 		if self.loss_cfg.repulsive is not None:
 			loss_repulsive = torch.abs(cosine_similarity(e1, e2)).mean()
@@ -320,7 +365,7 @@ class TwinTURBO(LightningModule):
 				if isinstance(self.loss_cfg.repulsive.w, float) or isinstance(self.loss_cfg.repulsive.w, int):
 					total_loss += loss_repulsive*self.loss_cfg.repulsive.w
 				else:
-					total_loss += loss_repulsive*self.loss_cfg.repulsive.w(_batch_index)
+					total_loss += loss_repulsive*self.loss_cfg.repulsive.w(self.global_step)
 		# if hasattr(self.loss_cfg.loss_weights, "loss_attractive") and hasattr(self.loss_cfg.loss_weights, "loss_repulsive"):
 		# 	self.log(f"{step_type}/loss_attractive+repulsive", loss_attractive+loss_repulsive)
 		# 	# Loss balancing for tripplet loss
@@ -337,7 +382,9 @@ class TwinTURBO(LightningModule):
 				if isinstance(self.loss_cfg.DisCO_loss_cfg.w, float) or isinstance(self.loss_cfg.DisCO_loss_cfg.w, int):
 						total_loss += loss_disco*self.loss_cfg.DisCO_loss_cfg.w
 				else:
-					total_loss += loss_disco*self.loss_cfg.DisCO_loss_cfg.w(_batch_index)
+					w = self.loss_cfg.DisCO_loss_cfg.w(self.global_step)
+					total_loss += loss_disco*w
+					self.log(f"{step_type}_debug/DisCO_lossw", w)
 
 		# Pearson loss
 		if self.loss_cfg.pearson_loss_cfg is not None:
@@ -347,7 +394,7 @@ class TwinTURBO(LightningModule):
 				if isinstance(self.loss_cfg.pearson_loss_cfg.w, float) or isinstance(self.loss_cfg.pearson_loss_cfg.w, int):
 						total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.w
 				else:
-					total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.w(_batch_index)
+					total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.w(self.global_step)
 
 		# CLIP loss
 		if self.loss_cfg.clip_loss_cfg is not None:
@@ -403,11 +450,12 @@ class TwinTURBO(LightningModule):
 				self.loss_cfg.loss_weights.loss_attractive = sum*3/4
 
 	def training_step(self, sample: tuple, batch_idx: int) -> torch.Tensor:
-		total_loss = self._shared_step(sample, step_type="train")
+		total_loss = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
+		
 		return total_loss
 
 	def validation_step (self, sample: tuple, batch_idx: int) -> torch.Tensor:
-		total_loss = self._shared_step(sample, step_type="valid")
+		total_loss = self._shared_step(sample, step_type="valid", _batch_index=batch_idx)
 		return total_loss
 
 	def on_fit_start(self, *_args) -> None:

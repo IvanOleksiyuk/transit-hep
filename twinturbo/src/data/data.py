@@ -403,7 +403,6 @@ class InMemoryDataMergeClasses(InMemoryDataFrameDictBase):
         if plotting_path is not None:
             self.plot(plotting_path)
     
-
 class SimpleDataModule(LightningDataModule):
     def __init__(
         self,

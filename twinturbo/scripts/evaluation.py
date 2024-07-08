@@ -119,7 +119,7 @@ def evaluate_model(cfg, target_data, template_data):
 	log.info("Loading run information")
 	cfg = cfg.step_export_template
 	print(cfg.paths.full_path)
-	orig_cfg = reload_original_config(cfg, get_best=True)
+	orig_cfg = reload_original_config(cfg, get_best=cfg.get_best)
 	cfg = orig_cfg
 
 	plot_path= cfg["paths"]["output_dir"]+"/../plots/"
@@ -143,8 +143,10 @@ def evaluate_model(cfg, target_data, template_data):
 	batch1 = next(iter(tra_dataloader))
 	#print("batch1:", batch1)
 
+	model.eval() # Set the model to evaluation mode to deactivate dropout layers
 	batch_size=batch1[0].shape[0]
-	w1, w2 = batch1
+	w1 = batch1[0]
+	w2 = batch1[1]
 	m_dn = w2
 	if model.use_m:
 		x = w1[:, :-w2.shape[1]]
@@ -288,7 +290,8 @@ def evaluate_model(cfg, target_data, template_data):
 			f.write(f"{key}: {value}\n")
 	for key, value in results.items():
 		print(key, value)
-	w1, w2 = batch1
+	w1 = batch1[0]
+	w2 = batch1[1]
 	for var in range(w1.shape[1]):
 		draw_event_transport_trajectories(model, plot_path, w1, var=var, var_name=var_group_list[0][var], masses=np.linspace(-5, 5, 1000), max_traj=20)
 	
@@ -307,7 +310,8 @@ def draw_event_transport_trajectories(model, plot_path, w1, var, var_name, masse
 		max_traj = w1.shape[0]
 	for i in range(max_traj):
 		plt.plot(masses, [float(recon[i, var].detach().numpy()) for recon in recons], "r")
-	plt.scatter(to_np(w1[:, -1])[:max_traj], to_np(w1[:, var])[:max_traj],  marker="x", label="originals", c="green")
+	for i in range(max_traj):
+		plt.scatter(to_np(w1[:, -1])[:max_traj], to_np(w1[:, var])[:max_traj],  marker="x", label="originals", c="green")
 	plt.xlabel("mass")
 	plt.ylabel(f"dim{var}")
 	plt.savefig(plot_path+f"event_transport_trajectories{var}.png", bbox_inches="tight")

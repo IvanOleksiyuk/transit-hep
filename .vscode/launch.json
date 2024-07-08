@@ -1,0 +1,19 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["--config-name",
+                "twinturbo_reco_DisCo_massfromgap_smooth_shed1",
+                "general.subfolder=gauss_corr_4_gap_twinturbo_usem_addgapmass/",
+                "do_train_template=0"],
+        }
+    ]
+}

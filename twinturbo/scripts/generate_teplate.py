@@ -51,6 +51,7 @@ def main(cfg: DictConfig) -> None:
 
     # Cycle through the datasets and create the dataloader
     log.info("Running generation")
+    model.eval() #PL should do it but I just do it to be sure
     outputs = trainer.predict(model=model, datamodule=datamodule)
     dataset_dict = {var: T.vstack([o[var] for o in outputs]).numpy() for var in outputs[0].keys()}
     log.info("Saving outputs")

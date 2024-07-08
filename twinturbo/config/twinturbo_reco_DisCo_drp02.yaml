@@ -1,0 +1,32 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - path: user
+  - data: gauss_corr_2_twinturbo_usem
+  - step_train_template: twinturbo_reco_DisCo
+  - step_export_template: twinturbo
+  - step_evaluate: twinturbo
+
+step_train_template:
+  model:
+    encoder_mlp_config:
+      hddn_dim: [128, 128, 128, 128]
+      drp: 0.2
+    decoder_mlp_config:
+      hddn_dim: [128, 128, 128, 128]
+      drp: 0.2
+
+do_train_template: True
+do_export_template: True
+do_cwola: False
+do_evaluate_cwola: False
+do_evaluation: True 
+
+
+general:
+  name: twinTURBO_reco_DisCo_drp02
+  subfolder: experiments/
+  seed: 12345 # For reproducibility
+  run_dir: twinturbo/workspaces/${general.subfolder}${general.name}
+

@@ -4,10 +4,18 @@ defaults:
   - _self_
   - path: user
   - data: gauss_corr_2_twinturbo_usem
-  - step_train_template: twinturbo_reco_cons_DisCo
+  - step_train_template: twinturbo_reco_DisCo
   - step_export_template: twinturbo
   - step_evaluate: twinturbo
-  - override step_train_template/model/optimizer: AdamW-4.yaml
+
+step_train_template:
+  model:
+    encoder_mlp_config:
+      hddn_dim: [128, 128, 128, 128]
+      drp: 0.8
+    decoder_mlp_config:
+      hddn_dim: [128, 128, 128, 128]
+      drp: 0.8
 
 do_train_template: True
 do_export_template: True
@@ -17,7 +25,7 @@ do_evaluation: True
 
 
 general:
-  name: twinTURBO_reco_cons_DisCo
+  name: twinTURBO_reco_DisCo_drp08
   subfolder: experiments/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

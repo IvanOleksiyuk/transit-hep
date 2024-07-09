@@ -260,14 +260,15 @@ class TwinTURBO(LightningModule):
 		recon = self.decoder(latent)
 		
 		# Reverse pass
+		rpm = torch.randperm(batch_size)
 		if self.reverse_pass_mode is None:
-			e2_p = e2[torch.randperm(batch_size)]
+			e2_p = e2[rpm]
 		elif self.reverse_pass_mode == "noise":
-			e2_p = e2[torch.randperm(batch_size)] + self.reverse_pass_mode.noise_scale * torch.randn_like(e2)
+			e2_p = e2[rpm] + self.reverse_pass_mode.noise_scale * torch.randn_like(e2)
 		elif self.reverse_pass_mode == "additional_input":
-			e2_p = self.encode_w2(sample[2])[torch.randperm(batch_size)]
+			e2_p = self.encode_w2(sample[2])[rpm]
 		else:
-			e2_p = e2[torch.randperm(batch_size)]
+			e2_p = e2[rpm]
    
 		latent_p = torch.cat([e1, e2_p], dim=1)
 		recon_p = self.decoder(latent_p)
@@ -292,17 +293,18 @@ class TwinTURBO(LightningModule):
 		
 		# Second derivative smoothmess
 		if self.loss_cfg.second_derivative_smoothness is not None:
-			e2_p_pl = e2_p + self.loss_cfg.second_derivative_smoothness.step
-			e2_p_mi = e2_p - self.loss_cfg.second_derivative_smoothness.step
+			e2_p_pl = self.encode_w2(sample[2] + self.loss_cfg.second_derivative_smoothness.step)[rpm]
+			e2_p_mi = self.encode_w2(sample[2] - self.loss_cfg.second_derivative_smoothness.step)[rpm]
 			latent_p_pl = torch.cat([e1, e2_p_pl], dim=1)
 			recon_p_pl = self.decoder(latent_p_pl)
-			x_n_pl = recon_p_pl[:, :x.shape[1]]
-			m_n_pl = recon_p_pl[:, x.shape[1]:]
+			#x_n_pl = recon_p_pl[:, :x.shape[1]]
+			#m_n_pl = recon_p_pl[:, x.shape[1]:]
 			latent_p_mi = torch.cat([e1, e2_p_mi], dim=1)
 			recon_p_mi = self.decoder(latent_p_mi)
-			x_n_mi = recon_p_mi[:, :x.shape[1]]
-			m_n_mi = recon_p_mi[:, x.shape[1]:]	
-			loss_sec_der = (x_n_pl+x_n_mi-2*x_n)/(self.loss_cfg.second_derivative_smoothness.step**2) + (m_n_pl+m_n_mi-2*m_n)/(self.loss_cfg.second_derivative_smoothness.step**2)
+			#x_n_mi = recon_p_mi[:, :x.shape[1]]
+			#m_n_mi = recon_p_mi[:, x.shape[1]:]	
+			#loss_sec_der = (x_n_pl+x_n_mi-2*x_n)/(self.loss_cfg.second_derivative_smoothness.step**2) + (m_n_pl+m_n_mi-2*m_n)/(self.loss_cfg.second_derivative_smoothness.step**2)
+			loss_sec_der = (recon_p_pl+recon_p_mi-2*recon_p)/(self.loss_cfg.second_derivative_smoothness.step**2)
 			loss_sec_der = loss_sec_der.abs().mean()
 			self.log(f"{step_type}/loss_sec_der_smooth", loss_sec_der)
 			if self.loss_cfg.second_derivative_smoothness.w is not None:

@@ -1,0 +1,33 @@
+defaults:
+  - _self_
+  - optimizer: slower.yaml
+  - scheduler: cyclic.yaml
+
+_target_: twinturbo.src.models.twinturbo_model.TwinTURBO
+use_m: True
+encoder_mlp_config: 
+  hddn_dim: [64, 64, 64, 64]
+  act_h: "prelu"
+decoder_mlp_config:
+  hddn_dim: [64, 64, 64, 64]
+  act_h: "prelu"
+latent_norm: True
+latent_dim: 8
+loss_cfg:
+  reco:
+    w: 1
+  DisCO_loss_cfg:
+    w: 0.01
+  second_derivative_smoothness:
+    step: 0.001
+    w:
+      _target_: twinturbo.src.models.loss_annealing.SigmoidAnnealing
+      start: 20000
+      end: 95000
+      min_val: 0
+      amplitude: 0.05
+  consistency_cont: 
+    w: 0.05
+
+
+

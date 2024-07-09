@@ -20,26 +20,40 @@ def main(cfg: DictConfig) -> None:
     os.makedirs(cfg.cwola_path, exist_ok=True)
     
     datamodule = hydra.utils.instantiate(cfg.datamodule)
-    dataset = datamodule.train_data
-    dataset.write_npy(cfg.cwola_path)
+    datasr = datamodule.train_data
+    print("datasr len:", len(datasr))
+    datasr.write_npy(cfg.datasr, file_path="/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/window_3100_3300__3700_3900/dope_3000/")
     
-    # run cwola
-    return_code = subprocess.run([
+    template = datamodule.template_data
+    print("template len:", len(template))
+    template.write_npy(cfg.template, file_path="/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/window_3100_3300__3700_3900/dope_3000/")
+
+    extra_signal = datamodule.template_data
+    print("extra_signal len:", len(extra_signal))
+    template.write_npy(cfg.extra_signal, file_path="/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/window_3100_3300__3700_3900/dope_3000/")
+    
+
+    #python libs_snap/linearanomaly/cwola.py --input_path=twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/ --mode=standard --num_signal=3000 --sideband_1=3100_3300 --sideband_2=3700_3900 --num_folds=5 --max_iter=250 --early_stopping=True --validation_fraction=0.1 --class_weight=balanced --num_ensemble=5 --seed=0
+
+    command = [
         "python", 
-        "curtains2/cwola.py",
+        "libs/curtains2/cwola.py",
         "--input_path=" + cfg.cwola_path,
-        # "--mode=" + cfg.mode,
-        # "--num_signal=" + str(cfg.num_signal),
-        # "--sideband_1=" + str(cfg.sideband_1),
-        # "--sideband_2=" + str(cfg.sideband_2),
-        # "--num_folds=" + str(cfg.num_folds),
-        # "--max_iter=" + str(cfg.max_iter),
-        # "--early_stopping=" + str(cfg.early_stopping),
-        # "--validation_fraction=" + str(cfg.validation_fraction),
-        # "--class_weight=" + str(cfg.class_weight),
-        # "--num_ensemble=" + str(cfg.num_ensemble),
-        # "--seed=" + str(cfg.seed),
-        ]) 
+        "--mode=" + cfg.mode,
+        "--num_signal=" + str(cfg.num_signal),
+        "--sideband_1=" + str(cfg.sideband_1),
+        "--sideband_2=" + str(cfg.sideband_2),
+        "--num_folds=" + str(cfg.num_folds),
+        "--max_iter=" + str(cfg.max_iter),
+        #"--early_stopping=" + str(cfg.early_stopping),
+        "--validation_fraction=" + str(cfg.validation_fraction),
+        "--class_weight=" + str(cfg.class_weight),
+        "--num_ensemble=" + str(cfg.num_ensemble),
+        "--seed=" + str(cfg.seed),
+        ]
+    print(" ".join(command))
+    # run cwola
+    return_code = subprocess.run(command) 
     print(return_code)   
     log.info("<<<FINISH CWOLA SCRIPT>>>")
     

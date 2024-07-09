@@ -156,18 +156,29 @@ class ProcessorLHCOcurtains():
         return data
     
 class ProcessorSignalContamination():
-    def __init__(self, frame_name, var_name=None, n_contamination=0):
+    def __init__(self, frame_name, var_name=None, n_contamination=0, invert=False, no_background=False):
         self.frame_name = frame_name
+        self.invert = invert
         if var_name is None:
             self.var_name = frame_name
         else:
             self.var_name = var_name
         self.n_contamination = n_contamination
+        self.no_background = no_background
 
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
         indices_bkg = data[self.frame_name].index[data[self.frame_name][self.var_name]==False].tolist()
         indices_sig = data[self.frame_name].index[data[self.frame_name][self.var_name]==True].tolist()
-        indices_all = indices_bkg + indices_sig[:self.n_contamination]
+        if self.no_background:
+            if self.invert:
+                indices_all = indices_bkg[:self.n_contamination]
+            else:
+                indices_all = indices_sig[:self.n_contamination]
+        else:
+            if self.invert:
+                indices_all = indices_sig + indices_bkg[:self.n_contamination]
+            else:
+                indices_all = indices_bkg + indices_sig[:self.n_contamination]
         # apply the cuts to all the dataframes
         for key, value in data.items():
             data[key] = value.loc[indices_all]
@@ -295,11 +306,21 @@ class InMemoryDataFrameDictBase(Dataset):
         self.data[new_frame_name] = pd.concat([self.data[name] for name in frame_names], axis=1)
         self.list_order.append(new_frame_name)
 
-    def write_npy(self, file_path: str, keys=None):
-        if keys is None:
-            keys = self.data.keys()
-        for key in keys:
-            np.save(file_path + key + ".npy", self.data[key].to_numpy())
+    def write_npy(self, file_path: str, keys=None, save_file_names=None):
+        if save_file_names is not None:
+            assert len(save_file_names) == len(keys)
+        if save_file_names is None:
+            if keys is None:
+                keys = self.data.keys()
+            i=0
+            for key in keys:
+                np.save(file_path + save_file_names[i] + ".npy", self.data[key].to_numpy())
+                i+=1
+        else:
+            if keys is None:
+                keys = self.data.keys()
+            for key in keys:
+                np.save(file_path + key + ".npy", self.data[key].to_numpy())
 
 class InMemoryDataFrameDict(InMemoryDataFrameDictBase):
     """Class for in-memory datasets stored as a dictionary of pandas DataFrames.

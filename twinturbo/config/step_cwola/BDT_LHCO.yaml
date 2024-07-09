@@ -1,31 +1,23 @@
 cwola_path: ${general.run_dir}/cwola/
 
 datamodule:
-  _target_: twinturbo.src.data.data.SimpleDataModule
-  train_frac: 1
-  train_data:
-    _target_: twinturbo.src.data.data.InMemoryDataMergeClasses
-    dataset_list:
-      - ${data.cwola.experimental_data}
-      - _target_: twinturbo.src.data.data.InMemoryDataFrameDict
-        list_order: ["data"]
-        file_path: ${general.run_dir}/template/outputs/template_sample_con3000.h5
-        processor_cfg:
-          - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
-            frame_name: "template"
-            new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"]}
-  loader_kwargs:
-    pin_memory: true
-    batch_size: 512
-    num_workers: 8 
-    drop_last: false
+  datasr: ${data.cwola.datasr}
+  extra_signal: ${data.cwola.extra_signal}
+  template:
+    _target_: twinturbo.src.data.data.InMemoryDataFrameDict
+    list_order: ["data"]
+    file_path: ${general.run_dir}/template/outputs/template_sample_con3000.h5
+    processor_cfg: 
+      - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+        frame_name: "template"
+        new_df_dict: {"template": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"]}
 
 
 input_path: /srv/beegfs/scratch/users/l/leighm/linearresults/
 mode: standard
 num_signal: 3000
-sideband_1: [3100, 3300]
-sideband_2: [3700, 3900]
+sideband_1: 3100_3300
+sideband_2: 3700_3900
 num_folds: 5
 max_iter: 250
 early_stopping: True

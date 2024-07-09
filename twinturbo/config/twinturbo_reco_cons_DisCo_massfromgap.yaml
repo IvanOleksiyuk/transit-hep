@@ -7,6 +7,8 @@ defaults:
   - step_train_template: twinturbo_reco_cons_DisCo
   - step_export_template: twinturbo
   - step_evaluate: twinturbo
+  - override step_train_template/trainer: 200e.yaml
+  - override step_train_template/callbacks: default_noearly.yaml
 
 step_train_template:
   model:

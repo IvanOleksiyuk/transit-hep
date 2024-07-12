@@ -108,7 +108,7 @@ def evaluate_model(cfg):
 	log.info("Loading run information")
 	cfg = cfg.step_export_template
 	print(cfg.paths.full_path)
-	orig_cfg = reload_original_config(cfg, get_best=True)
+	orig_cfg = reload_original_config(cfg, get_best=cfg.get_best)
 	cfg = orig_cfg
 
 	plot_path= cfg["paths"]["output_dir"]+"/../plots/"

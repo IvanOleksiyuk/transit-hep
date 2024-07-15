@@ -13,59 +13,73 @@ import numpy as np
 import torch.distributed as dist
 import twinturbo.src.models.distance_correlation as dcor
 from twinturbo.src.models.pearson_correlation import PearsonCorrelation
+import matplotlib.pyplot as plt
+import PIL
+
+def to_np(inpt) -> np.ndarray:
+    """More consicse way of doing all the necc steps to convert a pytorch
+    tensor to numpy array.
+
+    - Includes gradient deletion, and device migration
+    """
+    if isinstance(inpt, (tuple, list)):
+        return type(inpt)(to_np(x) for x in inpt)
+    if inpt.dtype == torch.bfloat16:  # Numpy conversions don't support bfloat16s
+        inpt = inpt.half()
+    return inpt.detach().cpu().numpy()
 
 class CLIPLoss(nn.Module):
-    def __init__(self, logit_scale=1.0):
-        super().__init__()
-        self.logit_scale = logit_scale
+	def __init__(self, logit_scale=1.0):
+		super().__init__()
+		self.logit_scale = logit_scale
 
-    def forward(self, embedding_1, embedding_2, valid=False):
-        device = embedding_1.device
-        logits_1 = self.logit_scale * embedding_1 @ embedding_2.T
-        logits_2 = self.logit_scale * embedding_2 @ embedding_1.T
-        num_logits = logits_1.shape[0]
-        labels = torch.arange(num_logits, device=device, dtype=torch.long)
-        loss = 0.5 * (
-            F.cross_entropy(logits_1, labels) + F.cross_entropy(logits_2, labels)
-        )
-        return loss
+	def forward(self, embedding_1, embedding_2, valid=False):
+		device = embedding_1.device
+		logits_1 = self.logit_scale * embedding_1 @ embedding_2.T
+		logits_2 = self.logit_scale * embedding_2 @ embedding_1.T
+		num_logits = logits_1.shape[0]
+		labels = torch.arange(num_logits, device=device, dtype=torch.long)
+		loss = 0.5 * (
+			F.cross_entropy(logits_1, labels) + F.cross_entropy(logits_2, labels)
+		)
+		return loss
 
 class CLIPLossNorm(nn.Module):
-    def __init__(
-        self,
-        logit_scale_init=np.log(1 / 0.07),
-        logit_scale_max=np.log(100),
-        logit_scale_min=np.log(0.01),
-        logit_scale_learnable=False,
-    ):
-        super().__init__()
-        if logit_scale_learnable:
-            self.logit_scale = nn.Parameter(torch.ones([]) * logit_scale_init)
-        else:
-            self.logit_scale = torch.ones([], requires_grad=False) * logit_scale_init
-        self.logit_scale_max = logit_scale_max
-        self.logit_scale_min = logit_scale_min
-        self.logit_scale_learnable = logit_scale_learnable
+	def __init__(
+		self,
+		logit_scale_init=np.log(1 / 0.07),
+		logit_scale_max=np.log(100),
+		logit_scale_min=np.log(0.01),
+		logit_scale_learnable=False,
+	):
+		super().__init__()
+		if logit_scale_learnable:
+			self.logit_scale = nn.Parameter(torch.ones([]) * logit_scale_init)
+		else:
+			self.logit_scale = torch.ones([], requires_grad=False) * logit_scale_init
+		self.logit_scale_max = logit_scale_max
+		self.logit_scale_min = logit_scale_min
+		self.logit_scale_learnable = logit_scale_learnable
 
-    def forward(self, embedding_1, embedding_2, valid=False):
-        scale = torch.clamp(
-            self.logit_scale, max=self.logit_scale_max, min=self.logit_scale_min
-        ).exp()
+	def forward(self, embedding_1, embedding_2, valid=False):
+		scale = torch.clamp(
+			self.logit_scale, max=self.logit_scale_max, min=self.logit_scale_min
+		).exp()
 
-        wandb.log({"scale": scale})
-        device = embedding_1.device
-        norm = (
-            embedding_1.norm(dim=1, keepdim=True)
-            @ embedding_2.norm(dim=1, keepdim=True).T
-        )
-        logits_1 = (scale * embedding_1 @ embedding_2.T) / norm
-        logits_2 = (scale * embedding_2 @ embedding_1.T) / norm.T
-        num_logits = logits_1.shape[0]
-        labels = torch.arange(num_logits, device=device, dtype=torch.long)
-        loss = 0.5 * (
-            F.cross_entropy(logits_1, labels) + F.cross_entropy(logits_2, labels)
-        )
-        return loss
+		wandb.log({"scale": scale})
+		device = embedding_1.device
+		norm = (
+			embedding_1.norm(dim=1, keepdim=True)
+			@ embedding_2.norm(dim=1, keepdim=True).T
+		)
+		logits_1 = (scale * embedding_1 @ embedding_2.T) / norm
+		logits_2 = (scale * embedding_2 @ embedding_1.T) / norm.T
+		num_logits = logits_1.shape[0]
+		labels = torch.arange(num_logits, device=device, dtype=torch.long)
+		loss = 0.5 * (
+			F.cross_entropy(logits_1, labels) + F.cross_entropy(logits_2, labels)
+		)
+		return loss
 
 class FullGatherLayer(torch.autograd.Function):
 	"""
@@ -91,7 +105,7 @@ def off_diagonal(x):
 	return x.flatten()[:-1].view(n - 1, n + 1)[:, 1:].flatten()
 
 class TwinTURBO(LightningModule):
-    
+	
 	def __init__(
 		self,
 		*,
@@ -105,7 +119,7 @@ class TwinTURBO(LightningModule):
 		decoder_mlp_config: Mapping,
 		var_group_list: list = None,
 		loss_cfg: Mapping = None,
-    	use_m = True,
+		use_m = True,
 		input_noise_cfg=None,
 		reverse_pass_mode=None,
 	) -> None:
@@ -116,6 +130,7 @@ class TwinTURBO(LightningModule):
 			optimizer: Partially initialised optimiser
 			scheduler: How the sceduler should be used
 		"""
+		
 		super().__init__()
 		# TODO need to preprocess the data properly!
 		self.use_m = use_m
@@ -136,7 +151,7 @@ class TwinTURBO(LightningModule):
 				self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0], **decoder_mlp_config)
 			else:
 				self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0]+inpt_dim[1][0], **decoder_mlp_config)
-
+		
 		self.var_group_list = var_group_list
 		self.latent_norm = latent_norm
 		self.reverse_pass_mode = reverse_pass_mode
@@ -157,18 +172,18 @@ class TwinTURBO(LightningModule):
 
 		# For more stable checks in the shared step
 		expected_attrs = ["reco", 
-                    	"consistency_x", 
-                     	"consistency_cont", 
-                      	"latent_variance_cfg", 
-                       	"l1_reg", 
-                        "DisCO_loss_cfg", 
-                        "pearson_loss_cfg", 
-                        "clip_loss_cfg", 
-                        "attractive", 
-                        "repulsive", 
-                        "vic_reg_cfg",
-                        "loss_balancing",
-                        "second_derivative_smoothness"]
+						"consistency_x", 
+						"consistency_cont", 
+						"latent_variance_cfg", 
+						"l1_reg", 
+						"DisCO_loss_cfg", 
+						"pearson_loss_cfg", 
+						"clip_loss_cfg", 
+						"attractive", 
+						"repulsive", 
+						"vic_reg_cfg",
+						"loss_balancing",
+						"second_derivative_smoothness"]
 		for attr in list(self.loss_cfg.keys()):
 			if attr in expected_attrs:
 				setattr(self.loss_cfg, attr, getattr(self.loss_cfg, attr, None))
@@ -269,7 +284,7 @@ class TwinTURBO(LightningModule):
 			e2_p = self.encode_w2(sample[2])[rpm]
 		else:
 			e2_p = e2[rpm]
-   
+
 		latent_p = torch.cat([e1, e2_p], dim=1)
 		recon_p = self.decoder(latent_p)
 		x_n = recon_p[:, :x.shape[1]]
@@ -285,7 +300,7 @@ class TwinTURBO(LightningModule):
 
 		#### Losses
 		total_loss = 0
-  
+
 		# Reconstruction loss
 		loss_reco = mse_loss(recon, torch.cat([x, m_dn], dim=1)).mean()
 		total_loss += loss_reco*self.loss_cfg.reco.w
@@ -334,7 +349,7 @@ class TwinTURBO(LightningModule):
 				else:
 					total_loss += loss_back_cont*self.loss_cfg.consistency_cont.w(self.global_step)
 
-  		# variance loss
+		# variance loss
 		if self.loss_cfg.latent_variance_cfg is not None:
 			std_e1 = torch.sqrt(e1.var(dim=0) + 0.0001)
 			std_e2 = torch.sqrt(e2.var(dim=0) + 0.0001)
@@ -375,7 +390,7 @@ class TwinTURBO(LightningModule):
 		# 		self.loss_balabcing(loss_repulsive)
 		# 		self.log("train/l_atr_weight", self.loss_cfg.loss_weights.loss_attractive)	
 		# 		self.log("train/l_rep_weight", self.loss_cfg.loss_weights.loss_repulsive)
-  
+
 		# DisCO loss
 		if self.loss_cfg.DisCO_loss_cfg is not None:
 			loss_disco = self.DisCO_loss(e1, e2)
@@ -412,7 +427,7 @@ class TwinTURBO(LightningModule):
 			self.log(f"{step_type}/VIC_std_loss", std_loss)
 			self.log(f"{step_type}/VIC_cov_loss", cov_loss)
 			total_loss += loss
-  
+
 		# Log the total loss
 		self.log(f"{step_type}/total_loss", total_loss)
 		return total_loss
@@ -453,11 +468,51 @@ class TwinTURBO(LightningModule):
 
 	def training_step(self, sample: tuple, batch_idx: int) -> torch.Tensor:
 		total_loss = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
-		
 		return total_loss
+
+	def draw_event_transport_trajectories(self, w1, var, var_name, masses=np.linspace(-4, 4, 1000), max_traj=20):
+		recons = []
+		for m in masses:
+			w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float().to(w1.device)
+			e1, e2 = self.encode(w1, w2)
+			latent = torch.cat([e1, e2], dim=1)
+			recon = self.decoder(latent)
+
+			recons.append(recon)
+		
+		plt.figure()
+		if max_traj is None:
+			max_traj = w1.shape[0]
+		for i in range(max_traj):
+			plt.plot(masses, [float(recon[i, var].cpu().detach().numpy()) for recon in recons], "r")
+		for i in range(max_traj):
+			plt.scatter(to_np(w1[:, -1])[:max_traj], to_np(w1[:, var])[:max_traj],  marker="x", label="originals", c="green")
+		plt.xlabel("mass")
+		plt.ylabel(f"dim{var}")
+		plt.title(f"Event transport for {var_name}, global step: {self.global_step}")
+		# Convert to an image and return
+		fig = plt.gcf()
+		fig.tight_layout()
+		fig.canvas.draw()
+		img = PIL.Image.frombytes(
+			"RGB",
+			fig.canvas.get_width_height(),
+			fig.canvas.tostring_rgb(),
+		)
+		plt.close("all")
+		return img
+		
 
 	def validation_step (self, sample: tuple, batch_idx: int) -> torch.Tensor:
 		total_loss = self._shared_step(sample, step_type="valid", _batch_index=batch_idx)
+		if batch_idx == 0:
+			w1 = sample[0]
+			for var in range(w1.shape[1]):
+				image = wandb.Image(self.draw_event_transport_trajectories(w1, var=var, var_name=self.var_group_list[0][var], masses=np.linspace(-5, 5, 1000), max_traj=20))
+				if wandb.run is not None:
+					wandb.run.log({f"valid/transport_{self.var_group_list[0][var]}": image})
+
+   
 		return total_loss
 
 	def on_fit_start(self, *_args) -> None:
@@ -508,4 +563,5 @@ class TwinTURBO(LightningModule):
 			result = {var_name: column.reshape(-1, 1) for var_name, column in zip(self.var_group_list[0], sample.T)}
 			result.update({var_name: column.reshape(-1, 1) for var_name, column in zip(self.var_group_list[1], context.T)})
 			return result
+
 

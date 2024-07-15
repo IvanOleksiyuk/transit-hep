@@ -23,9 +23,9 @@ def main(cfg: DictConfig) -> None:
     dataset = datamodule.train_data
     dataset.write_npy(cfg.cwola_path)
 
-#python libs_snap/linearanomaly/cwola.py --input_path=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/ --mode=standard --num_signal=3000 --sideband_1=3100_3300 --sideband_2=3700_3900 --num_folds=5 --max_iter=250 --validation_fraction=0.1 --class_weight=balanced --num_ensemble=5 --seed=0
+python libs_snap/linearanomaly/cwola.py --input_path=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/ --mode=standard --num_signal=3000 --sideband_1=3100_3300 --sideband_2=3700_3900 --num_folds=5 --max_iter=250 --validation_fraction=0.1 --class_weight=balanced --num_ensemble=5 --seed=0
 
-#python cwola.py --input_path=twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/ --mode=standard --num_signal=3000 --sideband_1=3100_3300 --sideband_2=3700_3900 --num_folds=5 --max_iter=250 --early_stopping=True --validation_fraction=0.1 --class_weight=balanced --num_ensemble=5 --seed=0
+python cwola.py --input_path=twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/ --mode=standard --num_signal=3000 --sideband_1=3100_3300 --sideband_2=3700_3900 --num_folds=5 --max_iter=250 --early_stopping=True --validation_fraction=0.1 --class_weight=balanced --num_ensemble=5 --seed=0
 
 
     command = [

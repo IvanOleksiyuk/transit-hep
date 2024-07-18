@@ -295,14 +295,13 @@ def evaluate_model(cfg, target_data, template_data):
 	for var in range(w1.shape[1]):
 		draw_event_transport_trajectories(model, plot_path, w1, var=var, var_name=var_group_list[0][var], masses=np.linspace(-5, 5, 1000), max_traj=20)
 	
-def draw_event_transport_trajectories(model, plot_path, w1, var, var_name, masses=np.linspace(-4, 4, 1000), max_traj=20):
+def draw_event_transport_trajectories(model, plot_path, w1, var, var_name, masses=np.linspace(-4, 4, 801), max_traj=20):
 	recons = []
 	for m in masses:
 		w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float()
 		e1, e2 = model.encode(w1, w2)
 		latent = torch.cat([e1, e2], dim=1)
 		recon = model.decoder(latent)
-
 		recons.append(recon)
 	
 	plt.figure()
@@ -311,10 +310,30 @@ def draw_event_transport_trajectories(model, plot_path, w1, var, var_name, masse
 	for i in range(max_traj):
 		plt.plot(masses, [float(recon[i, var].detach().numpy()) for recon in recons], "r")
 	for i in range(max_traj):
-		plt.scatter(to_np(w1[:, -1])[:max_traj], to_np(w1[:, var])[:max_traj],  marker="x", label="originals", c="green")
+		plt.scatter(to_np(w1[:, -1])[:max_traj], to_np(w1[:, var])[:max_traj], marker="x", label="originals", c="green")
 	plt.xlabel("mass")
 	plt.ylabel(f"dim{var}")
 	plt.savefig(plot_path+f"event_transport_trajectories{var}.png", bbox_inches="tight")
+ 
+def draw_event_transport_trajectories_2d_der(model, plot_path, w1, var, var_name, masses=np.linspace(-4, 4, 801), max_traj=20):
+	recons = []
+	for m in masses:
+		w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float()
+		e1, e2 = model.encode(w1, w2)
+		latent = torch.cat([e1, e2], dim=1)
+		recon = model.decoder(latent)
+		recons.append(recon)
+	
+	plt.figure()
+	if max_traj is None:
+		max_traj = w1.shape[0]
+	for i in range(max_traj):
+		x = masses
+		y = np.array([float(recon[i, var].detach().numpy()) for recon in recons])
+		plt.plot(x, (2*y[1:-1]-y[:-2]+y[2:])/0.01**2, "r")
+	plt.xlabel("mass")
+	plt.ylabel(f"dim{var}")
+	plt.savefig(plot_path+f"event_transport_trajectories_2nd_der{var}.png", bbox_inches="tight")
 
 def plot_correlation_plots(e1, e2, plot_path, name, c=None, one_corretation_plot=True):
 	person_correlations =np.zeros((e1.shape[1], e2.shape[1]))

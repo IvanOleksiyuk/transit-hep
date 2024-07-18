@@ -122,6 +122,8 @@ class TwinTURBO(LightningModule):
 		use_m = True,
 		input_noise_cfg=None,
 		reverse_pass_mode=None,
+		seed=42,
+		valid_plots = True,
 	) -> None:
 		"""
 		Args:
@@ -133,8 +135,10 @@ class TwinTURBO(LightningModule):
 		
 		super().__init__()
 		# TODO need to preprocess the data properly!
+		torch.manual_seed(seed)
 		self.use_m = use_m
 		self.loss_cfg = loss_cfg
+		self.valid_plots = valid_plots
 		self.save_hyperparameters(logger=False)
 		if encoder_mlp_config.get("network_type") == "KAN":
 			self.encoder1 = KAN(width=[inpt_dim[0][0]]+encoder_mlp_config.hddn_dim+[latent_dim], grid=encoder_mlp_config.grid, k=encoder_mlp_config.k, device=torch.device('cuda')) #model = KAN(width=[2,5,1], grid=5, k=3, seed=0) 
@@ -192,6 +196,10 @@ class TwinTURBO(LightningModule):
 		for attr in expected_attrs:
 			if not hasattr(self.loss_cfg, attr):
 				setattr(self.loss_cfg, attr, None)
+
+		if hasattr(self.loss_cfg.DisCO_loss_cfg, "w"):
+			if not hasattr(self.loss_cfg.DisCO_loss_cfg, "mode"):
+				self.loss_cfg.DisCO_loss_cfg.mode = "e1_vs_e2"
 
 	def encode(self, w1, w2) -> torch.Tensor:
 		if self.latent_norm:
@@ -393,7 +401,10 @@ class TwinTURBO(LightningModule):
 
 		# DisCO loss
 		if self.loss_cfg.DisCO_loss_cfg is not None:
-			loss_disco = self.DisCO_loss(e1, e2)
+			if self.loss_cfg.DisCO_loss_cfg.mode == "e1_vs_e2":
+				loss_disco = self.DisCO_loss(e1, e2)
+			elif self.loss_cfg.DisCO_loss_cfg.mode == "e1_vs_w2":
+				loss_disco = self.DisCO_loss(e1, w2)
 			self.log(f"{step_type}/DisCO_loss", loss_disco)
 			if self.loss_cfg.DisCO_loss_cfg.w is not None:
 				if isinstance(self.loss_cfg.DisCO_loss_cfg.w, float) or isinstance(self.loss_cfg.DisCO_loss_cfg.w, int):
@@ -470,7 +481,7 @@ class TwinTURBO(LightningModule):
 		total_loss = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
 		return total_loss
 
-	def draw_event_transport_trajectories(self, w1, var, var_name, masses=np.linspace(-4, 4, 1000), max_traj=20):
+	def _draw_event_transport_trajectories(self, w1, var, var_name, masses=np.linspace(-4, 4, 201), max_traj=20):
 		recons = []
 		for m in masses:
 			w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float().to(w1.device)
@@ -484,7 +495,9 @@ class TwinTURBO(LightningModule):
 		if max_traj is None:
 			max_traj = w1.shape[0]
 		for i in range(max_traj):
-			plt.plot(masses, [float(recon[i, var].cpu().detach().numpy()) for recon in recons], "r")
+			x=masses
+			y = np.array([float(recon[i, var].cpu().detach().numpy()) for recon in recons])
+			plt.plot(x, y, "r")
 		for i in range(max_traj):
 			plt.scatter(to_np(w1[:, -1])[:max_traj], to_np(w1[:, var])[:max_traj],  marker="x", label="originals", c="green")
 		plt.xlabel("mass")
@@ -501,16 +514,60 @@ class TwinTURBO(LightningModule):
 		)
 		plt.close("all")
 		return img
+
+	def _draw_event_transport_trajectories_2nd_der(self, w1, var, var_name, masses=None, max_traj=20):
+		if masses is None:
+			if self.loss_cfg.second_derivative_smoothness is not None:
+				masses = np.arrange(-4, 4, self.loss_cfg.second_derivative_smoothness.step)
+				mode=" with step"
+			else:
+				masses = np.linspace(-4, 4, 81)
+				mode="801"
+		else:
+			mode="custom"
+		recons = []
+		for m in masses:
+			w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float().to(w1.device)
+			e1, e2 = self.encode(w1, w2)
+			latent = torch.cat([e1, e2], dim=1)
+			recon = self.decoder(latent)
+
+			recons.append(recon)
 		
+		plt.figure()
+		if max_traj is None:
+			max_traj = w1.shape[0]
+		for i in range(max_traj):
+			x = masses
+			y = np.array([float(recon[i, var].cpu().detach().numpy()) for recon in recons])
+			plt.plot(x[1:-1], (-2*y[1:-1]+y[:-2]+y[2:])/(x[1]-x[0])**2, "r")
+
+		plt.xlabel("mass")
+		plt.ylabel(f"dim{var}")
+		plt.title(f"Event transport for {var_name}, global step: {self.global_step},"+mode)
+		# Convert to an image and return
+		fig = plt.gcf()
+		fig.tight_layout()
+		fig.canvas.draw()
+		img = PIL.Image.frombytes(
+			"RGB",
+			fig.canvas.get_width_height(),
+			fig.canvas.tostring_rgb(),
+		)
+		plt.close("all")
+		return img
 
 	def validation_step (self, sample: tuple, batch_idx: int) -> torch.Tensor:
 		total_loss = self._shared_step(sample, step_type="valid", _batch_index=batch_idx)
-		if batch_idx == 0:
+		if batch_idx == 0 and self.valid_plots:
 			w1 = sample[0]
 			for var in range(w1.shape[1]):
-				image = wandb.Image(self.draw_event_transport_trajectories(w1, var=var, var_name=self.var_group_list[0][var], masses=np.linspace(-5, 5, 1000), max_traj=20))
+				image = wandb.Image(self._draw_event_transport_trajectories(w1, var=var, var_name=self.var_group_list[0][var], max_traj=20))
 				if wandb.run is not None:
-					wandb.run.log({f"valid/transport_{self.var_group_list[0][var]}": image})
+					wandb.run.log({f"valid_images/transport_{self.var_group_list[0][var]}": image})
+				image = wandb.Image(self._draw_event_transport_trajectories_2nd_der(w1, var=var, var_name=self.var_group_list[0][var], max_traj=20))
+				if wandb.run is not None:
+					wandb.run.log({f"valid_images/transport_2nd_der_{self.var_group_list[0][var]}": image})
 
    
 		return total_loss

@@ -1,0 +1,24 @@
+defaults:
+  - _self_
+  - optimizer: default.yaml
+  - scheduler: cyclic.yaml
+
+_target_: twinturbo.src.models.twinturbo_model.TwinTURBO
+use_m: True
+encoder_mlp_config: 
+  hddn_dim: [64, 64, 64, 64]
+  act_h: "prelu"
+decoder_mlp_config:
+  hddn_dim: [64, 64, 64, 64]
+  act_h: "prelu"
+latent_norm: True
+latent_dim: 8
+loss_cfg:
+  reco:
+    w: 1
+  DisCO_loss_cfg:
+    mode: "e1_vs_w2"
+    w: 0.01
+
+
+

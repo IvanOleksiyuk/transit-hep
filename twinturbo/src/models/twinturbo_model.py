@@ -518,7 +518,7 @@ class TwinTURBO(LightningModule):
 	def _draw_event_transport_trajectories_2nd_der(self, w1, var, var_name, masses=None, max_traj=20):
 		if masses is None:
 			if self.loss_cfg.second_derivative_smoothness is not None:
-				masses = np.arrange(-4, 4, self.loss_cfg.second_derivative_smoothness.step)
+				masses = np.arange(-4, 4, self.loss_cfg.second_derivative_smoothness.step)
 				mode=" with step"
 			else:
 				masses = np.linspace(-4, 4, 81)

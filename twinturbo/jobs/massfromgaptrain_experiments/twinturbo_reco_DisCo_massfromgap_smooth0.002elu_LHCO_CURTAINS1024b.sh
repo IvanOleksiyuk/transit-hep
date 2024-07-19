@@ -15,7 +15,10 @@ echo "Job started at: $(date)"
 
 module load GCCcore/12.3.0 Python/3.11.3
 cd scratch/sing_images/
-singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif bash -c "cd /home/users/o/oleksiyu/WORK/hyperproject/ && python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py --config-name twinturbo_reco_DisCo_massfromgap_smooth0.002elu_LHCO_CURTAINS1024b general.subfolder=gauss_corr_4_gap_twinturbo_usem_addgapmass/"
+singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif bash -c "cd /home/users/o/oleksiyu/WORK/hyperproject/ &&\
+ python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py\
+ --config-name twinturbo_reco_DisCo_massfromgap_smooth0.002elu_LHCO_CURTAINS1024b\
+ general.subfolder=gauss_corr_4_gap_twinturbo_usem_addgapmass/"
 
 # Record the end time
 end_time=$(date +%s)

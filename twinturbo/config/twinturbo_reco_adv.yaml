@@ -3,20 +3,22 @@
 defaults:
   - _self_
   - path: user
-  - data: gauss_corr_2_10K_twinturbo_usem_addgapmass
+  - data: gauss_corr_4_gap_twinturbo_usem_addgapmass
   - step_train_template: twinturbo_reco_adv
   - step_export_template: twinturbo
   - step_evaluate: twinturbo
+  - override step_train_template/callbacks: default_noearly.yaml
+  - override step_train_template/trainer: 20e_noclip.yaml
 
 step_train_template:
   model:
     reverse_pass_mode: additional_input
 
 do_train_template: True
-do_export_template: False
+do_export_template: True
 do_cwola: False
 do_evaluate_cwola: False
-do_evaluation: False 
+do_evaluation: True 
 
 
 general:

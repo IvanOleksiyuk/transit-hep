@@ -4,3 +4,7 @@ target_data: ${data.evaluation.target_data}
 template_file:  ${general.run_dir}/template/outputs/template_sample.h5
 debug_eval: True
 get_best: False
+
+do_plots:
+  
+  plot_trajectories: True

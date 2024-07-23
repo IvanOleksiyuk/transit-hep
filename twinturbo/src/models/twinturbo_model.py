@@ -15,6 +15,7 @@ import twinturbo.src.models.distance_correlation as dcor
 from twinturbo.src.models.pearson_correlation import PearsonCorrelation
 import matplotlib.pyplot as plt
 import PIL
+import copy
 
 def to_np(inpt) -> np.ndarray:
     """More consicse way of doing all the necc steps to convert a pytorch
@@ -124,6 +125,7 @@ class TwinTURBO(LightningModule):
 		reverse_pass_mode=None,
 		seed=42,
 		valid_plots = True,
+		adversarial_cfg = None,
 	) -> None:
 		"""
 		Args:
@@ -136,6 +138,12 @@ class TwinTURBO(LightningModule):
 		super().__init__()
 		# TODO need to preprocess the data properly!
 		torch.manual_seed(seed)
+		if adversarial_cfg is not None:
+			self.adversarial = True
+			self.automatic_optimization = False
+			self.discriminator = MLP(inpt_dim=latent_dim+1, outp_dim=1, **adversarial_cfg.discriminator)
+		else:
+			self.adversarial = False
 		self.use_m = use_m
 		self.loss_cfg = loss_cfg
 		self.valid_plots = valid_plots
@@ -441,7 +449,10 @@ class TwinTURBO(LightningModule):
 
 		# Log the total loss
 		self.log(f"{step_type}/total_loss", total_loss)
-		return total_loss
+		if self.adversarial:
+			return total_loss, e1, w2
+		else:
+			return total_loss
 
 	def loss_balabcing(self, loss_repulsive):
 		if self.loss_cfg.loss_balancing==1:
@@ -477,9 +488,45 @@ class TwinTURBO(LightningModule):
 				self.loss_cfg.loss_weights.loss_repulsive = sum*1/4
 				self.loss_cfg.loss_weights.loss_attractive = sum*3/4
 
+	def adversarial_loss(self, y_hat, y):
+		return F.binary_cross_entropy(y_hat, y.reshape((-1, 1))).mean()
+
 	def training_step(self, sample: tuple, batch_idx: int) -> torch.Tensor:
-		total_loss = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
-		return total_loss
+		if self.adversarial:
+			optimizer_g, optimizer_d = self.optimizers()
+
+			# adversarial loss is binary cross-entropy
+			total_loss, e1, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
+			batch_size=sample[0].shape[0]
+			rpm = torch.randperm(batch_size//2)
+			w2_new = w2.clone()
+			w2_new[:batch_size//2] = w2_new[:batch_size//2][rpm]
+			labels = torch.cat([torch.ones(batch_size//2), torch.zeros(batch_size//2)]).type_as(w2_new)
+
+			# train discriminator
+			# Measure discriminator's ability to classify real from generated samples
+			d_loss = self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([e1, w2_new], dim=1))), labels)
+			self.toggle_optimizer(optimizer_d)
+			self.log("d_loss", d_loss, prog_bar=True)
+			self.manual_backward(d_loss, retain_graph=True)
+			optimizer_d.step()
+			optimizer_d.zero_grad()
+			self.untoggle_optimizer(optimizer_d)
+
+			# Train generator
+			g_loss = self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([e1, w2_new], dim=1))), labels)
+			total_loss2 = total_loss - g_loss
+			self.log("total_loss2", total_loss2, prog_bar=True)
+			self.manual_backward(total_loss2)
+			self.clip_gradients(optimizer_g, gradient_clip_val=5)
+			optimizer_g.step()
+			optimizer_g.zero_grad()
+			self.untoggle_optimizer(optimizer_g)
+
+
+		else:	
+			total_loss = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
+			return total_loss
 
 	def _draw_event_transport_trajectories(self, w1, var, var_name, masses=np.linspace(-4, 4, 201), max_traj=20):
 		recons = []
@@ -582,17 +629,22 @@ class TwinTURBO(LightningModule):
 	def configure_optimizers(self) -> dict:
 		"""Configure the optimisers and learning rate sheduler for this
 		model."""
+		if self.adversarial:	
+			enc_dec_params = list(self.encoder1.parameters()) + list(self.encoder2.parameters()) + list(self.decoder.parameters())
+			opt_g = self.hparams.optimizer(params=enc_dec_params)
+			opt_d = self.hparams.optimizer(params=self.discriminator.parameters())
+			return [opt_g, opt_d], []
+		else:
+			# Finish initialising the partialy created methods
+			opt = self.hparams.optimizer(params=self.parameters())
 
-		# Finish initialising the partialy created methods
-		opt = self.hparams.optimizer(params=self.parameters())
+			sched = self.hparams.scheduler.scheduler(opt)
 
-		sched = self.hparams.scheduler.scheduler(opt)
-
-		# Return the dict for the lightning trainer
-		return {
-			"optimizer": opt,
-			"lr_scheduler": {"scheduler": sched, **self.hparams.scheduler.lightning},
-		}
+			# Return the dict for the lightning trainer
+			return {
+				"optimizer": opt,
+				"lr_scheduler": {"scheduler": sched, **self.hparams.scheduler.lightning},
+			}
 
 	def on_validation_epoch_end(self) -> None:
 		"""Makes several plots of the jets and how they are reconstructed.

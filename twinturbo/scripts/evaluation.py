@@ -83,20 +83,21 @@ def main(cfg):
 	print(len(target_data.to_numpy()))
 	print(len(template_data.to_numpy()))
 
-	####uncomment
-	if cfg.step_evaluate.debug_eval:
-		plot_mode="diagnose"
-	else:
-		plot_mode=""
-	pltt.plot_feature_spread(
-		target_data[variables].to_numpy(),
-		template_data[variables].to_numpy(),
-		original_data = original_data[variables].to_numpy(),
-		feature_nms = variables,
-		save_dir=Path(cfg.general.run_dir),
-		plot_mode=plot_mode)
-	print("contour plot is done")
-	evaluate_model(cfg, target_data, template_data)
+
+	if getattr(cfg.step_evaluate.procedures, "plot_contour", True):
+		if cfg.step_evaluate.debug_eval:
+			plot_mode="diagnose"
+		else:
+			plot_mode=""
+		pltt.plot_feature_spread(
+			target_data[variables].to_numpy(),
+			template_data[variables].to_numpy(),
+			original_data = original_data[variables].to_numpy(),
+			feature_nms = variables,
+			save_dir=Path(cfg.general.run_dir),
+			plot_mode=plot_mode)
+		print("contour plot is done")
+	evaluate_model(cfg, original_data, target_data, template_data)
 	plt.close("all")
 
 def plot_matrix(matrix, title, vmin=-1, vmax=1, abs=False):
@@ -109,7 +110,7 @@ def plot_matrix(matrix, title, vmin=-1, vmax=1, abs=False):
 	fig.colorbar(im, ax=ax)
 	return fig, ax
 
-def evaluate_model(cfg, target_data, template_data):
+def evaluate_model(cfg, original_data, target_data, template_data):
 	scatter_alpha=1
 	scatter_s=2
 	if GlobalHydra().is_initialized():
@@ -206,27 +207,28 @@ def evaluate_model(cfg, target_data, template_data):
 	one_corretation_plot=True
 	os.makedirs(plot_path+"corerlations/", exist_ok=True)
 	person_correlations, spearman_correlations, kendalltaus = plot_correlation_plots(e1, e2, plot_path, one_corretation_plot=True, name="latent_space_correlations", c=m_dn)
-    
-	# Mass correlation plots
-	person_correlations_mass = []
-	spearman_correlations_mass = []
-	kendalltaus_mass = []
-	if one_corretation_plot:
-		fig, axes = plt.subplots(1, e1.shape[1],  figsize=(3*e1.shape[1], 3))
-		fig.suptitle('Scatter plots with Pearson Correlation', fontsize=16)
-		for i in range(e1.shape[1]):
-			axes[i].scatter(to_np(e1[:, i]), to_np(m_dn), marker="o", label="e1", c=m_dn, cmap="viridis")
-			pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(m_dn).T[0])
-			person_correlations_mass.append(pearson_correlation)
-			spearman_correlation, p_value = spearmanr(to_np(e1[:, i]), to_np(m_dn).T[0])
-			spearman_correlations_mass.append(spearman_correlation)
-			kendalltau_correlation, p_value = kendalltau(to_np(e1[:, i]), to_np(m_dn).T[0])
-			kendalltaus_mass.append(kendalltau_correlation)
-			axes[i].set_title(f"Corr={pearson_correlation:.3f}")
-			axes[i].set_xlabel(f"dim{i} e1")
-			axes[i].set_ylabel(f"mjj")
-		plt.tight_layout()
-		plt.savefig(plot_path+"corerlations/"+"latent_space_e1_mass_correlations.png", bbox_inches="tight")
+	
+	if getattr(cfg.step_evaluate.procedures, "mass_correlation_plots", True):
+		# Mass correlation plots
+		person_correlations_mass = []
+		spearman_correlations_mass = []
+		kendalltaus_mass = []
+		if one_corretation_plot:
+			fig, axes = plt.subplots(1, e1.shape[1],  figsize=(3*e1.shape[1], 3))
+			fig.suptitle('Scatter plots with Pearson Correlation', fontsize=16)
+			for i in range(e1.shape[1]):
+				axes[i].scatter(to_np(e1[:, i]), to_np(m_dn), marker="o", label="e1", c=m_dn, cmap="viridis")
+				pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(m_dn).T[0])
+				person_correlations_mass.append(pearson_correlation)
+				spearman_correlation, p_value = spearmanr(to_np(e1[:, i]), to_np(m_dn).T[0])
+				spearman_correlations_mass.append(spearman_correlation)
+				kendalltau_correlation, p_value = kendalltau(to_np(e1[:, i]), to_np(m_dn).T[0])
+				kendalltaus_mass.append(kendalltau_correlation)
+				axes[i].set_title(f"Corr={pearson_correlation:.3f}")
+				axes[i].set_xlabel(f"dim{i} e1")
+				axes[i].set_ylabel(f"mjj")
+			plt.tight_layout()
+			plt.savefig(plot_path+"corerlations/"+"latent_space_e1_mass_correlations.png", bbox_inches="tight")
 
 	# Same mass
 	plt.figure()	

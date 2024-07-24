@@ -496,32 +496,35 @@ class TwinTURBO(LightningModule):
 			optimizer_g, optimizer_d = self.optimizers()
 
 			# adversarial loss is binary cross-entropy
+
 			total_loss, e1, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
 			batch_size=sample[0].shape[0]
-			rpm = torch.randperm(batch_size//2)
-			w2_new = w2.clone()
-			w2_new[:batch_size//2] = w2_new[:batch_size//2][rpm]
-			labels = torch.cat([torch.ones(batch_size//2), torch.zeros(batch_size//2)]).type_as(w2_new)
-
+			rpm = torch.randperm(batch_size)
+			w2_perm = w2.clone()
+			w2_perm = w2_perm[rpm]
+			labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
+			e1_copy = e1.clone()
 			# train discriminator
 			# Measure discriminator's ability to classify real from generated samples
-			d_loss = self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([e1, w2_new], dim=1))), labels)
-			self.toggle_optimizer(optimizer_d)
-			self.log("d_loss", d_loss, prog_bar=True)
-			self.manual_backward(d_loss, retain_graph=True)
-			optimizer_d.step()
-			optimizer_d.zero_grad()
-			self.untoggle_optimizer(optimizer_d)
+			if self.current_epoch>10:
+				d_loss = self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1))), labels)
+				self.toggle_optimizer(optimizer_d)
+				self.log("d_loss", d_loss, prog_bar=True)
+				self.manual_backward(d_loss, retain_graph=True)
+				optimizer_d.step()
+				optimizer_d.zero_grad()
+				self.untoggle_optimizer(optimizer_d)
 
 			# Train generator
-			g_loss = self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([e1, w2_new], dim=1))), labels)
-			total_loss2 = total_loss - g_loss
-			self.log("total_loss2", total_loss2, prog_bar=True)
-			self.manual_backward(total_loss2)
-			self.clip_gradients(optimizer_g, gradient_clip_val=5)
-			optimizer_g.step()
-			optimizer_g.zero_grad()
-			self.untoggle_optimizer(optimizer_g)
+			if self.current_epoch<10 or self.global_step%5==0:
+				g_loss = - self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1))), labels)
+				total_loss2 = total_loss + g_loss
+				self.log("total_loss2", total_loss2, prog_bar=True)
+				self.manual_backward(total_loss2)
+				self.clip_gradients(optimizer_g, gradient_clip_val=5)
+				optimizer_g.step()
+				optimizer_g.zero_grad()
+				self.untoggle_optimizer(optimizer_g)
 
 
 		else:	
@@ -530,6 +533,8 @@ class TwinTURBO(LightningModule):
 
 	def _draw_event_transport_trajectories(self, w1, var, var_name, masses=np.linspace(-4, 4, 201), max_traj=20):
 		recons = []
+		if self.adversarial:
+			zs = []
 		for m in masses:
 			w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float().to(w1.device)
 			e1, e2 = self.encode(w1, w2)
@@ -537,14 +542,24 @@ class TwinTURBO(LightningModule):
 			recon = self.decoder(latent)
 
 			recons.append(recon)
-		
+			zs.append(F.sigmoid(self.discriminator(torch.cat([e1, w2], dim=1))))
+		vmin = min([float(z.min().cpu().detach().numpy()) for z in zs])
+		vmax = max([float(z.max().cpu().detach().numpy()) for z in zs])
 		plt.figure()
 		if max_traj is None:
 			max_traj = w1.shape[0]
 		for i in range(max_traj):
 			x=masses
 			y = np.array([float(recon[i, var].cpu().detach().numpy()) for recon in recons])
-			plt.plot(x, y, "r")
+			if self.adversarial:
+				z = np.array([float(z[i].cpu().detach().numpy()) for z in zs])
+				plt.plot(x, y, "black", zorder=i*2+1)
+				plt.scatter(x, y, c=z, cmap="turbo", s=2, zorder=i*2+2, vmin=vmin, vmax=vmax)
+				if i==0:
+					plt.colorbar()
+			else:
+				plt.plot(x, y, "r")
+
 		for i in range(max_traj):
 			plt.scatter(to_np(w1[:, -1])[:max_traj], to_np(w1[:, var])[:max_traj],  marker="x", label="originals", c="green")
 		plt.xlabel("mass")

@@ -4,3 +4,5 @@ target_data: ${data.evaluation.target_data}
 template_file:  ${general.run_dir}/template/outputs/template_sample_con0.h5
 debug_eval: False
 get_best: False
+
+procedures: null

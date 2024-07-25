@@ -118,12 +118,12 @@ def evaluate_model(cfg, original_data, target_data, template_data):
 	hydra.initialize(version_base=None, config_path= "../config")
 
 	log.info("Loading run information")
-	cfg = cfg.step_export_template
-	print(cfg.paths.full_path)
-	orig_cfg = reload_original_config(cfg, get_best=cfg.get_best)
-	cfg = orig_cfg
+	cfg_exp = cfg.step_export_template
+	print(cfg_exp.paths.full_path)
+	orig_cfg = reload_original_config(cfg_exp, get_best=cfg_exp.get_best)
+	cfg_exp = orig_cfg
 
-	plot_path= cfg["paths"]["output_dir"]+"/../plots/"
+	plot_path= cfg_exp["paths"]["output_dir"]+"/../plots/"
 
 	log.info("Loading best checkpoint")
 	#device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -136,7 +136,7 @@ def evaluate_model(cfg, original_data, target_data, template_data):
 	#trainer = hydra.utils.instantiate(orig_cfg.trainer)
 
 	# Instantiate the datamodule use a different config for data then for training
-	datamodule = hydra.utils.instantiate(cfg.data.datamodule)
+	datamodule = hydra.utils.instantiate(cfg_exp.data.datamodule)
 	var_group_list=datamodule.get_var_group_list()
  
 	tra_dataloader = datamodule.train_dataloader()
@@ -295,7 +295,7 @@ def evaluate_model(cfg, original_data, target_data, template_data):
 	w1 = batch1[0]
 	w2 = batch1[1]
 	for var in range(w1.shape[1]):
-		draw_event_transport_trajectories(model, plot_path, w1, var=var, var_name=var_group_list[0][var], masses=np.linspace(-5, 5, 1000), max_traj=20)
+		draw_event_transport_trajectories(model, plot_path, w1, var=var, var_name=var_group_list[0][var], masses=np.linspace(-4, 4, 1000), max_traj=20)
 	
 def draw_event_transport_trajectories(model, plot_path, w1, var, var_name, masses=np.linspace(-4, 4, 801), max_traj=20):
 	recons = []

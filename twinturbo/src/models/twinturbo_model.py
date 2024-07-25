@@ -141,6 +141,7 @@ class TwinTURBO(LightningModule):
 		if adversarial_cfg is not None:
 			self.adversarial = True
 			self.automatic_optimization = False
+			self.adversarial_cfg = adversarial_cfg
 			self.discriminator = MLP(inpt_dim=latent_dim+1, outp_dim=1, **adversarial_cfg.discriminator)
 		else:
 			self.adversarial = False
@@ -506,7 +507,7 @@ class TwinTURBO(LightningModule):
 			e1_copy = e1.clone()
 			# train discriminator
 			# Measure discriminator's ability to classify real from generated samples
-			if self.current_epoch>10:
+			if self.current_epoch>self.adversarial_cfg.warmup:
 				d_loss = self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1))), labels)
 				self.toggle_optimizer(optimizer_d)
 				self.log("d_loss", d_loss, prog_bar=True)
@@ -516,9 +517,9 @@ class TwinTURBO(LightningModule):
 				self.untoggle_optimizer(optimizer_d)
 
 			# Train generator
-			if self.current_epoch<10 or self.global_step%5==0:
+			if self.current_epoch<self.adversarial_cfg.warmup or self.global_step%self.adversarial_cfg.every_n_steps_g==0:
 				g_loss = - self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1))), labels)
-				total_loss2 = total_loss + g_loss
+				total_loss2 = total_loss + g_loss*self.adversarial_cfg.g_loss_weight
 				self.log("total_loss2", total_loss2, prog_bar=True)
 				self.manual_backward(total_loss2)
 				self.clip_gradients(optimizer_g, gradient_clip_val=5)
@@ -543,8 +544,8 @@ class TwinTURBO(LightningModule):
 
 			recons.append(recon)
 			zs.append(F.sigmoid(self.discriminator(torch.cat([e1, w2], dim=1))))
-		vmin = min([float(z.min().cpu().detach().numpy()) for z in zs])
-		vmax = max([float(z.max().cpu().detach().numpy()) for z in zs])
+		vmin = min([float(z[:max_traj].min().cpu().detach().numpy()) for z in zs])
+		vmax = max([float(z[:max_traj].max().cpu().detach().numpy()) for z in zs])
 		plt.figure()
 		if max_traj is None:
 			max_traj = w1.shape[0]

@@ -12,6 +12,7 @@ import pickle
 from twinturbo.src.data.lhco_curtains import convert_lhco_to_curtain_format
 from twinturbo.src.data.cathode_preprocessing import CathodePreprocess
 import torch
+import os 
 
 OPERATORS = {
     "==": operator.eq,
@@ -218,6 +219,9 @@ class ProcessorCATHODE():
         if self.save_pkl is not None:
             with open(self.save_pkl, "wb") as f:
                 pickle.dump(cathode_preprocessor, f)
+        for key, value in data.items():
+            if key != self.frame_name:
+                data[key] = value.reset_index(drop=True)
         return data
 
 class ProcessorMergeFrames():
@@ -226,7 +230,21 @@ class ProcessorMergeFrames():
         self.new_frame_name = new_frame_name
 
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
-        data[self.new_frame_name] = pd.concat([data[name] for name in self.frame_names], axis=1)
+        data_new={}
+        data_new[self.new_frame_name] = pd.concat([data[name] for name in self.frame_names], axis=1)
+        for key, value in data.items():
+            if key not in self.frame_names:
+                data_new[key] = value
+        return data_new
+
+class ProcessorAddColumn:
+    def __init__(self, frame_name, column_name, column_values):
+        self.frame_name = frame_name
+        self.column_name = column_name
+        self.column_values = column_values
+
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+        data[self.frame_name][self.column_name] = self.column_values
         return data
 ##############################################
 
@@ -306,21 +324,32 @@ class InMemoryDataFrameDictBase(Dataset):
         self.data[new_frame_name] = pd.concat([self.data[name] for name in frame_names], axis=1)
         self.list_order.append(new_frame_name)
 
-    def write_npy(self, file_path: str, keys=None, save_file_names=None):
+    def write_npy(self, file_dir: str, keys=None, save_file_names=None):
         if save_file_names is not None:
             assert len(save_file_names) == len(keys)
+        os.makedirs(file_dir, exist_ok=True)
         if save_file_names is None:
             if keys is None:
                 keys = self.data.keys()
-            i=0
-            for key in keys:
-                np.save(file_path + save_file_names[i] + ".npy", self.data[key].to_numpy())
-                i+=1
+            for i, key in enumerate(keys):
+                np.save(file_dir + key + ".npy", self.data[key].to_numpy())
         else:
             if keys is None:
                 keys = self.data.keys()
-            for key in keys:
-                np.save(file_path + key + ".npy", self.data[key].to_numpy())
+            for i, key in enumerate(keys):
+                np.save(file_dir + save_file_names[i] + ".npy", self.data[key].to_numpy())
+
+    def write_npy_single(self, file_path_str: str, key):
+        filepath = Path(file_path_str)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        np.save(file_path_str, self.data[key].to_numpy())
+
+    def write_features_txt(self, file_path_str, key):
+        filepath = Path(file_path_str)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        with open(file_path_str, "w") as f:
+            for feature in self.data[key].columns.tolist():
+                f.write("%s " % feature)
 
 class InMemoryDataFrameDict(InMemoryDataFrameDictBase):
     """Class for in-memory datasets stored as a dictionary of pandas DataFrames.

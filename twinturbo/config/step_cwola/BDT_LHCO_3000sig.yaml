@@ -1,8 +1,8 @@
 cwola_path: ${general.run_dir}/cwola/
 
-datamodule:
-  datasr: ${data.cwola.datasr}
-  extra_signal: ${data.cwola.extra_signal}
+datasets:
+  datasr: ${data.cwola.datasr_3000}
+  extra_signal: ${data.cwola.extra_signal_3000}
   template:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data"]
@@ -11,6 +11,10 @@ datamodule:
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
         frame_name: "template"
         new_df_dict: {"template": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"]}
+      - _target_: twinturbo.src.data.data.ProcessorAddColumn
+        frame_name: "template"
+        column_name: "is_signal"
+        column_values: 0
 
 
 input_path: /srv/beegfs/scratch/users/l/leighm/linearresults/
@@ -20,7 +24,7 @@ sideband_1: 3100_3300
 sideband_2: 3700_3900
 num_folds: 5
 max_iter: 250
-early_stopping: True
+early_stopping: 1
 validation_fraction: 0.1
 class_weight: balanced
 num_ensemble: 5

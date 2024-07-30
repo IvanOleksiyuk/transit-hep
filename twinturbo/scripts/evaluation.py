@@ -297,7 +297,7 @@ def evaluate_model(cfg, original_data, target_data, template_data):
 	for var in range(w1.shape[1]):
 		draw_event_transport_trajectories(model, plot_path, w1, var=var, var_name=var_group_list[0][var], masses=np.linspace(-4, 4, 1000), max_traj=20)
 	
-def draw_event_transport_trajectories(model, plot_path, w1, var, var_name, masses=np.linspace(-4, 4, 801), max_traj=20):
+def draw_event_transport_trajectories(model, plot_path, w1, var, var_name, mass_name="m_jj", masses=np.linspace(-4, 4, 801), max_traj=20):
 	recons = []
 	for m in masses:
 		w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float()
@@ -313,8 +313,8 @@ def draw_event_transport_trajectories(model, plot_path, w1, var, var_name, masse
 		plt.plot(masses, [float(recon[i, var].detach().numpy()) for recon in recons], "r")
 	for i in range(max_traj):
 		plt.scatter(to_np(w1[:, -1])[:max_traj], to_np(w1[:, var])[:max_traj], marker="x", label="originals", c="green")
-	plt.xlabel("mass")
-	plt.ylabel(f"dim{var}")
+	plt.xlabel(mass_name)
+	plt.ylabel(var_name)
 	plt.savefig(plot_path+f"event_transport_trajectories{var}.png", bbox_inches="tight")
  
 def draw_event_transport_trajectories_2d_der(model, plot_path, w1, var, var_name, masses=np.linspace(-4, 4, 801), max_traj=20):

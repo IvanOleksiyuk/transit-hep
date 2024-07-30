@@ -495,7 +495,9 @@ class TwinTURBO(LightningModule):
 	def training_step(self, sample: tuple, batch_idx: int) -> torch.Tensor:
 		if self.adversarial:
 			optimizer_g, optimizer_d = self.optimizers()
-
+			if self.lr_schedulers() is not None:
+				for sched in self.lr_schedulers():
+					sched.step()
 			# adversarial loss is binary cross-entropy
 
 			total_loss, e1, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
@@ -649,7 +651,12 @@ class TwinTURBO(LightningModule):
 			enc_dec_params = list(self.encoder1.parameters()) + list(self.encoder2.parameters()) + list(self.decoder.parameters())
 			opt_g = self.hparams.optimizer(params=enc_dec_params)
 			opt_d = self.hparams.optimizer(params=self.discriminator.parameters())
-			return [opt_g, opt_d], []
+			if getattr(self.adversarial_cfg, "scheduler", None) is None:
+				return [opt_g, opt_d], []
+			elif self.adversarial_cfg.scheduler == "same_given":
+				sched_g = self.hparams.scheduler.scheduler(opt_g)
+				sched_d = self.hparams.scheduler.scheduler(opt_d)
+				return [opt_g, opt_d], [sched_g, sched_d]
 		else:
 			# Finish initialising the partialy created methods
 			opt = self.hparams.optimizer(params=self.parameters())

@@ -19,21 +19,27 @@ def main(cfg: DictConfig) -> None:
     log.info("<<<START CWOLA SCRIPT>>>")
     os.makedirs(cfg.cwola_path, exist_ok=True)
     
-    datamodule = hydra.utils.instantiate(cfg.datamodule)
-    datasr = datamodule.train_data
+    datasets = hydra.utils.instantiate(cfg.datasets)
+    datasr = datasets.datasr
     print("datasr len:", len(datasr))
-    datasr.write_npy(cfg.datasr, file_path="/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/window_3100_3300__3700_3900/dope_3000/")
+    datasr.write_npy_single(file_path_str=cfg.cwola_path+cfg.cwola_subfolders+"window_3100_3300__3700_3900/dope_3000/sr.npy", key="data")
+    datasr.write_features_txt(file_path_str=cfg.cwola_path+"window_3100_3300__3700_3900/dope_3000/features.txt", key="data")
+    #datasr.write_npy(file_dir=cfg.cwola_path+"window_3100_3300__3700_3900/dope_3000/", keys=["data"], save_file_names=["sr"])
     
-    template = datamodule.template_data
+    template = datasets.template
     print("template len:", len(template))
-    template.write_npy(cfg.template, file_path="/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/window_3100_3300__3700_3900/dope_3000/")
+    template.write_npy_single(file_path_str=cfg.cwola_path+cfg.cwola_subfolders+"window_3100_3300__3700_3900/dope_3000/template.npy", key="template")
+    #template.write_npy(file_dir=cfg.cwola_path+"window_3100_3300__3700_3900/dope_3000/", keys=["template"], save_file_names=["template"])
 
-    extra_signal = datamodule.template_data
+    extra_signal = datasets.extra_signal
     print("extra_signal len:", len(extra_signal))
-    template.write_npy(cfg.extra_signal, file_path="/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/window_3100_3300__3700_3900/dope_3000/")
+    extra_signal.write_npy_single(file_path_str=cfg.cwola_path+cfg.cwola_subfolders+"window_3100_3300__3700_3900/dope_3000/extra_signal.npy", key="data")
+    #extra_signal.write_npy(file_dir=cfg.cwola_path+"window_3100_3300__3700_3900/dope_3000/", keys=["data"], save_file_names=["extra_signal"])
     
 
     #python libs_snap/linearanomaly/cwola.py --input_path=twinturbo/workspaces/dev/twinTURBO_DisCo_LHCO_CWOLA/cwola/ --mode=standard --num_signal=3000 --sideband_1=3100_3300 --sideband_2=3700_3900 --num_folds=5 --max_iter=250 --early_stopping=True --validation_fraction=0.1 --class_weight=balanced --num_ensemble=5 --seed=0
+#python libs_snap/linearanomaly/cwola.py --input_path=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/adv1_gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b/cwola/ --mode=standard --num_signal=3000 --sideband_1=3100_3300 --sideband_2=3700_3900 --num_folds=5 --max_iter=250 --early_stopping=1 --validation_fraction=0.1 --class_weight=balanced --num_ensemble=5 --seed=0
+
 
     command = [
         "python", 

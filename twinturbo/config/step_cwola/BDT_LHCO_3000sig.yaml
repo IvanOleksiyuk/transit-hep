@@ -15,9 +15,11 @@ datasets:
         frame_name: "template"
         column_name: "is_signal"
         column_values: 0
+  extra_bkg: ${data.cwola.extra_bkg_3000}
 
 
 input_path: /srv/beegfs/scratch/users/l/leighm/linearresults/
+cwola_subfolders: window_3100_3300__3700_3900/dope_3000/
 mode: standard
 num_signal: 3000
 sideband_1: 3100_3300
@@ -29,3 +31,4 @@ validation_fraction: 0.1
 class_weight: balanced
 num_ensemble: 5
 seed: 0
+extra_bkg: 1

@@ -77,6 +77,7 @@ def run_bdt_folds(
     num_folds: int,
     num_ensemble: int,
     extra_sig: np.ndarray | None = None,
+    extra_bkg: np.ndarray | None = None,
     bdt_args: dict | None = None,
     seed: int = 0,
 ) -> tuple:
@@ -118,5 +119,8 @@ def run_bdt_folds(
     extra_preds = (
         clf.predict_proba(extra_sig[:, :-1])[:, 1] if extra_sig is not None else None
     )
+    extra_bkg_preds = (
+        clf.predict_proba(extra_bkg[:, :-1])[:, 1] if extra_bkg is not None else None
+    )
 
-    return all_x, all_y, all_preds, extra_preds
+    return all_x, all_y, all_preds, extra_preds, extra_bkg_preds

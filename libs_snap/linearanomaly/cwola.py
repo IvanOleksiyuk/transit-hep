@@ -64,6 +64,12 @@ def get_args():
         help="Whether to use early stopping",
     )
     parser.add_argument(
+        "--extra_bkg",
+        type=lambda x: bool(int(x)),
+        default=True,
+        help="Whether to use early stopping",
+    )
+    parser.add_argument(
         "--validation_fraction",
         type=float,
         default=0.1,
@@ -132,6 +138,8 @@ def main():
     data = np.load(args.input_path / "sr.npy")
     template = np.load(args.input_path / "template.npy")
     extra_signal = np.load(args.input_path / "extra_signal.npy")
+    
+    extra_bkg = np.load(args.input_path / "extra_bkg.npy")
     features = np.loadtxt(args.input_path / "features.txt", dtype=str)
 
     print(f"[--] Setting datasets for CWoLa using mode {args.mode}")
@@ -144,7 +152,7 @@ def main():
 
     print(f"[--] Training {args.num_folds} seperate folds")
     time = process_time_ns()
-    inputs, labels, outputs, extra_preds = run_bdt_folds(
+    inputs, labels, outputs, extra_preds_in, extra_preds_out = run_bdt_folds(
         np.vstack((signal, background)),
         np.concatenate((np.ones(len(signal)), np.zeros(len(background)))),
         num_folds=args.num_folds,
@@ -157,6 +165,7 @@ def main():
         },
         seed=args.seed,
         extra_sig=extra_signal,
+        extra_bkg=extra_bkg,
     )
     cwola_time = process_time_ns() - time
     print(f"[--] CWoLa completed in {cwola_time/1e9:.2f} seconds")
@@ -169,6 +178,15 @@ def main():
         key="df",
         mode="w",
     )
+    
+    pd.DataFrame(
+        np.hstack((extra_bkg, extra_preds_out[:, None])),
+        columns=[*features, "preds"],
+    ).to_hdf(
+        args.output_path / "cwola_outputs_extra.h5",
+        key="df",
+        mode="w",
+    )
     with open(args.input_path/"cwola_time.txt", "w") as f:
         f.write(str(cwola_time))
         
@@ -177,7 +195,7 @@ def main():
         plot_closure(inputs, labels, outputs, args.output_path)
 
     if args.num_signal > 0:
-        plot_svb(inputs, outputs, extra_preds, args.output_path)
+        plot_svb(inputs, outputs, extra_preds_in, args.output_path)
 
 
 if __name__ == "__main__":

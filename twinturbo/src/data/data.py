@@ -157,29 +157,36 @@ class ProcessorLHCOcurtains():
         return data
     
 class ProcessorSignalContamination():
-    def __init__(self, frame_name, var_name=None, n_contamination=0, invert=False, no_background=False):
+    def __init__(self, frame_name, var_name=None, n_bkg = None, n_sig = None, invert_bkg=False, invert_sig=False):
         self.frame_name = frame_name
-        self.invert = invert
         if var_name is None:
             self.var_name = frame_name
         else:
             self.var_name = var_name
-        self.n_contamination = n_contamination
-        self.no_background = no_background
+        self.n_bkg = n_bkg
+        self.n_sig = n_sig
+        self.invert_bkg = invert_bkg
+        self.invert_sig = invert_sig
 
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
         indices_bkg = data[self.frame_name].index[data[self.frame_name][self.var_name]==False].tolist()
         indices_sig = data[self.frame_name].index[data[self.frame_name][self.var_name]==True].tolist()
-        if self.no_background:
-            if self.invert:
-                indices_all = indices_bkg[:self.n_contamination]
+        if self.n_bkg is not None:
+            if self.invert_bkg:
+                indices_bkg_select = indices_bkg[self.n_bkg:]
             else:
-                indices_all = indices_sig[:self.n_contamination]
+                indices_bkg_select = indices_bkg[:self.n_bkg]
         else:
-            if self.invert:
-                indices_all = indices_sig + indices_bkg[:self.n_contamination]
+            indices_bkg_select = indices_bkg
+        if self.n_sig is not None:
+            if self.invert_sig:
+                indices_sig_select = indices_sig[self.n_sig:]
             else:
-                indices_all = indices_bkg + indices_sig[:self.n_contamination]
+                indices_sig_select = indices_sig[:self.n_sig]
+        else:
+            indices_sig_select = indices_sig
+
+        indices_all = indices_bkg_select + indices_sig_select
         # apply the cuts to all the dataframes
         for key, value in data.items():
             data[key] = value.loc[indices_all]
@@ -301,7 +308,7 @@ class InMemoryDataFrameDictBase(Dataset):
         return self, rest
 
     def plot(self, plot_dir):
-        print("Plotting the data")
+        print(f"Plotting the data in {plot_dir}")
         Path(plot_dir).mkdir(parents=True, exist_ok=True)
         for key, value in self.data.items():
             plt.figure()

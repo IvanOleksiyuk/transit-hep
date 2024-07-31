@@ -19,21 +19,20 @@ def main(cfg: DictConfig) -> None:
     log.info("<<<START CWOLA SCRIPT>>>")
     os.makedirs(cfg.cwola_path, exist_ok=True)
     
-    datasets = hydra.utils.instantiate(cfg.datasets)
-    datasr = datasets.datasr
+    datasr = hydra.utils.instantiate(cfg.datasets.datasr)
     print("datasr len:", len(datasr))
     datasr.write_npy_single(file_path_str=cfg.cwola_path+cfg.cwola_subfolders+"sr.npy", key="data")
     datasr.write_features_txt(file_path_str=cfg.cwola_path+"features.txt", key="data")
     
-    template = datasets.template
+    template = hydra.utils.instantiate(cfg.datasets.template)
     print("template len:", len(template))
     template.write_npy_single(file_path_str=cfg.cwola_path+cfg.cwola_subfolders+"template.npy", key="template")
 
-    extra_signal = datasets.extra_signal
+    extra_signal = hydra.utils.instantiate(cfg.datasets.extra_signal)
     print("extra_signal len:", len(extra_signal))
     extra_signal.write_npy_single(file_path_str=cfg.cwola_path+cfg.cwola_subfolders+"extra_signal.npy", key="data")
     
-    extra_bkg = datasets.extra_bkg
+    extra_bkg = hydra.utils.instantiate(cfg.datasets.extra_bkg)
     print("extra_signal len:", len(extra_bkg))
     extra_bkg.write_npy_single(file_path_str=cfg.cwola_path+cfg.cwola_subfolders+"extra_bkg.npy", key="data")
     

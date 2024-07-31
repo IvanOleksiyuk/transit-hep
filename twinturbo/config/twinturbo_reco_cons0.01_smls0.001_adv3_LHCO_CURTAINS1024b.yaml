@@ -18,7 +18,7 @@ step_train_template:
 do_train_template: False
 do_export_template: False
 do_cwola: True
-do_evaluate_cwola: True
+do_evaluate_cwola: False
 do_evaluation: False 
 
 

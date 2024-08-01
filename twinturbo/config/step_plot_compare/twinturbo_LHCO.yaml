@@ -1,0 +1,12 @@
+run_dir: ${general.run_dir}
+
+main_method:
+  name: "TwinTurbo"
+  dir: ${general.run_dir}/plots/cwola_eval/
+
+methods:
+  {"CURTAINS": "/home/users/o/oleksiyu/WORK/hyperproject/lit/curtains/run_7",
+  "supervised": "/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_3000/supervised",
+  "idealised": "/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_3000/idealised",
+  "radot": "/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_3000/standard"}
+    

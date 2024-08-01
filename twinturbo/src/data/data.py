@@ -89,7 +89,6 @@ class ProcessorSplitDataFrameVars:
                 data_new[key] = value
         return data_new
 
-
 class ProcessorToFloat32:
     def __init__(self, frame_names):
         self.frame_names = frame_names
@@ -98,7 +97,6 @@ class ProcessorToFloat32:
         for name in self.frame_names:
             data[name] = data[name].astype(np.float32)
         return data
-
 
 class ProcessorShuffle:
     def __init__(self, random_state=42):
@@ -111,7 +109,6 @@ class ProcessorShuffle:
                 frac=1, random_state=self.random_state
             ).reset_index(drop=True)
         return data
-
 
 class ProcessorNormalize():
     def __init__(self, frame_names = None, load_normaliser_file= None, save_normaliser_file=None):
@@ -244,7 +241,7 @@ class ProcessorMergeFrames():
                 data_new[key] = value
         return data_new
 
-class ProcessorAddColumn:
+class ProcessorAddColumn():
     def __init__(self, frame_name, column_name, column_values):
         self.frame_name = frame_name
         self.column_name = column_name
@@ -524,14 +521,24 @@ class SimpleDataModule(LightningDataModule):
         return var_group_list
 
 class CombDataset(InMemoryDataFrameDictBase):
-    def __init__(self, dataset1, dataset2, length=None, plotting_path=None) -> None:
+    def __init__(self, dataset1, dataset2, length=None, oversample1=None, oversample2=None, seed=42, plotting_path=None) -> None:
+        if oversample1 is not None:
+            length = oversample1 * len(dataset1)
+        if oversample2 is not None:
+            length = oversample2 * len(dataset2)
         if length is None:
             length = min(len(dataset1), len(dataset2))
         self.data = {}
         for key, value in dataset1.data.items():
-            self.data[key]=value[:length]
+            if len(dataset1)>=length:
+                self.data[key]=value[:length]
+            else:
+                self.data[key]=value.sample(n=length, replace=True, random_state=seed).reset_index(drop=True)
         for key, value in dataset2.data.items():
-            self.data[key]=value[:length]
+            if len(dataset1)>=length:
+                self.data[key]=value[:length]
+            else:
+                self.data[key]=value.sample(n=length, replace=True, random_state=seed).reset_index(drop=True)
         self.list_order = dataset1.list_order+dataset2.list_order
         if plotting_path is not None:
             self.plot(plotting_path)

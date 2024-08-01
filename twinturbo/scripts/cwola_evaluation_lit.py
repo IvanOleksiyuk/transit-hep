@@ -17,42 +17,66 @@ from matplotlib import cm
     version_base=None, config_path=str('../config'), config_name="twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b"
 )
 def main(cfg: DictConfig) -> None:
-    run_dir = Path(cfg.run_dir)
-    os.makedirs(run_dir/ "plots/cwola_eval", exist_ok=True)
-    plot_path = run_dir / "plots/cwola_eval"
-    seed = 0
-    file_path=cfg.cwola_path+cfg.cwola_subfolders+f"standard/seed_{seed}/"+"cwola_outputs.h5"
-    file_path_extra=cfg.cwola_path+cfg.cwola_subfolders+f"standard/seed_{seed}/"+"cwola_outputs_extra.h5"
-    data = {}
-    with pd.HDFStore(file_path, "r") as store:
-            # Iterate over all the keys (dataset names) in the file
-            for key in store:
-                # Read each dataset into a pandas DataFrame and store in the dictionary
-                data[key[1:]] = store[key]
-                
-    data_extra = {}
-    with pd.HDFStore(file_path_extra, "r") as store:
-            # Iterate over all the keys (dataset names) in the file
-            for key in store:
-                # Read each dataset into a pandas DataFrame and store in the dictionary
-                data_extra[key[1:]] = store[key]
-    print(data)
-    datasr = data["df"][data["df"]["CWoLa"] == 1]
-    do_ROC(datasr["preds"], 
-             datasr["is_signal"], 
-             save_path=plot_path / "ROC")
-    do_SI_v_rej(datasr["preds"], 
-                  datasr["is_signal"], 
-                  save_path=plot_path / "SI_v_rej")
-    do_rejection_v_TPR(datasr["preds"], 
-                         datasr["is_signal"], 
-                         save_path=plot_path / "rejection_v_TPR")
-    
-    do_mass_sculpting(data["df"]["m_jj"], data["df"]["preds"], data["df"]["is_signal"], save_path=plot_path / "mass_sculpting.png")
-    do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra["df"]["m_jj"]]), 
-                   pd.concat([datasr["preds"], data_extra["df"]["preds"]]), 
-                   pd.concat([datasr["is_signal"], data_extra["df"]["m_jj"]*0]), save_path=plot_path / "mass_sculpting_density.png", density=True, rej_cuts = [0.9], bins=100)
+    n_dope_per_run=[0, 50, 100, 333, 500, 667, 1000, 3000, 4000, 6000, 8000]
+    seeds=[0, 1, 2, 3, 4]
+    run_number=7
+    #CURTAINS
+    for seed in seeds:
+        run_dir = Path("/home/users/o/oleksiyu/WORK/hyperproject/lit/curtains/run_7/seed_"+str(seed)+"/")
+        os.makedirs(run_dir, exist_ok=True)
+        file_path = "/srv/beegfs/scratch/groups/rodem/forcomparison/curtains/run_7/bdt/standard/seed_"+str(seed)+"/fulldata_mean.h5"
+        data = {}
+        with pd.HDFStore(file_path, "r") as store:
+                # Iterate over all the keys (dataset names) in the file
+                for key in store:
+                    # Read each dataset into a pandas DataFrame and store in the dictionary
+                    data[key[1:]] = store[key]
+                    
+        print(data)
+        df = data["df"]
+        true_data = pd.concat([df[df["CWoLa Label"] == 1], df[df["CWoLa Label"] == -2]])
 
+        do_ROC(true_data["preds"], 
+                np.abs(true_data["Truth"]), 
+                save_path=run_dir / "ROC")
+        do_SI_v_rej(true_data["preds"], 
+                    np.abs(true_data["Truth"]), 
+                    save_path=run_dir / "SI_v_rej")
+        do_rejection_v_TPR(true_data["preds"], 
+                            np.abs(true_data["Truth"]),
+                            save_path=run_dir / "rejection_v_TPR")
+    
+    #OLIWS Idealised SUpervised
+    # for method in ["supervised", "idealised", "standard"]:
+    #     for seed in seeds:
+    #         run_dir = Path("/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_3000/"+method+"/seed_"+str(seed)+"/")
+    #         os.makedirs(run_dir, exist_ok=True)
+    #         file_path = "/srv/beegfs/scratch/groups/rodem/forcomparison/radot/dope_3000/"+method+"/seed_"+str(seed)+"/cwola_outputs.h5"
+    #         data = {}
+    #         with pd.HDFStore(file_path, "r") as store:
+    #                 # Iterate over all the keys (dataset names) in the file
+    #                 for key in store:
+    #                     # Read each dataset into a pandas DataFrame and store in the dictionary
+    #                     data[key[1:]] = store[key]
+                        
+    #         print(data)
+    #         df = data["df"]
+    #         if method == "supervised":
+    #             true_data = df
+    #         if method == "idealised":
+    #             true_data = df
+    #         if method == "standard":
+    #             true_data = df[df["CWoLa"] == 1]
+
+    #         do_ROC(true_data["preds"], 
+    #                 true_data["is_signal"], 
+    #                 save_path=run_dir / "ROC")
+    #         do_SI_v_rej(true_data["preds"], 
+    #                     true_data["is_signal"], 
+    #                     save_path=run_dir / "SI_v_rej")
+    #         do_rejection_v_TPR(true_data["preds"], 
+    #                             true_data["is_signal"],
+    #                             save_path=run_dir / "rejection_v_TPR")
     
 def calc_TPR_FPR(scores, true_labels):
     sorted_indices = np.argsort(scores)[::-1]
@@ -106,7 +130,6 @@ def do_ROC(scores, true_labels, save_path, title="ROC", make_plot=True, save_npy
         plt.title(title)
         plt.xlabel('False Positive Rate (FPR)')
         plt.ylabel('True Positive Rate (TPR)')
-        plt.grid(which='major')
         plt.savefig(str(save_path)+".png", bbox_inches='tight', dpi=300)
     if save_npy:
         np.save(str(save_path)+".npy", np.array([fpr_list, tpr_list]))
@@ -118,13 +141,12 @@ def do_SI_v_rej(scores, true_labels, save_path, title="SI_v_rej", make_plot=True
     # Plot the curve
     if make_plot:
         plt.figure()
-        plt.plot(rej, SI)
+        plt.errorbar(rej, SI)
         plt.title(title)
         plt.grid()
         plt.xscale('log')
         plt.xlabel('Rejection')
         plt.ylabel('SI')
-        plt.grid(which='major')
         plt.savefig(str(save_path)+".png", bbox_inches='tight', dpi=300)
     if save_npy:
         np.save(str(save_path)+".npy", np.array([rej, SI]))
@@ -141,12 +163,11 @@ def do_rejection_v_TPR(scores, true_labels, save_path, title="rej_v_TPR", make_p
         plt.yscale('log')
         plt.xlabel('Rejection')
         plt.ylabel('SI')
-        plt.grid(which='major')
         plt.savefig(str(save_path)+".png", bbox_inches='tight', dpi=300)
     if save_npy:
         np.save(str(save_path)+".npy", np.array([tpr_list, rej]))
 
-def do_mass_sculpting(masses, scores, true_labels, save_path, rej_cuts = [0.5, 0.9, 0.95, 0.99], title="mass_sculpting", density=False, bins=100):
+def mass_sculpting(masses, scores, true_labels, save_path, rej_cuts = [0.5, 0.9, 0.95, 0.99], title="mass_sculpting", density=False, bins=100):
     sorted_indices = np.argsort(scores)[::-1]
     sorted_masses = np.array(masses)[sorted_indices]
     sorted_scores = np.array(scores)[sorted_indices]

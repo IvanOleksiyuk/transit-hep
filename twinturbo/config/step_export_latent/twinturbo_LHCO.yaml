@@ -1,0 +1,32 @@
+export_latent_sr:
+  seed: ${general.seed} 
+  data: ${data.export_latent_sr} 
+
+  paths:
+    # output dir will be created by hydra
+    full_path:  ${general.run_dir}/template
+    output_dir:  ${general.run_dir}/template
+
+  output_name: template_sample_con
+  signal_contamination_ns: [0, 3000]
+
+
+  get_best: false
+  project_name: CATHODE_LHCO
+  network_name: ${step_train_template.network_name}
+
+export_latent_sidebands:
+  seed: ${general.seed} 
+  data: ${data.export_latent_sidebands} 
+
+  paths:
+    # output dir will be created by hydra
+    full_path:  ${general.run_dir}/template
+    output_dir:  ${general.run_dir}/template
+
+  output_name: template_sample_con
+  signal_contamination_ns: [0, 3000]
+
+  get_best: false
+  project_name: CATHODE_LHCO
+  network_name: ${step_train_template.network_name}

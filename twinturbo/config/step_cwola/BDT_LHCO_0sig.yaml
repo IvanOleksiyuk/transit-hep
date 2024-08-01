@@ -21,8 +21,8 @@ datasets:
 input_path: /srv/beegfs/scratch/users/l/leighm/linearresults/
 mode: standard
 num_signal: 0
-sideband_1: 3100_3300
-sideband_2: 3700_3900
+sideband_1: "3100_3300"
+sideband_2: "3700_3900"
 num_folds: 5
 max_iter: 250
 early_stopping: 1
@@ -30,3 +30,15 @@ validation_fraction: 0.1
 class_weight: balanced
 num_ensemble: 5
 seed: 0
+
+    # --mode=standard 
+    # --num_signal=3000 
+    # --sideband_1=3100_3300 
+    # --sideband_2=3700_3900 
+    # --num_folds=5 
+    # --max_iter=250 
+    # --early_stopping=1 
+    # --validation_fraction=0.1 
+    # --class_weight=balanced 
+    # --num_ensemble=5 
+    # --seed=0

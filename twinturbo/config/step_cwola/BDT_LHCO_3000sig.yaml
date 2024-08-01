@@ -1,3 +1,4 @@
+run_dir: ${general.run_dir}
 cwola_path: ${general.run_dir}/cwola/
 
 datasets:
@@ -22,8 +23,8 @@ input_path: /srv/beegfs/scratch/users/l/leighm/linearresults/
 cwola_subfolders: window_3100_3300__3700_3900/dope_3000/
 mode: standard
 num_signal: 3000
-sideband_1: 3100_3300
-sideband_2: 3700_3900
+sideband_1: "3100_3300"
+sideband_2: "3700_3900"
 num_folds: 5
 max_iter: 250
 early_stopping: 1

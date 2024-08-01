@@ -543,7 +543,7 @@ class CombDataset(InMemoryDataFrameDictBase):
             else:
                 self.data[key]=value.sample(n=length, replace=True, random_state=seed).reset_index(drop=True)
         for key, value in dataset2.data.items():
-            if len(dataset1)>=length:
+            if len(dataset2)>=length:
                 self.data[key]=value[:length]
             else:
                 self.data[key]=value.sample(n=length, replace=True, random_state=seed).reset_index(drop=True)

@@ -10,19 +10,16 @@ from twinturbo.src.utils.hydra_utils import instantiate_collection, log_hyperpar
 log = logging.getLogger(__name__)
 
 @hydra.main(
-    version_base=None, config_path=str('../config/data'), config_name="twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b.yaml"
+    version_base=None, config_path=str('../config/data'), config_name="LHCO_preprocess_CURTAINS.yaml"
 ) 
 def main(cfg: DictConfig) -> None:
     log.info("Setting up full job config")
     print_config(cfg)
-    data = cfg.data.export_latent_all.test_data
-    dataset_name="LHCO_twinturbo_CATHODE_addgapmass1024b/export_latent_all"
-    data.plotting_path = "plot/user/inspect_data/" + dataset_name
+    data = cfg.data
     log.info("Instantiating the data module")
     dataset = hydra.utils.instantiate(data)
-    print(dataset)
+    dataset.save("/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5")
     print(len(dataset))
-
 
 if __name__ == "__main__":
     main()

@@ -149,19 +149,19 @@ export_latent_all:
     processor_cfg:  
       - _target_: twinturbo.src.data.data.ProcessorLHCOcurtains
         frame_name: "df"
-    # - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
-    #   frame_name: "df"
-    #   new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "is_signal": ["is_signal"]}
-    # - _target_: twinturbo.src.data.data.ProcessorCATHODE
-    #   frame_name: "data"
-    #   load_pkl: ${general.run_dir}/cathode_preprocessor.pkl
-    # - _target_: twinturbo.src.data.data.ProcessorToFloat32
-    #   frame_names: ["data"]
-    # - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
-    #   frame_name: "data"
-    #   new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"], "mass": ["m_jj"]}
-    # - _target_: twinturbo.src.data.data.ProcessorRemoveFrames
-    #   frame_names: ["mass", "is_signal"]
+      - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+        frame_name: "df"
+        new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', 'tau21_j2', "m_jj"], "is_signal": ["is_signal"]}
+      - _target_: twinturbo.src.data.data.ProcessorCATHODE
+        frame_name: "data"
+        load_pkl: ${general.run_dir}/cathode_preprocessor.pkl
+      - _target_: twinturbo.src.data.data.ProcessorToFloat32
+        frame_names: ["data"]
+      - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
+        frame_name: "data"
+        new_df_dict: {"data": ['m_j1', 'del_m', 'del_R', 'tau21_j1', "tau21_j2", "m_jj"], "mass": ["m_jj"]}
+      - _target_: twinturbo.src.data.data.ProcessorRemoveFrames
+        frame_names: ["mass", "is_signal"]
 
 evaluation:
   original_data: 
@@ -402,28 +402,3 @@ cwola:
     - _target_: twinturbo.src.data.data.ProcessorToFloat32
       frame_names: ["data"]
     
-  datasr_latent_3000:
-    _target_: twinturbo.src.data.data.InMemoryDataFrameDict
-    list_order: ["latent"]
-    file_path: 
-      - "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features.h5"
-      - ${general.run_dir}/export_latent/export_latent_all.h5
-    plotting_path: ${general.run_dir}/plots/inputs/cwola/datasr/
-    processor_cfg: 
-      - _target_: twinturbo.src.data.data.ProcessorLHCOcurtains
-        frame_name: "df"
-      - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
-        frame_name: "df"
-        new_df_dict: {"mass": ["m_jj"], "is_signal": ["is_signal"]}
-      - _target_: twinturbo.src.data.data.ProcessorSignalContamination
-        frame_name: "is_signal"
-        n_sig: 3000
-      - _target_: twinturbo.src.data.data.ProcessorIntervals
-        scalar_df_name: "mass"
-        var_name: "m_jj"
-        intervals: [[3300, 3700]]
-      - _target_: twinturbo.src.data.data.ProcessorMergeFrames
-        frame_names: ["latent", "is_signal"]
-        new_frame_name: "latent"
-      - _target_: twinturbo.src.data.data.ProcessorToFloat32
-        frame_names: ["latent"]

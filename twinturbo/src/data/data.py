@@ -288,6 +288,11 @@ class InMemoryDataFrameDictBase(Dataset):
                 data[key[1:]] = store[key]
         return data
 
+    def save(self, file_path: str):
+        with pd.HDFStore(file_path, "w") as store:
+            for key, value in self.data.items():
+                store.put(key, value)
+
     def shuffle(self, random_state=42):
         for key, value in self.data.items():
             self.data[key] = value.sample(

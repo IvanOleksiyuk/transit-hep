@@ -210,6 +210,14 @@ class TwinTURBO(LightningModule):
 			if not hasattr(self.loss_cfg.DisCO_loss_cfg, "mode"):
 				self.loss_cfg.DisCO_loss_cfg.mode = "e1_vs_e2"
 
+	def encode_e1_batch(self, batch):
+		w1 = batch[0]
+		if self.latent_norm:
+			e1 = normalize(self.encoder1(w1))
+		else:
+			e1 = self.encoder1(w1)
+		return e1
+
 	def encode(self, w1, w2) -> torch.Tensor:
 		if self.latent_norm:
 			e1 = normalize(self.encoder1(w1))

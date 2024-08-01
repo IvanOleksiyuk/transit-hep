@@ -98,7 +98,7 @@ class ProcessorToFloat32:
             data[name] = data[name].astype(np.float32)
         return data
 
-class ProcessorShuffle:
+class ProcessorShuffle():
     def __init__(self, random_state=42):
         self.random_state = random_state
 
@@ -309,7 +309,10 @@ class InMemoryDataFrameDictBase(Dataset):
         Path(plot_dir).mkdir(parents=True, exist_ok=True)
         for key, value in self.data.items():
             plt.figure()
-            sns.pairplot(value)
+            if len(value) > 20000:
+                sns.pairplot(value.sample(20000, random_state=42))
+            else:
+                sns.pairplot(value)
             plt.savefig(Path(plot_dir) / f"{key}.png")
             plt.close()
 

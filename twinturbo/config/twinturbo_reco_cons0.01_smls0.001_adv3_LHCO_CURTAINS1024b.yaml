@@ -19,12 +19,12 @@ step_train_template:
     reverse_pass_mode: additional_input
 
 do_train_template: False
-do_export_template: True
-do_export_latent: False
+do_export_template: False
+do_export_latent: True
 do_evaluation: False
-do_cwola: True
-do_evaluate_cwola: True
-do_plot_compare: True
+do_cwola: False
+do_evaluate_cwola: False
+do_plot_compare: False
 
 general:
   name: twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b

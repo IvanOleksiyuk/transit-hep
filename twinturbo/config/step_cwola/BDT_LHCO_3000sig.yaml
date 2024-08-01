@@ -4,6 +4,7 @@ cwola_path: ${general.run_dir}/cwola/
 datasets:
   datasr: ${data.cwola.datasr_3000}
   extra_signal: ${data.cwola.extra_signal_3000}
+  plotting_path: ${general.run_dir}/plots/input/cwola/template/
   template:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data"]
@@ -31,5 +32,5 @@ early_stopping: 1
 validation_fraction: 0.1
 class_weight: balanced
 num_ensemble: 5
-seed: 0
+seeds: [0, 1, 2, 3, 4]
 extra_bkg: 1

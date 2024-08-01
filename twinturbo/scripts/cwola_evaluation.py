@@ -18,40 +18,40 @@ from matplotlib import cm
 )
 def main(cfg: DictConfig) -> None:
     run_dir = Path(cfg.run_dir)
-    os.makedirs(run_dir/ "plots/cwola_eval", exist_ok=True)
-    plot_path = run_dir / "plots/cwola_eval"
-    seed = 0
-    file_path=cfg.cwola_path+cfg.cwola_subfolders+f"standard/seed_{seed}/"+"cwola_outputs.h5"
-    file_path_extra=cfg.cwola_path+cfg.cwola_subfolders+f"standard/seed_{seed}/"+"cwola_outputs_extra.h5"
-    data = {}
-    with pd.HDFStore(file_path, "r") as store:
-            # Iterate over all the keys (dataset names) in the file
-            for key in store:
-                # Read each dataset into a pandas DataFrame and store in the dictionary
-                data[key[1:]] = store[key]
-                
-    data_extra = {}
-    with pd.HDFStore(file_path_extra, "r") as store:
-            # Iterate over all the keys (dataset names) in the file
-            for key in store:
-                # Read each dataset into a pandas DataFrame and store in the dictionary
-                data_extra[key[1:]] = store[key]
-    print(data)
-    datasr = data["df"][data["df"]["CWoLa"] == 1]
-    do_ROC(datasr["preds"], 
-             datasr["is_signal"], 
-             save_path=plot_path / "ROC")
-    do_SI_v_rej(datasr["preds"], 
-                  datasr["is_signal"], 
-                  save_path=plot_path / "SI_v_rej")
-    do_rejection_v_TPR(datasr["preds"], 
-                         datasr["is_signal"], 
-                         save_path=plot_path / "rejection_v_TPR")
-    
-    do_mass_sculpting(data["df"]["m_jj"], data["df"]["preds"], data["df"]["is_signal"], save_path=plot_path / "mass_sculpting.png")
-    do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra["df"]["m_jj"]]), 
-                   pd.concat([datasr["preds"], data_extra["df"]["preds"]]), 
-                   pd.concat([datasr["is_signal"], data_extra["df"]["m_jj"]*0]), save_path=plot_path / "mass_sculpting_density.png", density=True, rej_cuts = [0.9], bins=100)
+    for seed in cfg.seeds:
+        plot_path = run_dir / ("plots/cwola_eval/seed_" + str(seed))
+        os.makedirs(plot_path, exist_ok=True)
+        file_path=cfg.cwola_path+cfg.cwola_subfolders+f"standard/seed_{seed}/"+"cwola_outputs.h5"
+        file_path_extra=cfg.cwola_path+cfg.cwola_subfolders+f"standard/seed_{seed}/"+"cwola_outputs_extra.h5"
+        data = {}
+        with pd.HDFStore(file_path, "r") as store:
+                # Iterate over all the keys (dataset names) in the file
+                for key in store:
+                    # Read each dataset into a pandas DataFrame and store in the dictionary
+                    data[key[1:]] = store[key]
+                    
+        data_extra = {}
+        with pd.HDFStore(file_path_extra, "r") as store:
+                # Iterate over all the keys (dataset names) in the file
+                for key in store:
+                    # Read each dataset into a pandas DataFrame and store in the dictionary
+                    data_extra[key[1:]] = store[key]
+        print(data)
+        datasr = data["df"][data["df"]["CWoLa"] == 1]
+        do_ROC(datasr["preds"], 
+                datasr["is_signal"], 
+                save_path=plot_path / "ROC")
+        do_SI_v_rej(datasr["preds"], 
+                    datasr["is_signal"], 
+                    save_path=plot_path / "SI_v_rej")
+        do_rejection_v_TPR(datasr["preds"], 
+                            datasr["is_signal"], 
+                            save_path=plot_path / "rejection_v_TPR")
+        
+        do_mass_sculpting(data["df"]["m_jj"], data["df"]["preds"], data["df"]["is_signal"], save_path=plot_path / "mass_sculpting.png")
+        do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra["df"]["m_jj"]]), 
+                    pd.concat([datasr["preds"], data_extra["df"]["preds"]]), 
+                    pd.concat([datasr["is_signal"], data_extra["df"]["m_jj"]*0]), save_path=plot_path / "mass_sculpting_density.png", density=True, rej_cuts = [0.9], bins=100)
 
     
 def calc_TPR_FPR(scores, true_labels):

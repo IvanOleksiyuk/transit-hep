@@ -24,6 +24,7 @@ import twinturbo.scripts.generate_teplate as generate_teplate
 import twinturbo.scripts.run_cwola_curtains2 as run_cwola_curtains2
 import twinturbo.scripts.cwola_evaluation as cwola_evaluation
 import twinturbo.scripts.plot_compare as plot_compare
+import twinturbo.scripts.export_latent_space as export_latent_space
 from datetime import datetime
 log = logging.getLogger(__name__)
 
@@ -60,24 +61,9 @@ def main(cfg: DictConfig) -> None:
 	if cfg.do_export_latent:
 		log.info("Generate latent representation of events in SR and Sidebands")
 
-		name = cfg.step_export_latent.export_latent_sr.output_name
-		if hasattr(cfg.step_export_template, "signal_contamination_ns"):
-			for cont_n in cfg.step_export_latent.export_latent_sr.signal_contamination_ns:
-				cfg.step_export_latent.export_latent_sr["data"]["test_data"]["dataset2"]["processor_cfg"][2]["n_contamination"]=cont_n
-				cfg.step_export_latent.export_latent_sr["output_name"] = name + f"{cont_n}"
-				generate_teplate.main(cfg.step_export_latent.export_latent_sr)
-		else:
-			generate_teplate.main(cfg.step_export_latent.export_latent_sr)
+		name = cfg.step_export_latent.export_latent_all.output_name
+		export_latent_space.main(cfg.step_export_latent.export_latent_all)
 		
-		name = cfg.step_export_latent.export_latent_sidebands.output_name
-		if hasattr(cfg.step_export_template, "signal_contamination_ns"):
-			for cont_n in cfg.step_export_latent.export_latent_sidebands.signal_contamination_ns:
-				cfg.step_export_latent.export_latent_sidebands["data"]["test_data"]["dataset2"]["processor_cfg"][2]["n_contamination"]=cont_n
-				cfg.step_export_latent.export_latent_sidebands["output_name"] = name + f"{cont_n}"
-				generate_teplate.main(cfg.step_export_latent.export_latent_sidebands)
-		else:
-			generate_teplate.main(cfg.step_export_latent.export_latent_sidebands)
-
 	if cfg.do_evaluation:
 		log.info("Evaluate the performance and plot the results")
 		evaluation.main(cfg)

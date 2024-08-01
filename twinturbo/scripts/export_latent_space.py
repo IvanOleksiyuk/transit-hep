@@ -40,9 +40,6 @@ def main(cfg: DictConfig) -> None:
     model_class = hydra.utils.get_class(orig_cfg.model._target_)
     model = model_class.load_from_checkpoint(orig_cfg.ckpt_path, map_location=device)
 
-    log.info("Instantiating original trainer")
-    trainer = hydra.utils.instantiate(orig_cfg.trainer)
-
     # Instantiate the datamodule use a different config for data then for training
     if hasattr(orig_cfg, "data"):
         datamodule = hydra.utils.instantiate(cfg.data)
@@ -54,9 +51,9 @@ def main(cfg: DictConfig) -> None:
     model.eval() #PL should do it but I just do it to be sure
     e1s = []
     for batch in datamodule.test_dataloader():
-        e1s.append(model.encode(batch)[0])
-    vars = ["e1_{i}" for i in range(e1s[0].shape[1])]
-    dataset_dict = {var: T.vstack([o[var] for o in e1s]).numpy() for var in vars}
+        e1s.append(model.encode_e1_batch([batch[0].to(device)]))
+    vars = [f"e1_{i}" for i in range(e1s[0].shape[1])]
+    dataset_dict = {var: T.hstack([o[:, i] for o in e1s]).detach().cpu().numpy() for i, var in enumerate(vars)}
     log.info("Saving outputs")
     output_dir = Path(orig_cfg.paths.full_path, "outputs")
     output_dir.mkdir(parents=True, exist_ok=True)

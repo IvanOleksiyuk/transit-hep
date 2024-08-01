@@ -10,7 +10,7 @@ from twinturbo.src.utils.hydra_utils import instantiate_collection, log_hyperpar
 log = logging.getLogger(__name__)
 
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b.yaml"
+    version_base=None, config_path=str('../config/data'), config_name="twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b.yaml"
 ) 
 def main(cfg: DictConfig) -> None:
     log.info("Setting up full job config")

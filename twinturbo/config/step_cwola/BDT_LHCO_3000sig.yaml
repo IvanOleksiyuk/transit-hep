@@ -1,12 +1,13 @@
 run_dir: ${general.run_dir}
 cwola_path: ${general.run_dir}/cwola/
+cwola_eval_path: ${general.run_dir}/plots/cwola_3000_eval/
 
 datasets:
   datasr: ${data.cwola.datasr_3000}
   extra_signal: ${data.cwola.extra_signal_3000}
-  plotting_path: ${general.run_dir}/plots/input/cwola/template/
   template:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
+    plotting_path: ${general.run_dir}/plots/input/cwola/template/
     list_order: ["data"]
     file_path: ${general.run_dir}/template/outputs/template_sample_con3000.h5
     processor_cfg: 
@@ -16,9 +17,8 @@ datasets:
       - _target_: twinturbo.src.data.data.ProcessorAddColumn
         frame_name: "template"
         column_name: "is_signal"
-        column_values: 0
+        column_values: -1
   extra_bkg: ${data.cwola.extra_bkg_3000}
-
 
 input_path: /srv/beegfs/scratch/users/l/leighm/linearresults/
 cwola_subfolders: window_3100_3300__3700_3900/dope_3000/

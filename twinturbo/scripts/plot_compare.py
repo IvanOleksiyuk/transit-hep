@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import glob
 from scipy.interpolate import interp1d
+
 # TODO pyroot utils will remove the need for ../configs
 
 def find_files_with_name(root_dir, filename):
@@ -28,7 +29,7 @@ def main(cfg) -> None:
     curve_types = ["ROC", "SI_v_rej", "rejection_v_TPR"]
     
     methods=dict(cfg.methods)
-    methods[cfg.main_method.name] = cfg.main_method.dir
+    methods.update(dict(cfg.main_methods))
     
     for curve_type in curve_types:    
         curves = {}
@@ -98,6 +99,7 @@ def plot_curves(curves, curve_type, out_dir):
         plt.legend()
         plt.grid(which='major', alpha=0.5)
         plt.savefig(str(out_dir)+"/ROC.png", bbox_inches='tight', dpi=300)
+        plt.gca().set_aspect('equal')
         print("ROC curve saved to ", str(out_dir)+"/ROC.png")
     if curve_type == "SI_v_rej":
         plt.figure()

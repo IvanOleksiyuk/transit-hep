@@ -95,7 +95,7 @@ def run_bdt_folds(
 
         # Train an ensemble of decision trees
         clf = fit_ensemble(
-            train_x[:, :-1],  # Dont include the actual label!
+            train_x[:, :-2],  # Dont include the actual label (-1) and mass (-2) 
             train_y,
             num_ensemble,
             bdt_args,
@@ -103,7 +103,7 @@ def run_bdt_folds(
         )
 
         # Get the predictions using the ensemble
-        preds = clf.predict_proba(test_x[:, :-1])[:, 1]
+        preds = clf.predict_proba(test_x[:, :-2])[:, 1]
 
         # Save the predictions and the fold outputs
         all_x.append(test_x)
@@ -117,10 +117,10 @@ def run_bdt_folds(
 
     # Also get the outputs for the extra signal file
     extra_preds = (
-        clf.predict_proba(extra_sig[:, :-1])[:, 1] if extra_sig is not None else None
+        clf.predict_proba(extra_sig[:, :-2])[:, 1] if extra_sig is not None else None
     )
     extra_bkg_preds = (
-        clf.predict_proba(extra_bkg[:, :-1])[:, 1] if extra_bkg is not None else None
+        clf.predict_proba(extra_bkg[:, :-2])[:, 1] if extra_bkg is not None else None
     )
 
     return all_x, all_y, all_preds, extra_preds, extra_bkg_preds

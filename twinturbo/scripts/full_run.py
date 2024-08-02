@@ -52,7 +52,9 @@ def main(cfg: DictConfig) -> None:
 		name = cfg.step_export_template.output_name
 		if hasattr(cfg.step_export_template, "signal_contamination_ns"):
 			for cont_n in cfg.step_export_template.signal_contamination_ns:
-				cfg.step_export_template["data"]["test_data"]["dataset2"]["processor_cfg"][2]["n_sig"]=cont_n
+				for processor in cfg.step_export_template["data"]["test_data"]["dataset2"]["processor_cfg"]:
+					if processor["_target_"] == "twinturbo.src.data.processors.SignalContamination":
+						processor["n_sig"] = cont_n
 				cfg.step_export_template["output_name"] = name + f"{cont_n}"
 				generate_teplate.main(cfg.step_export_template)
 		else:
@@ -70,11 +72,20 @@ def main(cfg: DictConfig) -> None:
 
 	if cfg.do_cwola:
 		log.info("Train CWOLA model using the template dataset and the real data")
-		run_cwola_curtains2.main(cfg.step_cwola)
+		if hasattr(cfg.step_cwola, "several_confs"):
+			for conf in cfg.step_cwola.several_confs:
+				run_cwola_curtains2.main(conf)
+		else:
+			run_cwola_curtains2.main(cfg.step_cwola)
 
 	if cfg.do_evaluate_cwola:
 		log.info("Evaluate the performance of the CWOLA model")
-		cwola_evaluation.main(cfg.step_cwola)  
+		log.info("Train CWOLA model using the template dataset and the real data")
+		if hasattr(cfg.step_cwola, "several_confs"):
+			for conf in cfg.step_cwola.several_confs:
+				cwola_evaluation.main(conf)
+		else:
+			cwola_evaluation.main(cfg.step_cwola)
 
 	if cfg.do_plot_compare:
 		log.info("Produce a set of final plots and tables for one run")

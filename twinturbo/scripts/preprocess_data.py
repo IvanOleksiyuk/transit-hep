@@ -18,6 +18,7 @@ def main(cfg: DictConfig) -> None:
     data = cfg.data
     log.info("Instantiating the data module")
     dataset = hydra.utils.instantiate(data)
+    dataset.reset_index()
     dataset.save("/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5")
     print(len(dataset))
 

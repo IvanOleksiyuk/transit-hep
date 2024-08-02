@@ -250,6 +250,30 @@ class ProcessorAddColumn():
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
         data[self.frame_name][self.column_name] = self.column_values
         return data
+
+class ProcessorLoadInsertDatasets:
+    def __init__(self, dataset_files, ignore_length_mismatch=False):
+        self.dataset_files = dataset_files
+        self.ignore_length_mismatch = ignore_length_mismatch
+
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+        for file_path in self.dataset_files:
+            with pd.HDFStore(file_path, "r") as store:
+                # Iterate over all the keys (dataset names) in the file
+                for key in store:
+                    # Read each dataset into a pandas DataFrame
+                    # and store in the dictionary
+                    if not self.ignore_length_mismatch:
+                        assert len(store[key]) == len(data[list(data.keys())[0]]), (
+                            f"Length of the dataset {key}",
+                            " is not equal to the length of the data",
+                        )
+                    assert (
+                        key[1:] not in data
+                    ), "Dataset with the same name already exists"
+                    data[key[1:]] = store[key]
+        return data
+
 ##############################################
 
 class InMemoryDataFrameDictBase(Dataset):
@@ -362,13 +386,17 @@ class InMemoryDataFrameDictBase(Dataset):
         with open(file_path_str, "w") as f:
             for feature in self.data[key].columns.tolist():
                 f.write("%s " % feature)
+    
+    def reset_index(self):
+        for key, value in self.data.items():
+            self.data[key] = value.reset_index(drop=True)
 
 class InMemoryDataFrameDict(InMemoryDataFrameDictBase):
     """Class for in-memory datasets stored as a dictionary of pandas DataFrames.
     Loaded from an HDF5 file. Preprocessing is applied.
     """
 
-    def __init__(self, file_path: str, processor_cfg=[], list_order=None, plotting_path= None) -> None:
+    def __init__(self, file_path: str, processor_cfg=[], list_order=None, plotting_path= None, reset_index=False) -> None:
         self.file_path = file_path
         self.list_order = list_order
         self.data = self.load(file_path)

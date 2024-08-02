@@ -1,4 +1,6 @@
+run_dir: ${general.run_dir}
 cwola_path: ${general.run_dir}/cwola/
+cwola_eval_path: ${general.run_dir}/plots/cwola_0_eval/
 
 datasets:
   datasr: ${data.cwola.datasr_0}
@@ -15,10 +17,11 @@ datasets:
       - _target_: twinturbo.src.data.data.ProcessorAddColumn
         frame_name: "template"
         column_name: "is_signal"
-        column_values: 0
-
+        column_values: -1
+  extra_bkg: ${data.cwola.extra_bkg_0}
 
 input_path: /srv/beegfs/scratch/users/l/leighm/linearresults/
+cwola_subfolders: window_3100_3300__3700_3900/dope_0/
 mode: standard
 num_signal: 0
 sideband_1: "3100_3300"
@@ -29,16 +32,5 @@ early_stopping: 1
 validation_fraction: 0.1
 class_weight: balanced
 num_ensemble: 5
-seed: 0
-
-    # --mode=standard 
-    # --num_signal=3000 
-    # --sideband_1=3100_3300 
-    # --sideband_2=3700_3900 
-    # --num_folds=5 
-    # --max_iter=250 
-    # --early_stopping=1 
-    # --validation_fraction=0.1 
-    # --class_weight=balanced 
-    # --num_ensemble=5 
-    # --seed=0
+seeds: [0]
+extra_bkg: 1

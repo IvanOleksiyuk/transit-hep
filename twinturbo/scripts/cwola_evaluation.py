@@ -12,107 +12,78 @@ log = logging.getLogger(__name__)
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from sklearn.metrics import auc, roc_curve
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
     version_base=None, config_path=str('../config'), config_name="twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b"
 )
 def main(cfg: DictConfig) -> None:
-    run_dir = Path(cfg.run_dir)
+    cwola_eval_path = Path(cfg.cwola_eval_path)
     for seed in cfg.seeds:
-        plot_path = run_dir / ("plots/cwola_eval/seed_" + str(seed))
+        plot_path = cwola_eval_path / ("seed_" + str(seed))
         os.makedirs(plot_path, exist_ok=True)
         file_path=cfg.cwola_path+cfg.cwola_subfolders+f"standard/seed_{seed}/"+"cwola_outputs.h5"
-        file_path_extra=cfg.cwola_path+cfg.cwola_subfolders+f"standard/seed_{seed}/"+"cwola_outputs_extra.h5"
+        file_path_extra_bkg=cfg.cwola_path+cfg.cwola_subfolders+f"standard/seed_{seed}/"+"cwola_outputs_extra_bkg.h5"
+        file_path_extra_sig=cfg.cwola_path+cfg.cwola_subfolders+f"standard/seed_{seed}/"+"cwola_outputs_extra_sig.h5"
         data = {}
         with pd.HDFStore(file_path, "r") as store:
                 # Iterate over all the keys (dataset names) in the file
                 for key in store:
                     # Read each dataset into a pandas DataFrame and store in the dictionary
                     data[key[1:]] = store[key]
-                    
-        data_extra = {}
-        with pd.HDFStore(file_path_extra, "r") as store:
+
+        data_extra_sig = {}
+        with pd.HDFStore(file_path_extra_sig, "r") as store:
                 # Iterate over all the keys (dataset names) in the file
                 for key in store:
                     # Read each dataset into a pandas DataFrame and store in the dictionary
-                    data_extra[key[1:]] = store[key]
+                    data_extra_sig[key[1:]] = store[key]
+                            
+        data_extra_bkg = {}
+        with pd.HDFStore(file_path_extra_bkg, "r") as store:
+                # Iterate over all the keys (dataset names) in the file
+                for key in store:
+                    # Read each dataset into a pandas DataFrame and store in the dictionary
+                    data_extra_bkg[key[1:]] = store[key]
+        
         print(data)
         datasr = data["df"][data["df"]["CWoLa"] == 1]
-        do_ROC(datasr["preds"], 
-                datasr["is_signal"], 
+        preds = pd.concat([datasr["preds"], data_extra_sig["df"]["preds"]])
+        labels = pd.concat([datasr["is_signal"], data_extra_sig["df"]["is_signal"]])
+        do_ROC(preds, 
+                labels, 
                 save_path=plot_path / "ROC")
-        do_SI_v_rej(datasr["preds"], 
-                    datasr["is_signal"], 
+        do_SI_v_rej(preds, 
+                    labels, 
                     save_path=plot_path / "SI_v_rej")
-        do_rejection_v_TPR(datasr["preds"], 
-                            datasr["is_signal"], 
-                            save_path=plot_path / "rejection_v_TPR")
+        do_rejection_v_TPR(preds, 
+                        labels, 
+                        save_path=plot_path / "rejection_v_TPR")
         
         do_mass_sculpting(data["df"]["m_jj"], data["df"]["preds"], data["df"]["is_signal"], save_path=plot_path / "mass_sculpting.png")
-        do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra["df"]["m_jj"]]), 
-                    pd.concat([datasr["preds"], data_extra["df"]["preds"]]), 
-                    pd.concat([datasr["is_signal"], data_extra["df"]["m_jj"]*0]), save_path=plot_path / "mass_sculpting_density.png", density=True, rej_cuts = [0.9], bins=100)
-
-    
-def calc_TPR_FPR(scores, true_labels):
-    sorted_indices = np.argsort(scores)[::-1]
-    sorted_scores = np.array(scores)[sorted_indices]
-    sorted_labels = np.array(true_labels)[sorted_indices]
-
-    # Initialize variables to calculate TPR and FPR
-    TP = 0
-    FP = 0
-    FN = sum(true_labels)  # All positives initially
-    TN = len(true_labels) - FN  # All negatives initially
-
-    tpr_list = []
-    fpr_list = []
-
-    # Calculate TPR and FPR for each threshold
-    for score, label in zip(sorted_scores, sorted_labels):
-        if label == 1:
-            TP += 1
-            FN -= 1
-        else:
-            FP += 1
-            TN -= 1
-        
-        if TP + FN == 0:
-            TPR = 0
-        else:
-            TPR = TP / (TP + FN)
-        if FP + TN == 0:
-            FPR = 0
-        else:
-            FPR = FP / (FP + TN)
-        
-        tpr_list.append(TPR)
-        fpr_list.append(FPR)
-
-    # Add (0,0) and (1,1) points to the ROC curve
-    tpr_list.insert(0, 0.0)
-    fpr_list.insert(0, 0.0)
-    tpr_list.append(1.0)
-    fpr_list.append(1.0)
-    return tpr_list, fpr_list
+        do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra_bkg["df"]["m_jj"]]), 
+                    pd.concat([datasr["preds"], data_extra_bkg["df"]["preds"]]), 
+                    pd.concat([datasr["is_signal"], data_extra_bkg["df"]["m_jj"]*0]), save_path=plot_path / "mass_sculpting_density.png", density=True, rej_cuts = [0.9], bins=100)
 
 def do_ROC(scores, true_labels, save_path, title="ROC", make_plot=True, save_npy=True):
-    tpr_list, fpr_list = calc_TPR_FPR(scores, true_labels)
-
+    fpr_list, tpr_list, _ = roc_curve(true_labels, scores)
     # Plot the ROC curve
     if make_plot:
         plt.figure()
-        plt.plot(fpr_list, tpr_list)
+        auc_score = auc(fpr_list, tpr_list)
+        plt.plot(fpr_list, tpr_list,  label=f"Template AUC: {auc_score:.3f}")
+        plt.legend()
         plt.title(title)
         plt.xlabel('False Positive Rate (FPR)')
         plt.ylabel('True Positive Rate (TPR)')
         plt.grid(which='major')
+        plt.gca().set_aspect('equal')
         plt.savefig(str(save_path)+".png", bbox_inches='tight', dpi=300)
     if save_npy:
         np.save(str(save_path)+".npy", np.array([fpr_list, tpr_list]))
 
 def do_SI_v_rej(scores, true_labels, save_path, title="SI_v_rej", make_plot=True, save_npy=True):
-    tpr_list, fpr_list = calc_TPR_FPR(scores, true_labels)
+    fpr_list, tpr_list, _ = roc_curve(true_labels, scores)
     SI = np.array(tpr_list) / np.sqrt(np.array(fpr_list))
     rej = 1 / np.array(fpr_list)
     # Plot the curve
@@ -130,7 +101,7 @@ def do_SI_v_rej(scores, true_labels, save_path, title="SI_v_rej", make_plot=True
         np.save(str(save_path)+".npy", np.array([rej, SI]))
 
 def do_rejection_v_TPR(scores, true_labels, save_path, title="rej_v_TPR", make_plot=True, save_npy=True):
-    tpr_list, fpr_list = calc_TPR_FPR(scores, true_labels)
+    fpr_list, tpr_list, _ = roc_curve(true_labels, scores)
     rej = 1 / np.array(fpr_list)
     # Plot the curve
     if make_plot:
@@ -174,3 +145,74 @@ def plot_cuts_mass_hists():
 
 if __name__ == "__main__":
     main()
+
+# DEBS CODE
+def get_curtains_classifier_artifacts(job_path, template=False):
+    num_classifiers = list(job_path.glob("seed_*"))
+    fprs, tprs = [], []
+    for seed in num_classifiers:
+        df = pd.read_hdf(seed/"fulldata_mean.h5", "df")
+        df.sort_values(by=["m_j1","del_m"])
+        truth = df["Truth"].values
+        preds = df["preds"].values
+        if template is True:
+            print("Template mode")
+            template_mask = truth == -1
+            template_preds = preds[template_mask]
+            bg_mask = truth == 0
+            bg_preds = preds[bg_mask]
+            ret_preds = np.concatenate([template_preds, bg_preds])
+            ret_truth = np.concatenate([np.zeros(len(template_preds)), np.ones(len(bg_preds))])
+            fpr, tpr, _ = roc_curve(ret_truth, ret_preds)
+            fprs.append(fpr)
+            tprs.append(tpr)
+        else:
+            bg_mask = truth == 0.
+            bg_preds = preds[bg_mask]
+            signal_mask = (truth == 1.) | (truth == -2.)
+            signal_preds = preds[signal_mask]
+            ret_preds = np.concatenate([signal_preds, bg_preds])
+            ret_truth = np.concatenate([np.ones(len(signal_preds)), truth[bg_mask]])
+            fpr, tpr, _ = roc_curve(ret_truth, ret_preds)
+            fprs.append(fpr)
+            tprs.append(tpr)
+    try:
+        print(f"Total signal events: {len(signal_preds)}")
+        print(f"Total background events: {len(bg_preds)}")
+    except Exception as e:
+        pass
+    return fprs, tprs
+
+def oliws_classifier_artifacts(job_path, template=False):
+    num_classifiers = list(job_path.glob("seed_*"))
+    fprs, tprs = [], []
+    for seed in num_classifiers:
+        df = pd.read_hdf(seed/"cwola_outputs.h5", "df")
+        df.sort_values(by=["m_j1","del_m"])
+        truth = df["is_signal"].values
+        preds = df["preds"].values
+        if template:
+            template_mask = truth == -1
+            template_preds = preds[template_mask]
+            bg_mask = truth == 0
+            bg_preds = preds[bg_mask]
+            ret_preds = np.concatenate([template_preds, bg_preds])
+            ret_truth = np.concatenate([np.zeros(len(template_preds)), np.ones(len(bg_preds))])
+            fpr, tpr, _ = roc_curve(ret_truth, ret_preds)
+            fprs.append(fpr)
+            tprs.append(tpr)
+        else:
+            data_mask = truth >= 0
+            data_preds = preds[data_mask]
+            data_truth = truth[data_mask]
+            fpr, tpr, _ = roc_curve(data_truth, data_preds)
+            fprs.append(fpr)
+            tprs.append(tpr)
+            signal_preds = len(preds[truth==1])
+            bg_preds = len(preds[truth==0])
+    try:
+        print(f"Total signal events: {len(signal_preds)}")
+        print(f"Total background events: {len(bg_preds)}")
+    except Exception as e:
+        pass
+    return fprs, tprs

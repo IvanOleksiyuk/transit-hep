@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from sklearn.metrics import auc, roc_curve
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
     version_base=None, config_path=str('../config'), config_name="twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b"
@@ -121,7 +122,7 @@ def calc_TPR_FPR(scores, true_labels):
     return tpr_list, fpr_list
 
 def do_ROC(scores, true_labels, save_path, title="ROC", make_plot=True, save_npy=True):
-    tpr_list, fpr_list = calc_TPR_FPR(scores, true_labels)
+    fpr_list, tpr_list, _ = roc_curve(true_labels, scores)
 
     # Plot the ROC curve
     if make_plot:
@@ -135,7 +136,7 @@ def do_ROC(scores, true_labels, save_path, title="ROC", make_plot=True, save_npy
         np.save(str(save_path)+".npy", np.array([fpr_list, tpr_list]))
 
 def do_SI_v_rej(scores, true_labels, save_path, title="SI_v_rej", make_plot=True, save_npy=True):
-    tpr_list, fpr_list = calc_TPR_FPR(scores, true_labels)
+    fpr_list, tpr_list, _ = roc_curve(true_labels, scores)
     SI = np.array(tpr_list) / np.sqrt(np.array(fpr_list))
     rej = 1 / np.array(fpr_list)
     # Plot the curve
@@ -152,7 +153,7 @@ def do_SI_v_rej(scores, true_labels, save_path, title="SI_v_rej", make_plot=True
         np.save(str(save_path)+".npy", np.array([rej, SI]))
 
 def do_rejection_v_TPR(scores, true_labels, save_path, title="rej_v_TPR", make_plot=True, save_npy=True):
-    tpr_list, fpr_list = calc_TPR_FPR(scores, true_labels)
+    fpr_list, tpr_list, _ = roc_curve(true_labels, scores)
     rej = 1 / np.array(fpr_list)
     # Plot the curve
     if make_plot:

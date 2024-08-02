@@ -209,7 +209,7 @@ def plot_feature_spread(
     x_bounds=None,
     shuffle=True,
 ):
-    nbins = 30
+    nbins = 60
     n_features = sampled.shape[1] #- 1
     if x_bounds is None:
         x_bounds = [-3, 3]

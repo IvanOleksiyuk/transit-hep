@@ -11,7 +11,7 @@ defaults:
   - step_export_latent: twinturbo_LHCO
   - step_plot_compare: twinturbo_LHCO
   - override step_train_template/model: twinturbo_reco_cons0.01_smls0.001_adv3
-  - override step_train_template/trainer: 300e_noclip.yaml
+  - override step_train_template/trainer: 500e_noclip.yaml
 
 
 step_train_template:

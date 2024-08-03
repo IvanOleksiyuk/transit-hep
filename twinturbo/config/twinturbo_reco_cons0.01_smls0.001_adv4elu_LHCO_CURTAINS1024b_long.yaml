@@ -27,7 +27,7 @@ do_evaluate_cwola: True
 do_plot_compare: True
 
 general:
-  name: twinturbo_reco_cons0.01_smls0.001_adv4elu_LHCO_CURTAINS1024b
+  name: twinturbo_reco_cons0.01_smls0.001_adv4elu_LHCO_CURTAINS1024b_long
   subfolder: adv_main/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

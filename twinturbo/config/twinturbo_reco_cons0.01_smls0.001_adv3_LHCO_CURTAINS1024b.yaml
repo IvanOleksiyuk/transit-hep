@@ -11,14 +11,14 @@ defaults:
   - step_export_latent: twinturbo_LHCO
   - step_plot_compare: twinturbo_LHCO
   - override step_train_template/model: twinturbo_reco_cons0.01_smls0.001_adv3
-  - override step_train_template/trainer: 5e_noclip.yaml
+  - override step_train_template/trainer: 100e_noclip.yaml
 
 
 step_train_template:
   model:
     reverse_pass_mode: additional_input
 
-do_train_template: False
+do_train_template: True
 do_export_template: True
 do_export_latent: True
 do_evaluation: True
@@ -28,6 +28,6 @@ do_plot_compare: True
 
 general:
   name: twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b
-  subfolder: just_for_test/
+  subfolder: adv_present/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

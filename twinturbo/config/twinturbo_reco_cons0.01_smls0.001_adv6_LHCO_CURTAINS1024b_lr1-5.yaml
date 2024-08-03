@@ -10,8 +10,10 @@ defaults:
   - step_cwola: BDT_LHCO_allCWOLA
   - step_export_latent: twinturbo_LHCO
   - step_plot_compare: twinturbo_LHCO
-  - override step_train_template/model: twinturbo_reco_cons0.01_smls0.001_adv3
-  - override step_train_template/trainer: 100e_noclip.yaml
+  - override step_train_template/model: twinturbo_reco_cons0.01_smls0.001_adv6
+  - override step_train_template/trainer: 400e_noclip.yaml
+  - override step_train_template/model/optimizer: AdamW_lr1-5
+
 
 step_train_template:
   model:
@@ -25,9 +27,8 @@ do_cwola: True
 do_evaluate_cwola: True
 do_plot_compare: True
 
-
 general:
-  name: twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINSner1024b
+  name: twinturbo_reco_cons0.01_smls0.001_adv6_LHCO_CURTAINS1024b_lr1-5
   subfolder: devv/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

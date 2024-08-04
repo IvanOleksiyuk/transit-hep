@@ -34,5 +34,6 @@ adversarial_cfg:
   g_loss_weight: 0.2
   every_n_steps_g: 1
   scheduler: same_given
-
+  train_dis_in_warmup: True
+  g_loss_weight_in_warmup: False
 

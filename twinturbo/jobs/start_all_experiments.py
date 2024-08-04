@@ -23,7 +23,7 @@ if __name__ == "__main__":
     #                "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/gauss_corr_4_gap_twinturbo_usem_EXPEVAL",
     #                "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/powers_5_gap_twinturbo_usem_EXPEVAL",
     #                "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/swiss_roll_gap_twinturbo_usem_EXPEVAL",]  # Change this to your specific folder
-    directories = ["/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/seeds_experiments"]
+    directories = ["/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/adv_edv"]
     
     filename_prefix = "twinturbo"
     for directory in directories:

@@ -569,7 +569,7 @@ class TwinTURBO(LightningModule):
 			e1_copy = e1.clone()
 			# train discriminator
 			# Measure discriminator's ability to classify real from generated samples
-			if self.current_epoch>self.adversarial_cfg.warmup and not self.adversarial_cfg.train_dis_in_warmup:
+			if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
 				d_loss = self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1))), labels)
 				self.toggle_optimizer(optimizer_d)
 				self.log("d_loss", d_loss, prog_bar=True)
@@ -580,7 +580,7 @@ class TwinTURBO(LightningModule):
 
 			# Train generator
 			if self.current_epoch<self.adversarial_cfg.warmup or self.global_step%self.adversarial_cfg.every_n_steps_g==0:
-				if self.adversarial_cfg.g_loss_weight_in_warmup:
+				if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.g_loss_weight_in_warmup:
 					g_loss = - self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1))), labels)
 					total_loss2 = total_loss + g_loss*self.adversarial_cfg.g_loss_weight
 				else:

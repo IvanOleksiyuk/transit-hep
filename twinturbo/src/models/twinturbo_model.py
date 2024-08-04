@@ -143,6 +143,10 @@ class TwinTURBO(LightningModule):
 			self.automatic_optimization = False
 			self.adversarial_cfg = adversarial_cfg
 			self.discriminator = MLP(inpt_dim=latent_dim+1, outp_dim=1, **adversarial_cfg.discriminator)
+			if not hasattr(adversarial_cfg, "g_loss_weight_in_warmup"):
+				setattr(adversarial_cfg, "g_loss_weight_in_warmup", True)
+			if not hasattr(adversarial_cfg, "train_dis_in_warmup"):
+				setattr(adversarial_cfg, "train_dis_in_warmup", False)
 		else:
 			self.adversarial = False
 		self.use_m = use_m
@@ -565,7 +569,7 @@ class TwinTURBO(LightningModule):
 			e1_copy = e1.clone()
 			# train discriminator
 			# Measure discriminator's ability to classify real from generated samples
-			if self.current_epoch>self.adversarial_cfg.warmup:
+			if self.current_epoch>self.adversarial_cfg.warmup and not self.adversarial_cfg.train_dis_in_warmup:
 				d_loss = self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1))), labels)
 				self.toggle_optimizer(optimizer_d)
 				self.log("d_loss", d_loss, prog_bar=True)
@@ -576,8 +580,11 @@ class TwinTURBO(LightningModule):
 
 			# Train generator
 			if self.current_epoch<self.adversarial_cfg.warmup or self.global_step%self.adversarial_cfg.every_n_steps_g==0:
-				g_loss = - self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1))), labels)
-				total_loss2 = total_loss + g_loss*self.adversarial_cfg.g_loss_weight
+				if self.adversarial_cfg.g_loss_weight_in_warmup:
+					g_loss = - self.adversarial_loss(torch.sigmoid(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1))), labels)
+					total_loss2 = total_loss + g_loss*self.adversarial_cfg.g_loss_weight
+				else:
+					total_loss2 = total_loss
 				self.log("total_loss2", total_loss2, prog_bar=True)
 				self.manual_backward(total_loss2)
 				self.clip_gradients(optimizer_g, gradient_clip_val=5)

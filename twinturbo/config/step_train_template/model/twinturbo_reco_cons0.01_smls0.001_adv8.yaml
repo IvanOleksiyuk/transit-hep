@@ -7,10 +7,10 @@ _target_: twinturbo.src.models.twinturbo_model.TwinTURBO
 use_m: True
 encoder_mlp_config: 
   hddn_dim: [64, 64, 64, 64]
-  act_h: "elu"
+  act_h: "prelu"
 decoder_mlp_config:
   hddn_dim: [64, 64, 64, 64]
-  act_h: "elu"
+  act_h: "prelu"
 latent_norm: True
 latent_dim: 8
 loss_cfg:
@@ -27,11 +27,14 @@ loss_cfg:
 adversarial_cfg:
   discriminator:
     hddn_dim: [64, 64, 64, 64]
-    act_h: "elu"
+    act_h: "prelu"
   optimizer_main: default.yaml
   optimizer_d: default.yaml
-  warmup: 20
-  g_loss_weight: 0.2
-  every_n_steps_g: 1
+  warmup: 50
+  g_loss_weight: 0.3
+  every_n_steps_g: 10
   train_dis_in_warmup: False
   g_loss_weight_in_warmup: True
+
+
+

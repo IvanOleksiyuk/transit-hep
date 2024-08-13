@@ -1,7 +1,7 @@
 defaults:
   - _self_
   - optimizer: default.yaml
-  - scheduler: cyclic.yaml
+  - scheduler: constant1.yaml
 
 _target_: twinturbo.src.models.twinturbo_model.TwinTURBO
 use_m: True
@@ -23,17 +23,10 @@ loss_cfg:
   second_derivative_smoothness:
     w: 0.001
     step: 0.1
-
-adversarial_cfg:
-  discriminator:
-    hddn_dim: [64, 64, 64, 64]
-    act_h: "prelu"
-  optimizer_main: default.yaml
-  optimizer_d: default.yaml
-  warmup: 20
-  g_loss_weight: 0.2
-  every_n_steps_g: 1
-  train_dis_in_warmup: False
-  g_loss_weight_in_warmup: True
+  clip_loss_cfg:
+    clip_logit_scale: 1
+    w: -0.1 # negative value for anti-clip loss
 
 valid_plots: False
+
+

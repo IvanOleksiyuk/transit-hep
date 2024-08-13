@@ -25,6 +25,7 @@ loss_cfg:
     step: 0.1
 
 adversarial_cfg:
+  mode: latent_assymetric
   discriminator:
     hddn_dim: [64, 64, 64, 64]
     act_h: "prelu"
@@ -36,4 +37,4 @@ adversarial_cfg:
   train_dis_in_warmup: False
   g_loss_weight_in_warmup: True
 
-valid_plots: False
+valid_plots: True

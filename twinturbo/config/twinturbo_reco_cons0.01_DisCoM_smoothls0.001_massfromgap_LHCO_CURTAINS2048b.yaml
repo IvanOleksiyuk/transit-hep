@@ -10,9 +10,8 @@ defaults:
   - step_cwola: BDT_LHCO_allCWOLA
   - step_export_latent: twinturbo_LHCO
   - step_plot_compare: twinturbo_LHCO
-  - override step_train_template/model: twinturbo_reco_cons0.01_smls0.001_adv3
+  - override step_train_template/model: twinturbo_reco_cons0.01_smls0.001_DisCoM1
   - override step_train_template/trainer: 200e_noclip.yaml
-
 
 step_train_template:
   model:
@@ -27,7 +26,8 @@ do_evaluate_cwola: True
 do_plot_compare: True
 
 general:
-  name: twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS2048b
-  subfolder: just_for_test/
+  name: twinturbo_reco_cons0.01_DisCoM_smoothls0.001_massfromgap_LHCO_CURTAINS2048b
+  subfolder: PRES_MANUAL_TRAIN/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}
+

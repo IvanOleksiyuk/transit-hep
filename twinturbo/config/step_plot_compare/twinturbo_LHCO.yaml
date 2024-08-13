@@ -4,9 +4,8 @@ main_methods:
   TwinTurbo: ${general.run_dir}/plots/cwola_3000_eval/
   TwinTurboLatent: ${general.run_dir}/plots/cwola_latent_3000_eval/
 
-methods:
-  {"CURTAINS": "/home/users/o/oleksiyu/WORK/hyperproject/lit/curtains/run_7",
-  "supervised": "/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_3000/supervised",
+methods: #"CURTAINS": "/home/users/o/oleksiyu/WORK/hyperproject/lit/curtains/run_7",
+  {"supervised": "/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_3000/supervised",
   "idealised": "/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_3000/idealised",
   "radot": "/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_3000/standard"}
     

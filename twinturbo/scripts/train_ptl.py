@@ -4,7 +4,7 @@ root = pyrootutils.setup_root(search_from=__file__, pythonpath=True, cwd=True, i
 import twinturbo
 import logging
 import wandb
-
+import time
 import hydra
 import pytorch_lightning as pl
 import torch as T
@@ -62,8 +62,19 @@ def main(cfg: DictConfig) -> None:
     save_config(cfg)
 
     log.info("Starting training!")
+    start_time = time.time()
     trainer.fit(model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"Total trainng time: {elapsed_time:.2f} seconds")
+    formatted_time = f"Execution Time: {elapsed_time:.2f} seconds\n"
 
+    # Write the elapsed time to a text file
+    with open(cfg.paths.full_path+"/execution_time.txt", "a") as file:  # Use "a" to append to the file
+        file.write(formatted_time)
+
+    
+        
 
 if __name__ == "__main__":
     main()

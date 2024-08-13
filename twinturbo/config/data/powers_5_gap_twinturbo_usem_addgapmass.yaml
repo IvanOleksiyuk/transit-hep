@@ -15,7 +15,7 @@ template_training:
       - _target_: twinturbo.src.data.data.ProcessorIntervals
         scalar_df_name: "mass"
         var_name: "x0"
-        intervals: [[-100000, 100000]]      
+        intervals: [[-100000, -0.5], [0.5, 100000]]       
       - _target_: twinturbo.src.data.data.ProcessorToFloat32
         frame_names: ["data", "mass"]
     dataset2:

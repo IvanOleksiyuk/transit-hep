@@ -14,6 +14,18 @@
                 "twinturbo_reco_DisCo_massfromgap_smooth_shed1",
                 "general.subfolder=gauss_corr_4_gap_twinturbo_usem_addgapmass/",
                 "do_train_template=0"],
+        },
+        {
+            "name": "Python Debugger: Command Translator",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/twinturbo/scripts/full_run.py",
+            "console": "integratedTerminal",
+            "args": ["--config-name",
+                "twinturbo_reco_DisCo_massfromgap_smooth_shed1",
+                "general.subfolder=gauss_corr_4_gap_twinturbo_usem_addgapmass/",
+                "do_train_template=0"],
         }
     ]
+
 }

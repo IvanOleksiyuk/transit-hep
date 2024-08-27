@@ -14,18 +14,14 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import glob
 from scipy.interpolate import interp1d
+from twinturbo.src.utils.file_system import find_files_with_name
 
-# TODO pyroot utils will remove the need for ../configs
-
-def find_files_with_name(root_dir, filename):
-    # Use glob to find all files matching the filename pattern
-    search_pattern = os.path.join(root_dir, '**', filename)
-    matching_files = glob.glob(search_pattern, recursive=True)
-    return matching_files
-
+@hydra.main(
+    version_base=None, config_path=str('../config/step_plot_compare'), config_name="twinturbo_LHCO_seeds.yaml"
+) 
 def main(cfg) -> None:
     out_dir = Path(cfg.run_dir) / "plots/compare"
-    out_dir.mkdir(exist_ok=True)
+    out_dir.mkdir(exist_ok=True, parents=True)
     curve_types = ["ROC", "SI_v_rej", "rejection_v_TPR"]
     
     methods=dict(cfg.methods)
@@ -33,18 +29,21 @@ def main(cfg) -> None:
     
     for curve_type in curve_types:    
         curves = {}
-        for key, method_dir in methods.items():
-            curves[key] = get_curve(method_dir, curve_type)
+        for key, method in methods.items():
+            directory = method["abs_directory"] if "abs_directory" in method else cfg.run_dir+method["rel_directory"]
+            curves[key] = get_curve(directory, curve_type, method["prefix"], method["postfix"])
+            if cfg.save_curves:
+                np.save(str(out_dir)+"/"+key+"_"+curve_type+"_"+cfg.postfix+".npy", curves[key])
         print("curves loaded for ", curve_type)
         plot_curves(curves, curve_type, out_dir)
         
 def filter_finite_values(x):
     return x[np.isfinite(x)]
     
-def get_curve(method, curve_type):
-    files = find_files_with_name(method, curve_type+".npy")
+def get_curve(method, curve_type, prefix="", postfix=""):
+    files = find_files_with_name(method, prefix+curve_type+postfix+".npy")
     if len(files) == 0:
-        print("No files found for ", method,  curve_type)
+        assert "No files found for "+prefix+curve_type+postfix+".npy"
     curves = []
     for file in files:
         curves.append(np.load(file))

@@ -6,9 +6,14 @@ import torch
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 from sklearn.metrics import roc_curve, auc
-
+from matplotlib.colors import BoundaryNorm
+from matplotlib import cm
 from scipy import stats
 import seaborn as sns
+
+from matplotlib.colors import LinearSegmentedColormap
+colors = [(1, 1, 1, 0), (1, 0, 0, 1)]  # (R, G, B, Alpha) - from transparent to red
+custom_reds = LinearSegmentedColormap.from_list("custom_reds", colors)
 
 def shuffle_tensor(data):
     mx = torch.randperm(len(data), device=torch.device('cpu'))
@@ -16,7 +21,6 @@ def shuffle_tensor(data):
 
 def tensor2numpy(x):
     return x.detach().cpu().numpy()
-
 
 font = {
     "family": "sans serif",
@@ -195,6 +199,37 @@ def add_contour(axes, i, j, data, sampled, x_bounds=None):
     )
     axes[i, j].set_xlim(x_bounds)
     axes[i, j].set_ylim(x_bounds)
+    
+def add_2d_hist(axes, i, j, data, sampled, x_bounds=None):
+    if x_bounds is None:
+        x_bounds = [-3, 3]
+    
+
+    
+    bins = 30
+    range_x = x_bounds
+    range_y = x_bounds
+    thresholds = [0, 0.1, 0.25, 0.5, 1.0]
+    
+    hist1, xedges, yedges = np.histogram2d(x=data[:, j], y=data[:, i], bins=bins, range=[range_x, range_y])
+    hist2, _, _ = np.histogram2d(x=sampled[:, j], y=sampled[:, i], bins=[xedges, yedges])
+    
+    hist1_normalized = hist1 / np.quantile(hist1, 0.99)
+    hist2_normalized = hist2 / np.quantile(hist2, 0.99)
+    
+    cmap1 = cm.Blues
+    cmap2 = custom_reds
+    norm = BoundaryNorm(thresholds, ncolors=cmap1.N, clip=True)
+
+    # Plot the first histogram with thresholds
+    ax=axes[i, j]
+    ax.pcolormesh(xedges, yedges, hist1_normalized.T, cmap=cmap1, norm=norm, alpha=0.5)
+
+    # Plot the second histogram with thresholds
+    ax.pcolormesh(xedges, yedges, hist2_normalized.T, cmap=cmap2, norm=norm, alpha=0.5)
+
+    axes[i, j].set_xlim(x_bounds)
+    axes[i, j].set_ylim(x_bounds)
 
 
 def plot_feature_spread(
@@ -208,6 +243,7 @@ def plot_feature_spread(
     combined=False,
     x_bounds=None,
     shuffle=True,
+    do_2d_hist_instead_of_contour=False,
 ):
     nbins = 60
     n_features = sampled.shape[1] #- 1
@@ -298,16 +334,27 @@ def plot_feature_spread(
                 if i > j:
                     # TODO fix the singular matrix issue
                     # try:
-                    add_contour(
-                        axes,
-                        i,
-                        j,
-                        target_data[:n_sample],
-                        sampled[:n_sample],
-                        x_bounds=x_bounds,
-                    )
+                    if do_2d_hist_instead_of_contour:
+                        add_2d_hist(
+                            axes,
+                            i,
+                            j,
+                            target_data[:n_sample],
+                            sampled[:n_sample],
+                            x_bounds=x_bounds,
+                        )
+                    else:
+                        add_contour(
+                            axes,
+                            i,
+                            j,
+                            target_data[:n_sample],
+                            sampled[:n_sample],
+                            x_bounds=x_bounds,
+                        )
                     # except:
                     #     pass
+
 
                 elif i < j:
                     axes[i, j].set_visible(False)

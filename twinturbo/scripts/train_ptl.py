@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
-    version_base=None, config_path=str('../conf'), config_name="train"
+    version_base=None, config_path=str('../config'), config_name="train"
 )
 def main(cfg: DictConfig) -> None:
     wandb_key = open(cfg.paths.wandbkey, "r").read()

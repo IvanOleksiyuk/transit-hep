@@ -1,6 +1,0 @@
-include:
- - '.gitlab/.ci-build-image.yaml'
-
-stages:
-  - lint
-  - build

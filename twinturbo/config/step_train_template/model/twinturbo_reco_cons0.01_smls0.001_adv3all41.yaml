@@ -36,7 +36,7 @@ adversarial_cfg:
   every_n_steps_g: 1
   train_dis_in_warmup: False
   g_loss_weight_in_warmup: True
-  mode: "to0.5"
+  mode: "all41"
   scheduler: same_given
 
 valid_plots: True

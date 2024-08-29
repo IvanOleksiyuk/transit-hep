@@ -123,29 +123,28 @@ def main(cfg: DictConfig) -> None:
         config_list = expand_doping(config_list, cfg.several_doping, cfg.check_doping)
     
     # Create a folder for the run group
-    group_dir = Path(orig_full_run.general.run_dir)
+    group_dir = Path(cfg.run_dir)
     os.makedirs(group_dir, exist_ok=True)
 
     # For each config create its directory and save the config
     for i, run_cfg in enumerate(config_list):
         done_file_path = run_cfg.general.run_dir+"/ALL.DONE"
-        if os.path.isfile(done_file_path):
+        if os.path.isfile(done_file_path) and not cfg.redo:
+            print(f"Run {done_file_path} already exists. Skipping.")
             continue
-        if (not cfg.redo) and os.path.exists(run_cfg.general.run_dir+"/DONE.txt"):
-            log.info(f"Run {i} already exists. Skipping.")
-            continue
+        log.info(f"Run {done_file_path}")
         run_dir = Path(run_cfg.general.run_dir)
         os.makedirs(run_dir, exist_ok=True)
         os.makedirs(run_cfg.step_train_template.paths.full_path, exist_ok=True)
         OmegaConf.save(run_cfg, Path(run_cfg.general.run_dir, "full_config.yaml"), resolve=True)
         if cfg.run_sequentially:
             full_run.main(run_cfg)
-            with open(done_file_path, "a") as f:
+            with open(done_file_path, "w") as f:
                 f.write("All done for this run!")
                 f.close()
     
     if cfg.do_stability_analysis:
-        log.info("Train a model for template generation")
+        log.info("Stability analysis")
         if cfg.stability_analysis_cfg.run_dir is None:
             cfg.stability_analysis_cfg.run_dir = group_dir
         plot_compare.main(cfg.stability_analysis_cfg)

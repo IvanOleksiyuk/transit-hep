@@ -2,7 +2,7 @@
 #SBATCH --job-name=twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b
 #SBATCH --cpus-per-task=16
 #SBATCH --ntasks=1
-#SBATCH --time=3:00:00
+#SBATCH --time=4:00:00
 #SBATCH --partition=shared-gpu,private-dpnc-gpu
 #SBATCH --nodes=1
 #SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b-%A-%x_%a.out
@@ -25,3 +25,5 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
 # Record the end time
 end_time=$(date +%s)
 echo "Job ended at: $(date)"
+
+python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run_group.py --config-name full_run_group_stability.yaml full_run_cfg=twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b.yaml run_dir=twinturbo/workspaces/groups/twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b

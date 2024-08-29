@@ -1,0 +1,37 @@
+[2024-08-27 19:06:19,097][scripts.train_ptl][INFO] - Saving config so job can be resumed
+[2024-08-27 19:06:19,182][scripts.train_ptl][INFO] - Starting training!
+┏━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━┓
+┃[1m    [22m┃[1m Name                        [22m┃[1m Type        [22m┃[1m Params [22m┃
+┡━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━┩
+│ 0  │ discriminator               │ MLP         │ 13.2 K │
+│ 1  │ discriminator.input_block   │ MLPBlock    │    641 │
+│ 2  │ discriminator.hidden_blocks │ ModuleList  │ 12.5 K │
+│ 3  │ discriminator.output_block  │ MLPBlock    │     65 │
+│ 4  │ encoder1                    │ MLP         │ 13.5 K │
+│ 5  │ encoder1.input_block        │ MLPBlock    │    449 │
+│ 6  │ encoder1.hidden_blocks      │ ModuleList  │ 12.5 K │
+│ 7  │ encoder1.output_block       │ MLPBlock    │    520 │
+│ 8  │ encoder2                    │ MLP         │ 13.1 K │
+│ 9  │ encoder2.input_block        │ MLPBlock    │    129 │
+│ 10 │ encoder2.hidden_blocks      │ ModuleList  │ 12.5 K │
+│ 11 │ encoder2.output_block       │ MLPBlock    │    520 │
+│ 12 │ decoder                     │ MLP         │ 14.0 K │
+│ 13 │ decoder.input_block         │ MLPBlock    │  1.1 K │
+│ 14 │ decoder.hidden_blocks       │ ModuleList  │ 12.5 K │
+│ 15 │ decoder.output_block        │ MLPBlock    │    390 │
+│ 16 │ projector                   │ Sequential  │ 10.8 K │
+│ 17 │ projector.0                 │ Linear      │    288 │
+│ 18 │ projector.1                 │ BatchNorm1d │     64 │
+│ 19 │ projector.2                 │ ReLU        │      0 │
+│ 20 │ projector.3                 │ Linear      │  2.1 K │
+│ 21 │ projector.4                 │ BatchNorm1d │    128 │
+│ 22 │ projector.5                 │ ReLU        │      0 │
+│ 23 │ projector.6                 │ Linear      │  8.2 K │
+└────┴─────────────────────────────┴─────────────┴────────┘
+[1mTrainable params[22m: 64.5 K
+[1mNon-trainable params[22m: 0
+[1mTotal params[22m: 64.5 K
+[1mTotal estimated model params size (MB)[22m: 0
+Sanity Checking: |                                                                                                                                      | 0/? [00:00<?, ?it/s]
+
+

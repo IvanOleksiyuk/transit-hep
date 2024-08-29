@@ -26,11 +26,10 @@ def main(cfg) -> None:
     
     methods=dict(cfg.methods)
     methods.update(dict(cfg.main_methods))
-    
     for curve_type in curve_types:    
         curves = {}
         for key, method in methods.items():
-            directory = method["abs_directory"] if "abs_directory" in method else cfg.run_dir+method["rel_directory"]
+            directory = method["abs_directory"] if "abs_directory" in method else str(cfg.run_dir) + method["rel_directory"]
             curves[key] = get_curve(directory, curve_type, method["prefix"], method["postfix"])
             if cfg.save_curves:
                 np.save(str(out_dir)+"/"+key+"_"+curve_type+"_"+cfg.postfix+".npy", curves[key])
@@ -48,7 +47,6 @@ def get_curve(method, curve_type, prefix="", postfix=""):
     for file in files:
         curves.append(np.load(file))
     # Aggregate the curves that might have different x values (use interpolation)
-    
     if len(curves) == 1:
         return [curves[0][0], curves[0][1], 0]
     # Sort curves so that x is always rising

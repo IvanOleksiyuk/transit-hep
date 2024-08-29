@@ -18,7 +18,7 @@ cd scratch/sing_images/
 singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  bash -c "cd /home/users/o/oleksiyu/WORK/hyperproject/ &&\
  python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py\
- --config-name twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS2048b general.subfolder=after_fix1/"
+ --config-name twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS2048b general.subfolder=try_after_sigma/"
 
 # Record the end time
 end_time=$(date +%s)

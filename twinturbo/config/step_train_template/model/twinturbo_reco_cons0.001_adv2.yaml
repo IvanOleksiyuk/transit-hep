@@ -25,6 +25,7 @@ adversarial_cfg:
   discriminator:
     hddn_dim: [64, 64, 64, 64]
     act_h: "prelu"
+    act_o: "sigmoid"
   optimizer_main: default.yaml
   optimizer_d: default.yaml
   warmup: 20

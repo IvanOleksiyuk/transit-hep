@@ -338,10 +338,12 @@ class InMemoryDataFrameDictBase(Dataset):
         Path(plot_dir).mkdir(parents=True, exist_ok=True)
         for key, value in self.data.items():
             plt.figure()
+            total_events = len(value)
             if len(value) > 20000:
                 sns.pairplot(value.sample(20000, random_state=42))
             else:
                 sns.pairplot(value)
+            plt.title(key+" distribution, total events: "+str(len(value)))
             plt.savefig(Path(plot_dir) / f"{key}.png")
             plt.close()
 
@@ -406,6 +408,7 @@ class InMemoryDataFrameDict(InMemoryDataFrameDictBase):
         
         if plotting_path is not None:
             self.plot(plotting_path)
+        print("Data length: ", len(self))
 
 class InMemoryDataMerge(InMemoryDataFrameDictBase):
     """Class for in-memory datasets stored as a dictionary of pandas DataFrames.
@@ -426,6 +429,7 @@ class InMemoryDataMerge(InMemoryDataFrameDictBase):
                     self.data[key] = pd.concat([self.data[key], value])
         if do_shuffle:
             self.shuffle()
+        print("Data length: ", len(self))
 
 class InMemoryDataMergeClasses(InMemoryDataFrameDictBase):
     """Class for in-memory datasets stored as a dictionary of pandas DataFrames.
@@ -492,6 +496,7 @@ class InMemoryDataMergeClasses(InMemoryDataFrameDictBase):
 
         if plotting_path is not None:
             self.plot(plotting_path)
+        print("Data length: ", len(self))
     
 class SimpleDataModule(LightningDataModule):
     def __init__(

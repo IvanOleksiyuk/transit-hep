@@ -5,5 +5,5 @@ scheduler:
   gamma: 0.5
 lightning:
   monitor: valid/log_prob
-  interval: step
+  interval: epoch
   frequency: 1

@@ -914,7 +914,23 @@ class TwinTURBO(LightningModule):
     def configure_optimizers(self) -> dict:
         """Configure the optimisers and learning rate sheduler for this
         model."""
-        if self.adversarial:	
+        if self.adversarial=="3optim_normal":
+            enc_dec_params = list(self.encoder1.parameters()) + list(self.encoder2.parameters()) + list(self.decoder.parameters())
+            opt_e = self.hparams.optimizer(params=self.encoder1.parameters())
+            opt_g = self.hparams.optimizer(params=enc_dec_params)
+            opt_d = self.hparams.optimizer(params=self.discriminator.parameters())
+            if getattr(self.adversarial_cfg, "scheduler", None) is None:
+                return [opt_e, opt_g, opt_d], []
+            elif self.adversarial_cfg.scheduler == "same_given":
+                sched_g = self.hparams.scheduler.scheduler(opt_g)
+                sched_d = self.hparams.scheduler.scheduler(opt_d)
+                sched_e = self.hparams.scheduler.scheduler(opt_e)
+                return [opt_e, opt_g, opt_d], [sched_g, sched_d, sched_e]
+            else: 
+                sched_g = self.adversarial_cfg.scheduler.scheduler_g(opt_g)
+                sched_d = self.adversarial_cfg.scheduler.scheduler_d(opt_d)
+                return [opt_e, opt_g, opt_d], [sched_g, sched_d, sched_e]            
+        elif self.adversarial:	
             enc_dec_params = list(self.encoder1.parameters()) + list(self.encoder2.parameters()) + list(self.decoder.parameters())
             opt_g = self.hparams.optimizer(params=enc_dec_params)
             opt_d = self.hparams.optimizer(params=self.discriminator.parameters())

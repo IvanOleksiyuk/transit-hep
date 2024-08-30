@@ -6,7 +6,7 @@ def delete_old_files(directory):
     # Get the current time
     now = time.time()
     # Calculate the time 24 hours ago
-    cutoff = now - (2 * 24 * 60 * 60)
+    cutoff = now - (24 * 60 * 60)
     
     # Walk through all files in the directory
     for filename in os.listdir(directory):

@@ -18,7 +18,6 @@ defaults:
 step_train_template:
   model:
     reverse_pass_mode: additional_input
-    valid_plots: False
 
 do_train_template: True
 do_export_template: True

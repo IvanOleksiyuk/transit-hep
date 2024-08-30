@@ -719,7 +719,52 @@ class TwinTURBO(LightningModule):
                 optimizer_g.step()
                 optimizer_g.zero_grad()
                 self.untoggle_optimizer(optimizer_g)
-        elif self.adversarial=="all41": 
+        elif self.adversarial=="3optim_normal": 
+            optimizer_e, optimizer_g, optimizer_d = self.optimizers()
+            # adversarial loss is binary cross-entropy
+
+            total_loss, e1, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
+            if self.current_epoch<self.adversarial_cfg.warmup or self.global_step%self.adversarial_cfg.every_n_steps_g==0:
+                self.toggle_optimizer(optimizer_g)
+                self.manual_backward(total_loss, retain_graph=True)
+                self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
+                optimizer_g.step()
+                self.zero_grad()
+                self.untoggle_optimizer(optimizer_g)  
+            
+            e1 = self.encode_w1(sample[0])
+            batch_size=sample[0].shape[0]
+            rpm = torch.randperm(batch_size)
+            w2_perm = w2.clone()
+            w2_perm = w2_perm[rpm]
+            labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
+            e1_copy = e1.clone()
+            # train discriminator
+            # Measure discriminator's ability to classify real from generated samples
+            if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
+                d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
+                self.toggle_optimizer(optimizer_d)
+                self.log("d_loss", d_loss, prog_bar=True)
+                self.manual_backward(d_loss, retain_graph=True)
+                self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
+                optimizer_d.step()
+                self.zero_grad()
+                self.untoggle_optimizer(optimizer_d)
+
+            # Train generator
+            if self.current_epoch<self.adversarial_cfg.warmup or self.global_step%self.adversarial_cfg.every_n_steps_g==0:
+                if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.g_loss_weight_in_warmup:
+                    labels = torch.cat([torch.ones(batch_size*2)]).type_as(w2_perm)
+                    g_loss = - self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
+                    self.log("g_loss", g_loss)
+                    self.toggle_optimizer(optimizer_e)
+                    self.manual_backward(g_loss*self.adversarial_cfg.g_loss_weight)
+                    self.clip_gradients(optimizer_e, gradient_clip_val=self.gradient_clip_val)
+                    optimizer_e.step()
+                    self.zero_grad()
+                    self.untoggle_optimizer(optimizer_e) 
+                      
+        elif self.adversarial=="grad_clean": 
             optimizer_g, optimizer_d = self.optimizers()
             # adversarial loss is binary cross-entropy
 
@@ -739,15 +784,13 @@ class TwinTURBO(LightningModule):
                 self.manual_backward(d_loss, retain_graph=True)
                 self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
                 optimizer_d.step()
-                optimizer_d.zero_grad()
+                self.zero_grad()
                 self.untoggle_optimizer(optimizer_d)
 
             # Train generator
             if self.current_epoch<self.adversarial_cfg.warmup or self.global_step%self.adversarial_cfg.every_n_steps_g==0:
                 if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.g_loss_weight_in_warmup:
-                    labels = torch.cat([torch.ones(batch_size*2)]).type_as(w2_perm)
-                    g_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
-                    self.log("g_loss", g_loss, prog_bar=True)
+                    g_loss = - self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
                     total_loss2 = total_loss + g_loss*self.adversarial_cfg.g_loss_weight
                 else:
                     total_loss2 = total_loss
@@ -755,8 +798,8 @@ class TwinTURBO(LightningModule):
                 self.manual_backward(total_loss2)
                 self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
                 optimizer_g.step()
-                optimizer_g.zero_grad()
-                self.untoggle_optimizer(optimizer_g)    
+                self.zero_grad()
+                self.untoggle_optimizer(optimizer_g)
         elif self.adversarial: 
             optimizer_g, optimizer_d = self.optimizers()
             # adversarial loss is binary cross-entropy
@@ -793,6 +836,7 @@ class TwinTURBO(LightningModule):
                 optimizer_g.step()
                 optimizer_g.zero_grad()
                 self.untoggle_optimizer(optimizer_g)
+
         else:	
             total_loss = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
             return total_loss
@@ -925,11 +969,12 @@ class TwinTURBO(LightningModule):
                 sched_g = self.hparams.scheduler.scheduler(opt_g)
                 sched_d = self.hparams.scheduler.scheduler(opt_d)
                 sched_e = self.hparams.scheduler.scheduler(opt_e)
-                return [opt_e, opt_g, opt_d], [sched_g, sched_d, sched_e]
+                return [opt_e, opt_g, opt_d], [sched_e, sched_g, sched_d]
             else: 
                 sched_g = self.adversarial_cfg.scheduler.scheduler_g(opt_g)
                 sched_d = self.adversarial_cfg.scheduler.scheduler_d(opt_d)
-                return [opt_e, opt_g, opt_d], [sched_g, sched_d, sched_e]            
+                sched_e = self.adversarial_cfg.scheduler.scheduler_e(opt_e)
+                return [opt_e, opt_g, opt_d], [sched_e, sched_g, sched_d]            
         elif self.adversarial:	
             enc_dec_params = list(self.encoder1.parameters()) + list(self.encoder2.parameters()) + list(self.decoder.parameters())
             opt_g = self.hparams.optimizer(params=enc_dec_params)

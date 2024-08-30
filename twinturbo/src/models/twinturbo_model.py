@@ -586,10 +586,10 @@ class TwinTURBO(LightningModule):
                 d_loss = (d_loss_1 + d_loss_0)/2
                 self.toggle_optimizer(optimizer_d)
                 self.log("d_loss", d_loss, prog_bar=True)
+                self.zero_grad()
                 self.manual_backward(d_loss) #retain_graph=True
                 self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
                 optimizer_d.step()
-                optimizer_d.zero_grad()
                 self.untoggle_optimizer(optimizer_d)
 
             # Train generator
@@ -602,10 +602,10 @@ class TwinTURBO(LightningModule):
                     total_loss2 = total_loss
                 self.log("g_loss_1", g_loss_1, prog_bar=False)
                 self.log("total_loss2", total_loss2, prog_bar=True)
+                self.zero_grad()
                 self.manual_backward(total_loss2)
                 self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
                 optimizer_g.step()
-                optimizer_g.zero_grad()
                 self.untoggle_optimizer(optimizer_g)
         elif self.adversarial=="latent_gaussian":
             optimizer_g, optimizer_d = self.optimizers()
@@ -624,10 +624,10 @@ class TwinTURBO(LightningModule):
                 d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, torch.normal(0, 1, size=e1.shape).to(e1.device)], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
                 self.toggle_optimizer(optimizer_d)
                 self.log("d_loss", d_loss, prog_bar=True)
+                self.zero_grad()
                 self.manual_backward(d_loss, retain_graph=True)
                 self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
                 optimizer_d.step()
-                optimizer_d.zero_grad()
                 self.untoggle_optimizer(optimizer_d)
 
             # Train generator
@@ -638,10 +638,10 @@ class TwinTURBO(LightningModule):
                 else:
                     total_loss2 = total_loss
                 self.log("total_loss2", total_loss2, prog_bar=True)
+                self.zero_grad()
                 self.manual_backward(total_loss2)
                 self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
                 optimizer_g.step()
-                optimizer_g.zero_grad()
                 self.untoggle_optimizer(optimizer_g)
         elif self.adversarial=="to0.5": 
             optimizer_g, optimizer_d = self.optimizers()
@@ -660,10 +660,10 @@ class TwinTURBO(LightningModule):
                 d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
                 self.toggle_optimizer(optimizer_d)
                 self.log("d_loss", d_loss, prog_bar=True)
+                self.zero_grad()
                 self.manual_backward(d_loss, retain_graph=True)
                 self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
                 optimizer_d.step()
-                optimizer_d.zero_grad()
                 self.untoggle_optimizer(optimizer_d)
 
             # Train generator
@@ -676,10 +676,10 @@ class TwinTURBO(LightningModule):
                 else:
                     total_loss2 = total_loss
                 self.log("total_loss2", total_loss2, prog_bar=True)
+                self.zero_grad()
                 self.manual_backward(total_loss2)
                 self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
                 optimizer_g.step()
-                optimizer_g.zero_grad()
                 self.untoggle_optimizer(optimizer_g)
         elif self.adversarial=="oposite_labels": 
             optimizer_g, optimizer_d = self.optimizers()
@@ -698,10 +698,10 @@ class TwinTURBO(LightningModule):
                 d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
                 self.toggle_optimizer(optimizer_d)
                 self.log("d_loss", d_loss, prog_bar=True)
+                self.zero_grad()
                 self.manual_backward(d_loss, retain_graph=True)
                 self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
                 optimizer_d.step()
-                optimizer_d.zero_grad()
                 self.untoggle_optimizer(optimizer_d)
 
             # Train generator
@@ -714,10 +714,10 @@ class TwinTURBO(LightningModule):
                 else:
                     total_loss2 = total_loss
                 self.log("total_loss2", total_loss2, prog_bar=True)
+                self.zero_grad()
                 self.manual_backward(total_loss2)
                 self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
                 optimizer_g.step()
-                optimizer_g.zero_grad()
                 self.untoggle_optimizer(optimizer_g)
         elif self.adversarial=="3optim_normal": 
             optimizer_e, optimizer_g, optimizer_d = self.optimizers()
@@ -726,10 +726,10 @@ class TwinTURBO(LightningModule):
             total_loss, e1, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
             if self.current_epoch<self.adversarial_cfg.warmup or self.global_step%self.adversarial_cfg.every_n_steps_g==0:
                 self.toggle_optimizer(optimizer_g)
+                self.zero_grad()
                 self.manual_backward(total_loss, retain_graph=True)
                 self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
                 optimizer_g.step()
-                self.zero_grad()
                 self.untoggle_optimizer(optimizer_g)  
             
             e1 = self.encode_w1(sample[0])
@@ -743,12 +743,12 @@ class TwinTURBO(LightningModule):
             # Measure discriminator's ability to classify real from generated samples
             if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
                 d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
-                self.toggle_optimizer(optimizer_d)
                 self.log("d_loss", d_loss, prog_bar=True)
+                self.toggle_optimizer(optimizer_d)
+                self.zero_grad()
                 self.manual_backward(d_loss, retain_graph=True)
                 self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
                 optimizer_d.step()
-                self.zero_grad()
                 self.untoggle_optimizer(optimizer_d)
 
             # Train generator
@@ -758,13 +758,12 @@ class TwinTURBO(LightningModule):
                     g_loss = - self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
                     self.log("g_loss", g_loss)
                     self.toggle_optimizer(optimizer_e)
+                    self.zero_grad()
                     self.manual_backward(g_loss*self.adversarial_cfg.g_loss_weight)
                     self.clip_gradients(optimizer_e, gradient_clip_val=self.gradient_clip_val)
                     optimizer_e.step()
-                    self.zero_grad()
                     self.untoggle_optimizer(optimizer_e) 
-                      
-        elif self.adversarial=="grad_clean": 
+        elif self.adversarial=="opt_grad_clean": 
             optimizer_g, optimizer_d = self.optimizers()
             # adversarial loss is binary cross-entropy
 
@@ -784,7 +783,7 @@ class TwinTURBO(LightningModule):
                 self.manual_backward(d_loss, retain_graph=True)
                 self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
                 optimizer_d.step()
-                self.zero_grad()
+                optimizer_d.zero_grad()
                 self.untoggle_optimizer(optimizer_d)
 
             # Train generator
@@ -798,7 +797,7 @@ class TwinTURBO(LightningModule):
                 self.manual_backward(total_loss2)
                 self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
                 optimizer_g.step()
-                self.zero_grad()
+                optimizer_g.zero_grad()
                 self.untoggle_optimizer(optimizer_g)
         elif self.adversarial: 
             optimizer_g, optimizer_d = self.optimizers()
@@ -817,10 +816,10 @@ class TwinTURBO(LightningModule):
                 d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
                 self.toggle_optimizer(optimizer_d)
                 self.log("d_loss", d_loss, prog_bar=True)
+                self.zero_grad()
                 self.manual_backward(d_loss, retain_graph=True)
                 self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
                 optimizer_d.step()
-                optimizer_d.zero_grad()
                 self.untoggle_optimizer(optimizer_d)
 
             # Train generator
@@ -831,12 +830,11 @@ class TwinTURBO(LightningModule):
                 else:
                     total_loss2 = total_loss
                 self.log("total_loss2", total_loss2, prog_bar=True)
+                self.zero_grad()
                 self.manual_backward(total_loss2)
                 self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
                 optimizer_g.step()
-                optimizer_g.zero_grad()
                 self.untoggle_optimizer(optimizer_g)
-
         else:	
             total_loss = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
             return total_loss

@@ -36,5 +36,6 @@ adversarial_cfg:
   every_n_steps_g: 1
   train_dis_in_warmup: False
   g_loss_weight_in_warmup: True
+  mode: "opt_grad_clean"
 
 valid_plots: True

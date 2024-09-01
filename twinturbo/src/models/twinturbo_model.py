@@ -799,7 +799,43 @@ class TwinTURBO(LightningModule):
                 optimizer_g.step()
                 optimizer_g.zero_grad()
                 self.untoggle_optimizer(optimizer_g)
-        elif self.adversarial: 
+        elif self.adversarial=="discriminator_priority": 
+            optimizer_g, optimizer_d = self.optimizers()
+            # adversarial loss is binary cross-entropy
+
+            total_loss, e1, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
+            batch_size=sample[0].shape[0]
+            rpm = torch.randperm(batch_size)
+            w2_perm = w2.clone()
+            w2_perm = w2_perm[rpm]
+            labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
+            e1_copy = e1.clone()
+            # train discriminator
+            # Measure discriminator's ability to classify real from generated samples
+            if self.current_epoch>=self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
+                d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
+                self.toggle_optimizer(optimizer_d)
+                self.log("d_loss", d_loss, prog_bar=True)
+                self.zero_grad()
+                self.manual_backward(d_loss, retain_graph=True)
+                self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
+                optimizer_d.step()
+                self.untoggle_optimizer(optimizer_d)
+
+            # Train generator
+            if self.current_epoch<self.adversarial_cfg.warmup or d_loss<np.log(2):
+                if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.g_loss_weight_in_warmup:
+                    g_loss = - self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
+                    total_loss2 = total_loss + g_loss*self.adversarial_cfg.g_loss_weight
+                else:
+                    total_loss2 = total_loss
+                self.log("total_loss2", total_loss2, prog_bar=True)
+                self.zero_grad()
+                self.manual_backward(total_loss2)
+                self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
+                optimizer_g.step()
+                self.untoggle_optimizer(optimizer_g)
+        elif self.adversarial=="default": 
             optimizer_g, optimizer_d = self.optimizers()
             # adversarial loss is binary cross-entropy
 
@@ -835,6 +871,8 @@ class TwinTURBO(LightningModule):
                 self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
                 optimizer_g.step()
                 self.untoggle_optimizer(optimizer_g)
+        elif self.adversarial:
+            assert False, "Adversarial mode not implemented"
         else:	
             total_loss = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
             return total_loss

@@ -26,7 +26,7 @@ loss_cfg:
 
 adversarial_cfg:
   discriminator:
-    hddn_dim: [32, 32]
+    hddn_dim: [64, 64, 64, 64]
     act_h: "prelu"
     act_o: "sigmoid"
   optimizer_main: default.yaml
@@ -47,6 +47,6 @@ adversarial_cfg:
       _partial_: True
       milestones: [100, 200, 300, 400]
       gamma: 0.5
-  mode: "grad_clean"
+  mode: "default"
 
 valid_plots: False

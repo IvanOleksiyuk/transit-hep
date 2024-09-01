@@ -25,6 +25,7 @@ loss_cfg:
     step: 0.1
 
 adversarial_cfg:
+  mode: "default"
   discriminator:
     hddn_dim: [64, 64, 64, 64]
     act_h: "elu"

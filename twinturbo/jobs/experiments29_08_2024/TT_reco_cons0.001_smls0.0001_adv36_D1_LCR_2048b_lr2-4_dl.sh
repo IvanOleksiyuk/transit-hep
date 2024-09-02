@@ -2,7 +2,7 @@
 #SBATCH --job-name=TT_reco_cons0.001_smls0.0001_adv36_D1_LCR_2048b_lr2-4_dl
 #SBATCH --cpus-per-task=16
 #SBATCH --ntasks=1
-#SBATCH --time=5:00:00
+#SBATCH --time=1:00:00
 #SBATCH --partition=shared-gpu,private-dpnc-gpu
 #SBATCH --nodes=1
 #SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/TT_reco_cons0.001_smls0.0001_adv36_D1_LCR_2048b_lr2-4_dl-%A-%x_%a.out

@@ -222,6 +222,7 @@ class TwinTURBO(LightningModule):
         if hasattr(self.loss_cfg.DisCO_loss_cfg, "w"):
             if not hasattr(self.loss_cfg.DisCO_loss_cfg, "mode"):
                 self.loss_cfg.DisCO_loss_cfg.mode = "e1_vs_e2"
+        self.dis_steps_per_gen = 0
 
     def encode_e1_batch(self, batch):
         w1 = batch[0]
@@ -821,6 +822,7 @@ class TwinTURBO(LightningModule):
                 self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
                 optimizer_d.step()
                 self.untoggle_optimizer(optimizer_d)
+                self.dis_steps_per_gen+=1
 
             # Train generator
             if self.current_epoch<self.adversarial_cfg.warmup or d_loss<np.log(2):
@@ -835,6 +837,8 @@ class TwinTURBO(LightningModule):
                 self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
                 optimizer_g.step()
                 self.untoggle_optimizer(optimizer_g)
+                self.log("dis_steps_per_gen", self.dis_steps_per_gen)
+                self.dis_steps_per_gen = 0
         elif self.adversarial=="default": 
             optimizer_g, optimizer_d = self.optimizers()
             # adversarial loss is binary cross-entropy

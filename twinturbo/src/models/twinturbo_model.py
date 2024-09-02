@@ -691,11 +691,11 @@ class TwinTURBO(LightningModule):
             rpm = torch.randperm(batch_size)
             w2_perm = w2.clone()
             w2_perm = w2_perm[rpm]
-            labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
             e1_copy = e1.clone()
             # train discriminator
             # Measure discriminator's ability to classify real from generated samples
             if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
+                labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
                 d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
                 self.toggle_optimizer(optimizer_d)
                 self.log("d_loss", d_loss, prog_bar=True)
@@ -811,6 +811,10 @@ class TwinTURBO(LightningModule):
             w2_perm = w2_perm[rpm]
             labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
             e1_copy = e1.clone()
+            if self.adversarial_cfg.loss_function=="binary_cross_entropy":
+                threshold=np.log(2)
+            elif self.adversarial_cfg.loss_function=="mse":
+                threshold=0.25
             # train discriminator
             # Measure discriminator's ability to classify real from generated samples
             if self.current_epoch>=self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
@@ -825,7 +829,7 @@ class TwinTURBO(LightningModule):
                 self.dis_steps_per_gen+=1
 
             # Train generator
-            if self.current_epoch<self.adversarial_cfg.warmup or d_loss<np.log(2):
+            if self.current_epoch<self.adversarial_cfg.warmup or d_loss<threshold:
                 if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.g_loss_weight_in_warmup:
                     g_loss = - self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
                     total_loss2 = total_loss + g_loss*self.adversarial_cfg.g_loss_weight

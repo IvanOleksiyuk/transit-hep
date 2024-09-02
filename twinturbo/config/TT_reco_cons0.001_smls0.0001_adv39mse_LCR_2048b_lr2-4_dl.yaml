@@ -10,14 +10,14 @@ defaults:
   - step_cwola: BDT_LHCO_allCWOLA
   - step_export_latent: twinturbo_LHCO
   - step_plot_compare: twinturbo_LHCO
-  - override step_train_template/model: twinturbo_reco_cons0.001_smls0.0001_adv36_D1
-  - override step_train_template/trainer: 2000e_noclip.yaml
+  - override step_train_template/model: twinturbo_reco_cons0.001_smls0.0001_adv39mse
+  - override step_train_template/trainer: 500e_noclip.yaml
   - override step_train_template/model/optimizer: AdamW_lr2-4
-  - override step_train_template/model/scheduler: MultiStepLR
 
 step_train_template:
   model:
     reverse_pass_mode: additional_input
+    valid_plots: False
 
 do_train_template: True
 do_export_template: True
@@ -28,7 +28,7 @@ do_evaluate_cwola: True
 do_plot_compare: True
 
 general:
-  name: TT_reco_cons0.001_smls0.0001_adv36_D1_LCR_2048b_lr2-4_dl
+  name: TT_reco_cons0.001_smls0.0001_adv39mse_LCR_2048b_lr2-4_dl
   subfolder: REFERENCE13_08onGPU033/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

@@ -61,4 +61,4 @@ adversarial_cfg:
       gamma: 0.5
   gradient_clip_val: 0.1
 
-valid_plots: True
+valid_plots: False

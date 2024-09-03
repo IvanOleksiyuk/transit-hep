@@ -13,11 +13,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from sklearn.metrics import auc, roc_curve
+import time
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
     version_base=None, config_path=str('../config'), config_name="twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b"
 )
 def main(cfg: DictConfig) -> None:
+    print("Starting CWoLa evaluation")
+    start_time = time.time()
     cwola_eval_path = Path(cfg.cwola_eval_path)
     for seed in cfg.seeds:
         plot_path = cwola_eval_path / ("seed_" + str(seed))
@@ -67,7 +70,9 @@ def main(cfg: DictConfig) -> None:
         do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra_bkg["df"]["m_jj"]]), 
                     pd.concat([datasr["preds"], data_extra_bkg["df"]["preds"]]), 
                     pd.concat([datasr["is_signal"], data_extra_bkg["df"]["m_jj"]*0]), save_path=plot_path / "mass_sculpting_density_bkg_only.png", density=True, filter_bkg=True, rej_cuts = [0.9, 0.99], bins=100)
+    print(f"Finished in {(time.time()-start_time)/60} minutes")
 
+    
 def do_ROC(scores, true_labels, save_path, title="ROC", make_plot=True, save_npy=True):
     fpr_list, tpr_list, _ = roc_curve(true_labels, scores)
     # Plot the ROC curve

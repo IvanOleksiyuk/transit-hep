@@ -33,7 +33,7 @@ def main(cfg) -> None:
             curves[key] = get_curve(directory, curve_type, method["prefix"], method["postfix"])
             if cfg.save_curves:
                 np.save(str(out_dir)+"/"+key+"_"+curve_type+"_"+cfg.postfix+".npy", curves[key])
-            plot_curves(curves, curve_type, out_dir)
+        plot_curves(curves, curve_type, out_dir)
         print("curves loaded for ", curve_type)
     
     curve_type = "ROC_closure"

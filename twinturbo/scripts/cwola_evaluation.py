@@ -53,27 +53,48 @@ def main(cfg: DictConfig) -> None:
         datasr = data["df"][data["df"]["CWoLa"] == 1]
         preds = pd.concat([datasr["preds"], data_extra_sig["df"]["preds"]])
         labels = pd.concat([datasr["is_signal"], data_extra_sig["df"]["is_signal"]])
-        do_ROC(preds, 
+        plot_ROC(preds, 
                 labels, 
-                save_path=plot_path / "ROC")
-        do_SI_v_rej(preds, 
+                save_path=plot_path / "ROC",
+                title="ROC")
+        plot_SI_v_rej(preds, 
                     labels, 
                     save_path=plot_path / "SI_v_rej")
         do_rejection_v_TPR(preds, 
                         labels, 
                         save_path=plot_path / "rejection_v_TPR")
         
-        do_mass_sculpting(data["df"]["m_jj"], data["df"]["preds"], data["df"]["is_signal"], save_path=plot_path / "mass_sculpting.png")
+        templatesr = data["df"][data["df"]["CWoLa"] == 0]
+        datasr_bkg = datasr[datasr["is_signal"] == 0]
+        preds = pd.concat([templatesr["preds"], datasr_bkg["preds"]])
+        labels = np.concatenate([np.zeros(len(templatesr)), np.ones(len(datasr_bkg))])
+        plot_ROC(preds, 
+                labels, 
+                save_path=plot_path / "ROC_closure",
+                title="ROC closure")
+        
+        do_mass_sculpting(data["df"]["m_jj"], 
+                          data["df"]["preds"], 
+                          data["df"]["is_signal"], 
+                          save_path=plot_path / "mass_sculpting.png")
         do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra_bkg["df"]["m_jj"]]), 
                     pd.concat([datasr["preds"], data_extra_bkg["df"]["preds"]]), 
-                    pd.concat([datasr["is_signal"], data_extra_bkg["df"]["m_jj"]*0]), save_path=plot_path / "mass_sculpting_density.png", density=True, rej_cuts = [0.9, 0.99], bins=100)
+                    pd.concat([datasr["is_signal"], data_extra_bkg["df"]["m_jj"]*0]), 
+                    save_path=plot_path / "mass_sculpting_density.png", 
+                    density=True, 
+                    rej_cuts = [0.9, 0.99], bins=100)
         do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra_bkg["df"]["m_jj"]]), 
                     pd.concat([datasr["preds"], data_extra_bkg["df"]["preds"]]), 
-                    pd.concat([datasr["is_signal"], data_extra_bkg["df"]["m_jj"]*0]), save_path=plot_path / "mass_sculpting_density_bkg_only.png", density=True, filter_bkg=True, rej_cuts = [0.9, 0.99], bins=100)
+                    pd.concat([datasr["is_signal"], data_extra_bkg["df"]["m_jj"]*0]), 
+                    save_path=plot_path / "mass_sculpting_density_bkg_only.png", 
+                    density=True, 
+                    filter_bkg=True, 
+                    rej_cuts = [0.9, 0.99], 
+                    bins=100)
     print(f"Finished in {(time.time()-start_time)/60} minutes")
 
     
-def do_ROC(scores, true_labels, save_path, title="ROC", make_plot=True, save_npy=True):
+def plot_ROC(scores, true_labels, save_path, title="ROC", make_plot=True, save_npy=True):
     fpr_list, tpr_list, _ = roc_curve(true_labels, scores)
     # Plot the ROC curve
     if make_plot:
@@ -86,11 +107,12 @@ def do_ROC(scores, true_labels, save_path, title="ROC", make_plot=True, save_npy
         plt.ylabel('True Positive Rate (TPR)')
         plt.grid(which='major')
         plt.gca().set_aspect('equal')
+        plt.plot([0, 1], [0, 1], color='black', linestyle='--')
         plt.savefig(str(save_path)+".png", bbox_inches='tight', dpi=300)
     if save_npy:
         np.save(str(save_path)+".npy", np.array([fpr_list, tpr_list]))
 
-def do_SI_v_rej(scores, true_labels, save_path, title="SI_v_rej", make_plot=True, save_npy=True):
+def plot_SI_v_rej(scores, true_labels, save_path, title="SI_v_rej", make_plot=True, save_npy=True):
     fpr_list, tpr_list, _ = roc_curve(true_labels, scores)
     SI = np.array(tpr_list) / np.sqrt(np.array(fpr_list))
     rej = 1 / np.array(fpr_list)

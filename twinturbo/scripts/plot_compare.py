@@ -33,8 +33,19 @@ def main(cfg) -> None:
             curves[key] = get_curve(directory, curve_type, method["prefix"], method["postfix"])
             if cfg.save_curves:
                 np.save(str(out_dir)+"/"+key+"_"+curve_type+"_"+cfg.postfix+".npy", curves[key])
+            plot_curves(curves, curve_type, out_dir)
         print("curves loaded for ", curve_type)
-        plot_curves(curves, curve_type, out_dir)
+    
+    curve_type = "ROC_closure"
+    methods=dict(cfg.main_methods)
+    curves = {}
+    for key, method in methods.items():
+        directory = method["abs_directory"] if "abs_directory" in method else str(cfg.run_dir) + method["rel_directory"]
+        curves[key] = get_curve(directory, curve_type, method["prefix"], method["postfix"])
+        if cfg.save_curves:
+            np.save(str(out_dir)+"/"+key+"_"+curve_type+"_"+cfg.postfix+".npy", curves[key])
+    print("curves loaded for ", curve_type)
+    plot_curves(curves, curve_type, out_dir)
         
 def filter_finite_values(x):
     return x[np.isfinite(x)]
@@ -42,7 +53,8 @@ def filter_finite_values(x):
 def get_curve(method, curve_type, prefix="", postfix=""):
     files = find_files_with_name(method, prefix+curve_type+postfix+".npy")
     if len(files) == 0:
-        assert "No files found for "+prefix+curve_type+postfix+".npy"
+        print("No files found for "+prefix+curve_type+postfix+".npy")
+        assert False, "No files found for "+prefix+curve_type+postfix+".npy"
     curves = []
     for file in files:
         curves.append(np.load(file))
@@ -84,6 +96,21 @@ def get_curve(method, curve_type, prefix="", postfix=""):
     return [common_x, mean_y, std_y]
 
 def plot_curves(curves, curve_type, out_dir):
+    if curve_type == "ROC_closure":
+        plt.figure()
+        for key, curve in curves.items():
+            x, y, std = curve
+            plt.fill_between(x, y-std, y+std, alpha=0.5)
+            plt.plot(x, y, label=key+f" AUC: {np.trapz(y, x):.4f}+/-{np.trapz(std, x):.4f}")
+        plt.title("ROC Curve Closure Test")
+        plt.xlabel('False Positive Rate (FPR)')
+        plt.ylabel('True Positive Rate (TPR)')
+        plt.legend()
+        plt.plot([0, 1], [0, 1], 'k--')
+        plt.grid(which='major', alpha=0.5)
+        plt.savefig(str(out_dir)+"/ROC_closure.png", bbox_inches='tight', dpi=300)
+        plt.gca().set_aspect('equal')
+        print("ROC curve saved to ", str(out_dir)+"/ROC.png")
     if curve_type == "ROC":
         plt.figure()
         for key, curve in curves.items():

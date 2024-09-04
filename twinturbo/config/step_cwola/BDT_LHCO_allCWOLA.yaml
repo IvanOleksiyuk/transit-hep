@@ -2,6 +2,7 @@ several_confs:
   - run_dir: ${general.run_dir}
     cwola_path: ${general.run_dir}/cwola/
     cwola_eval_path: ${general.run_dir}/plots/cwola_3000_eval/
+    cwola_eval_name: "cwola 3000 sig"
     datasets:
       datasr: ${data.cwola.datasr_3000}
       extra_signal: ${data.cwola.extra_signal_3000}
@@ -37,6 +38,7 @@ several_confs:
   - run_dir: ${general.run_dir}
     cwola_path: ${general.run_dir}/cwola_latent/
     cwola_eval_path: ${general.run_dir}/plots/cwola_latent_3000_eval/
+    cwola_eval_title: "latent cwola 3000 sig"
     datasets:
       datasr: ${data.cwola.dataSR_latent_3000}
       extra_signal: ${data.cwola.data_extra_sig_latent_3000}

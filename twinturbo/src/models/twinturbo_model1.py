@@ -147,7 +147,7 @@ class TwinTURBO(LightningModule):
             self.adversarial_cfg = adversarial_cfg
             self.discriminator = MLP(inpt_dim=latent_dim+1, outp_dim=1, **adversarial_cfg.discriminator)
             if "double_discriminator" in self.adversarial:
-                self.discriminator2 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=1, **adversarial_cfg.discriminator2)
+                self.discriminator2 = MLP(inpt_dim=inpt_dim[0][0], outp_dim=1, **adversarial_cfg.discriminator2)
             if not hasattr(adversarial_cfg, "g_loss_weight_in_warmup"):
                 setattr(adversarial_cfg, "g_loss_weight_in_warmup", True)
             if not hasattr(adversarial_cfg, "train_dis_in_warmup"):
@@ -165,23 +165,25 @@ class TwinTURBO(LightningModule):
         self.valid_plots = valid_plots
         self.save_hyperparameters(logger=False)
         if encoder_mlp_config.get("network_type") == "KAN":
-            self.network_type = "KAN"
             self.encoder1 = KAN(width=[inpt_dim[0][0]]+encoder_mlp_config.hddn_dim+[latent_dim], grid=encoder_mlp_config.grid, k=encoder_mlp_config.k, device=torch.device('cuda')) #model = KAN(width=[2,5,1], grid=5, k=3, seed=0) 
             self.encoder2 = KAN(width=[inpt_dim[1][0]]+encoder_mlp_config.hddn_dim+[latent_dim], grid=encoder_mlp_config.grid, k=encoder_mlp_config.k, device=torch.device('cuda'))
             if self.use_m:
                 self.decoder = KAN(width=[latent_dim*2]+decoder_mlp_config.hddn_dim+[inpt_dim[0][0]], grid=decoder_mlp_config.grid, k=decoder_mlp_config.k, device=torch.device('cuda'))
             else:
                 self.decoder = KAN(width=[latent_dim*2]+decoder_mlp_config.hddn_dim+[inpt_dim[0][0]+inpt_dim[1][0]], grid=decoder_mlp_config.grid, k=decoder_mlp_config.k, device=torch.device('cuda'))
+            self.network_type = "KAN"
         elif encoder_mlp_config.get("network_type") == "MLP_cont":
             self.network_type = "MLP_cont"
             self.encoder = MLP(inpt_dim=inpt_dim[0][0], ctxt_dim=inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
             self.decoder = MLP(inpt_dim=latent_dim, ctxt_dim=inpt_dim[1][0], outp_dim=inpt_dim[0][0], **decoder_mlp_config)
         else:
             self.network_type = "MLP"
-            self.encoder1 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
+            self.encoder1 = MLP(inpt_dim=inpt_dim[0][0], outp_dim=latent_dim, **encoder_mlp_config)
             self.encoder2 = MLP(inpt_dim=inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
-            self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0]+inpt_dim[1][0], **decoder_mlp_config)
-
+            if self.use_m:
+                self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0], **decoder_mlp_config)
+            else:
+                self.decoder = MLP(inpt_dim=latent_dim*2, outp_dim=inpt_dim[0][0]+inpt_dim[1][0], **decoder_mlp_config)
         
         self.var_group_list = var_group_list
         self.latent_norm = latent_norm
@@ -229,6 +231,53 @@ class TwinTURBO(LightningModule):
                 self.loss_cfg.DisCO_loss_cfg.mode = "e1_vs_e2"
         self.dis_steps_per_gen = 0
 
+    def encode_e1_batch(self, batch):
+        w1 = batch[0]
+        if self.latent_norm:
+            e1 = normalize(self.encoder1(w1))
+        else:
+            e1 = self.encoder1(w1)
+        return e1
+
+    def encode(self, w1, w2) -> torch.Tensor:
+        if self.network_type=="MLP_cont":
+            if self.latent_norm:
+                e1 = normalize(self.encoder(w1[:, :-w2.shape[1]], w2[:, -w2.shape[1]:]))
+            else:
+                e1 = self.encoder(w1[:, :-w2.shape[1]], w2[:, -w2.shape[1]:])
+                e2 = w2
+        else:
+            if self.latent_norm:
+                e1 = normalize(self.encoder1(w1))
+                e2 = normalize(self.encoder2(w2))
+            else:
+                e1 = self.encoder1(w1)
+                e2 = self.encoder2(w2)
+        return e1, e2
+
+    def decode(self, e1, e2) -> torch.Tensor:
+        if self.network_type == "MLP_cont":
+            return self.decoder(e1, e2)
+        else:
+            latent = torch.cat([e1, e2], dim=1)
+            return self.decoder(latent)
+
+    def encode_w1(self, w1) -> torch.Tensor:
+        if self.latent_norm:
+            e1 = normalize(self.encoder1(w1))
+        else:
+            e1 = self.encoder1(w1)
+        return e1
+
+    def encode_w2(self, w2) -> torch.Tensor:
+        if self.network_type=="MLP_cont":
+            return e2
+        if self.latent_norm:
+            e2 = normalize(self.encoder2(w2))
+        else:
+            e2 = self.encoder2(w2)
+        return e2
+
     def VICloss(self, x, y):
         x = self.projector(x)
         y = self.projector(y)
@@ -267,80 +316,59 @@ class TwinTURBO(LightningModule):
         layers.append(nn.Linear(f[-2], f[-1], bias=False))
         return nn.Sequential(*layers)
 
-    def encode_content(self, x_inp, m_pair):
-        if self.network_type == "MLP_cont":
-            en = self.encoder(x_inp, m_pair)
-        elif not self.use_m:
-            en = self.encoder1(x_inp)
-        else:
-            en = self.encoder1(torch.cat([x_inp, m_pair], dim=1))
-        
-        if self.latent_norm:
-            return normalize(en)
-        else:
-            return en
-    
-    def encode_style(self, m):
-        en = self.encoder2(m)
-        if self.latent_norm:
-            return normalize(en)
-        else:
-            return en
-
-    def decode(self, content, style):
-        if self.network_type == "MLP_cont":
-            en = self.decoder(content, style)
-        else:
-            return self.decoder(torch.cat([content, style], dim=1))
-
     def _shared_step(self, sample: tuple, _batch_index = None, step_type="none") -> torch.Tensor:
         self.log(f"{step_type}_debug/global_step", self.global_step)
         batch_size=sample[0].shape[0]
-        x_inp = sample[0]
-        m_pair = sample[1]
-        
-        content = self.encode_content(x_inp, m_pair)
-        style = self.encode_style(m_pair)
-        
-        recon = self.decode(content, style)
+        w1 = sample[0]
+        w2 = sample[1]
+
+        if self.use_m:
+            x = w1[:, :-w2.shape[1]]
+        else:
+            x = w1
+
+        e1, e2 = self.encode(w1, w2)
+        recon = self.decode(e1, e2)
         
         # Reverse pass
         rpm = torch.randperm(batch_size)
         if self.reverse_pass_mode is None:
-            style_p = m_pair[rpm]
+            e2_p = e2[rpm]
         elif self.reverse_pass_mode == "noise":
-            style_p = m_pair[rpm] + self.reverse_pass_mode.noise_scale * torch.randn_like(style)
+            e2_p = e2[rpm] + self.reverse_pass_mode.noise_scale * torch.randn_like(e2)
         elif self.reverse_pass_mode == "additional_input":
-            style_p = self.encode_style(sample[2])[rpm]
+            e2_p = self.encode_w2(sample[2])[rpm]
         else:
-            style_p = m_pair[rpm]
+            e2_p = e2[rpm]
 
-        recon_p = self.decode(content, style_p)
-        x_n = recon_p[:, :x_inp.shape[1]]
-        m_n = recon_p[:, x_inp.shape[1]:]
+        recon_p = self.decode(e1, e2_p)
+        
+        # Check if the mass should be coppied from the reconstruction for the bottom branch
+        x_n = recon_p[:, :x.shape[1]]
+        m_n = recon_p[:, x.shape[1]:]
+        
+        if self.use_m:
+            w1_n = recon_p
+        else:
+            w1_n = x_n
+        w2_n = m_n
 
-        content_n = self.encode_content(x_n, m_n)
-        style_n = self.encode_style(m_n)
+        e1_n, e2_n = self.encode(w1_n, w2_n)
 
         #### Losses
         total_loss = 0
 
         # Reconstruction loss
-        if self.use_m:
-            loss_reco = mse_loss(recon, torch.cat([x_inp, m_pair], dim=1)).mean()
-        else:
-            loss_reco = mse_loss(recon, x_inp).mean()
+        loss_reco = mse_loss(recon, w1).mean()
         total_loss += loss_reco*self.loss_cfg.reco.w
         self.log(f"{step_type}/loss_reco", loss_reco)
         
         # Second derivative smoothmess
         if self.loss_cfg.second_derivative_smoothness is not None:
-            e2_p_pl = self.encode_style(sample[2] + self.loss_cfg.second_derivative_smoothness.step)[rpm]
-            e2_p_mi = self.encode_style(sample[2] - self.loss_cfg.second_derivative_smoothness.step)[rpm]
-            latent_p_pl = torch.cat([content, e2_p_pl], dim=1)
-            recon_p_pl = self.decoder(latent_p_pl)
-            latent_p_mi = torch.cat([content, e2_p_mi], dim=1)
-            recon_p_mi = self.decoder(latent_p_mi)
+            e2_p_pl = self.encode_w2(sample[2] + self.loss_cfg.second_derivative_smoothness.step)[rpm]
+            e2_p_mi = self.encode_w2(sample[2] - self.loss_cfg.second_derivative_smoothness.step)[rpm]
+            recon_p_pl = self.decode(e1, e2_p_pl)
+            recon_p_mi = self.decode(e1, e2_p_mi)
             loss_sec_der = (recon_p_pl+recon_p_mi-2*recon_p)/(self.loss_cfg.second_derivative_smoothness.step**2)
             loss_sec_der = loss_sec_der.abs().mean()
             self.log(f"{step_type}/loss_sec_der_smooth", loss_sec_der)
@@ -354,7 +382,7 @@ class TwinTURBO(LightningModule):
 
         # Consistency losses 
         if self.loss_cfg.consistency_x is not None:
-            loss_back_vec = mse_loss(content, content_n).mean()
+            loss_back_vec = mse_loss(e1, e1_n).mean()
             self.log(f"{step_type}/loss_back_vec", loss_back_vec)
             if self.loss_cfg.consistency_x.w is not None:
                 if isinstance(self.loss_cfg.consistency_x.w, float) or isinstance(self.loss_cfg.consistency_x.w, int):
@@ -363,7 +391,7 @@ class TwinTURBO(LightningModule):
                     total_loss += loss_back_vec*self.loss_cfg.consistency_x.w(self.global_step)
         
         if self.loss_cfg.consistency_cont is not None:
-            loss_back_cont = mse_loss(style_p, style_n).mean()
+            loss_back_cont = mse_loss(e2_p, e2_n).mean()
             self.log(f"{step_type}/loss_back_cont", loss_back_cont)
             if self.loss_cfg.consistency_cont.w is not None:
                 if isinstance(self.loss_cfg.consistency_cont.w, float) or isinstance(self.loss_cfg.consistency_cont.w, int):
@@ -373,8 +401,8 @@ class TwinTURBO(LightningModule):
 
         # variance loss
         if self.loss_cfg.latent_variance_cfg is not None:
-            std_e1 = torch.sqrt(content.var(dim=0) + 0.0001)
-            std_e2 = torch.sqrt(style.var(dim=0) + 0.0001)
+            std_e1 = torch.sqrt(e1.var(dim=0) + 0.0001)
+            std_e2 = torch.sqrt(e2.var(dim=0) + 0.0001)
             loss_latent_variance = torch.mean(torch.abs(1 - std_e1)**self.loss_cfg.latent_variance_cfg.pow) / 2 + torch.mean(torch.square(1 - std_e2)**self.loss_cfg.latent_variance_cfg.pow) / 2
             if self.loss_cfg.latent_variance_cfg.w is not None:
                 total_loss += loss_latent_variance*self.loss_cfg.latent_variance_cfg.w
@@ -389,7 +417,7 @@ class TwinTURBO(LightningModule):
 
         # Attractive and repulsive loss that are parts of triplet loss
         if self.loss_cfg.attractive is not None:
-            loss_attractive = -cosine_similarity(content, style[torch.randperm(batch_size)]).mean()
+            loss_attractive = -cosine_similarity(e1, e2[torch.randperm(batch_size)]).mean()
             self.log(f"{step_type}/loss_attractive", loss_attractive)
             if self.loss_cfg.attractive.w is not None:
                 if isinstance(self.loss_cfg.attractive.w, float) or isinstance(self.loss_cfg.attractive.w, int):
@@ -398,20 +426,27 @@ class TwinTURBO(LightningModule):
                     total_loss += loss_attractive*self.loss_cfg.attractive.w(self.global_step)
         
         if self.loss_cfg.repulsive is not None:
-            loss_repulsive = torch.abs(cosine_similarity(content, style)).mean()
+            loss_repulsive = torch.abs(cosine_similarity(e1, e2)).mean()
             self.log(f"{step_type}/loss_repulsive", loss_repulsive)
             if self.loss_cfg.repulsive.w is not None:
                 if isinstance(self.loss_cfg.repulsive.w, float) or isinstance(self.loss_cfg.repulsive.w, int):
                     total_loss += loss_repulsive*self.loss_cfg.repulsive.w
                 else:
                     total_loss += loss_repulsive*self.loss_cfg.repulsive.w(self.global_step)
+        # if hasattr(self.loss_cfg.loss_weights, "loss_attractive") and hasattr(self.loss_cfg.loss_weights, "loss_repulsive"):
+        # 	self.log(f"{step_type}/loss_attractive+repulsive", loss_attractive+loss_repulsive)
+        # 	# Loss balancing for tripplet loss
+        # 	if step_type=="train" and hasattr(self.loss_cfg, "loss_balancing"):
+        # 		self.loss_balabcing(loss_repulsive)
+        # 		self.log("train/l_atr_weight", self.loss_cfg.loss_weights.loss_attractive)	
+        # 		self.log("train/l_rep_weight", self.loss_cfg.loss_weights.loss_repulsive)
 
         # DisCO loss
         if self.loss_cfg.DisCO_loss_cfg is not None:
             if self.loss_cfg.DisCO_loss_cfg.mode == "e1_vs_e2":
-                loss_disco = self.DisCO_loss(content, style)
+                loss_disco = self.DisCO_loss(e1, e2)
             elif self.loss_cfg.DisCO_loss_cfg.mode == "e1_vs_w2":
-                loss_disco = self.DisCO_loss(content, m_pair)
+                loss_disco = self.DisCO_loss(e1, w2)
             self.log(f"{step_type}/DisCO_loss", loss_disco)
             if self.loss_cfg.DisCO_loss_cfg.w is not None:
                 if isinstance(self.loss_cfg.DisCO_loss_cfg.w, float) or isinstance(self.loss_cfg.DisCO_loss_cfg.w, int):
@@ -423,7 +458,7 @@ class TwinTURBO(LightningModule):
 
         # Pearson loss
         if self.loss_cfg.pearson_loss_cfg is not None:
-            loss_disco = self.pearson_loss(content, style)
+            loss_disco = self.pearson_loss(e1, e2)
             self.log(f"{step_type}/pearson_loss", loss_disco)
             if self.loss_cfg.pearson_loss_cfg.w is not None:
                 if isinstance(self.loss_cfg.pearson_loss_cfg.w, float) or isinstance(self.loss_cfg.pearson_loss_cfg.w, int):
@@ -433,14 +468,14 @@ class TwinTURBO(LightningModule):
 
         # CLIP loss
         if self.loss_cfg.clip_loss_cfg is not None:
-            loss_clip = self.clip_loss(content, style).mean()
+            loss_clip = self.clip_loss(e1, e2).mean()
             self.log(f"{step_type}/clip_loss", loss_clip)
             if self.loss_cfg.clip_loss_cfg.w is not None:
                 total_loss += loss_clip*self.loss_cfg.clip_loss_cfg.w
 
         # VIC loss
         if self.loss_cfg.vic_reg_cfg is not None:
-            loss, repr_loss, std_loss, cov_loss = self.VICloss(content, style)
+            loss, repr_loss, std_loss, cov_loss = self.VICloss(e1, e2)
             self.log(f"{step_type}/VIC_repr_loss", repr_loss)
             self.log(f"{step_type}/VIC_std_loss", std_loss)
             self.log(f"{step_type}/VIC_cov_loss", cov_loss)
@@ -449,7 +484,7 @@ class TwinTURBO(LightningModule):
         # Log the total loss
         self.log(f"{step_type}/total_loss", total_loss)
         if self.adversarial:
-            return total_loss, content, style, m_pair
+            return total_loss, e1, e2, w2
         else:
             return total_loss
 
@@ -779,6 +814,7 @@ class TwinTURBO(LightningModule):
         elif self.adversarial=="double_discriminator_default": 
             optimizer_g, optimizer_d, optimizer_d2 = self.optimizers()
             # adversarial loss is binary cross-entropy
+
             total_loss, e1, e2, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
             batch_size=sample[0].shape[0]
             rpm = torch.randperm(batch_size)
@@ -786,7 +822,8 @@ class TwinTURBO(LightningModule):
             w2_perm = w2_perm[rpm]
             labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
             e1_copy = e1.clone()
-            generated = self.decode(e1, e2[rpm])
+            latent = torch.cat([e1, e2[rpm]], dim=1)
+            generated = self.decoder(latent)
             if self.adversarial_cfg.loss_function=="binary_cross_entropy":
                 threshold=np.log(2)
             elif self.adversarial_cfg.loss_function=="mse":
@@ -842,7 +879,8 @@ class TwinTURBO(LightningModule):
             w2_perm = w2_perm[rpm]
             labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
             e1_copy = e1.clone()
-            generated = self.decode(e1, e2[rpm])
+            latent = torch.cat([e1, e2[rpm]], dim=1)
+            generated = self.decoder(latent)
             if self.adversarial_cfg.loss_function=="binary_cross_entropy":
                 threshold=np.log(2)
             elif self.adversarial_cfg.loss_function=="mse":
@@ -861,7 +899,7 @@ class TwinTURBO(LightningModule):
                 self.dis_steps_per_gen+=1
                 
             if self.current_epoch>=self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
-                d_loss_gen = self.adversarial_loss(self.discriminator2(torch.cat([torch.cat([sample[0], sample[1]], dim=1), generated], dim=0)), labels)
+                d_loss_gen = self.adversarial_loss(self.discriminator2(torch.cat([sample[0], generated], dim=0)), labels)
                 self.toggle_optimizer(optimizer_d2)
                 self.log("d_loss_gen", d_loss_gen, prog_bar=True)
                 self.zero_grad()
@@ -875,7 +913,7 @@ class TwinTURBO(LightningModule):
             if self.current_epoch<self.adversarial_cfg.warmup or (d_loss<threshold and d_loss_gen<threshold):
                 if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.g_loss_weight_in_warmup:
                     g_loss = - self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
-                    g_loss_gen = - self.adversarial_loss(self.discriminator2(torch.cat([torch.cat([sample[0], sample[1]], dim=1), generated], dim=0)), labels)
+                    g_loss_gen = - self.adversarial_loss(self.discriminator2(torch.cat([sample[0], generated], dim=0)), labels)
                     total_loss2 = total_loss + g_loss*self.adversarial_cfg.g_loss_weight + g_loss_gen*self.adversarial_cfg.g_loss_weight
                 else:
                     total_loss2 = total_loss
@@ -898,7 +936,8 @@ class TwinTURBO(LightningModule):
             w2_perm = w2_perm[rpm]
             labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
             e1_copy = e1.clone()
-            generated = self.decode(e1, e2[rpm])
+            latent = torch.cat([e1, e2], dim=1)
+            generated = self.decoder(latent)
             if self.adversarial_cfg.loss_function=="binary_cross_entropy":
                 threshold=np.log(2)
             elif self.adversarial_cfg.loss_function=="mse":
@@ -1035,18 +1074,19 @@ class TwinTURBO(LightningModule):
             zs = []
         for m in masses:
             w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float().to(w1.device)
-            content = self.encode_content(w1, w2)
-            style = self.encode_style(w2)
-            recon = self.decode(content, style)
+            e1, e2 = self.encode(w1, w2)
+            latent = torch.cat([e1, e2], dim=1)
+            recon = self.decoder(latent)
+
             recons.append(recon)
             if self.adversarial:
-                zs.append(self.discriminator(torch.cat([content, w2], dim=1)))
+                zs.append(self.discriminator(torch.cat([e1, w2], dim=1)))
         if self.adversarial:
             vmin = min([float(z[:max_traj].min().cpu().detach().numpy()) for z in zs])
             vmax = max([float(z[:max_traj].max().cpu().detach().numpy()) for z in zs])
         plt.figure()
         if max_traj is None:
-            max_traj = x.shape[0]
+            max_traj = w1.shape[0]
         for i in range(max_traj):
             x=masses
             y = np.array([float(recon[i, var].cpu().detach().numpy()) for recon in recons])
@@ -1090,9 +1130,10 @@ class TwinTURBO(LightningModule):
         recons = []
         for m in masses:
             w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float().to(w1.device)
-            content = self.encode_content(w1, w2)
-            style = self.encode_style(w2)
-            recon = self.decode(content, style)
+            e1, e2 = self.encode(w1, w2)
+            latent = torch.cat([e1, e2], dim=1)
+            recon = self.decoder(latent)
+
             recons.append(recon)
         
         plt.figure()
@@ -1160,7 +1201,7 @@ class TwinTURBO(LightningModule):
                 sched_d = self.adversarial_cfg.scheduler.scheduler_d(opt_d)
                 sched_e = self.adversarial_cfg.scheduler.scheduler_e(opt_e)
                 return [opt_e, opt_g, opt_d], [sched_e, sched_g, sched_d]            
-        elif self.adversarial=="double_discriminator_priority":
+        elif self.adversarial=="double_discriminator_priority" or self.adversarial=="double_discriminator_priority_same_oder" or self.adversarial=="double_discriminator_default":
             enc_dec_params = list(self.encoder1.parameters()) + list(self.encoder2.parameters()) + list(self.decoder.parameters())
             opt_g = self.hparams.optimizer(params=enc_dec_params)
             opt_d = self.hparams.optimizer(params=self.discriminator.parameters())
@@ -1212,18 +1253,26 @@ class TwinTURBO(LightningModule):
                     sched.step()
     
     def generate(self, sample: tuple) -> torch.Tensor:
-        x_inp, y_pair, y_new = sample
-        content = self.encode_content(x_inp, y_pair)
-        style = self.encode_style(y_new)
-        recon = self.decode(content, style)
+        w1, w2 = sample
+        if self.latent_norm:
+            e1 = normalize(self.encoder1(w1))
+            e2 = normalize(self.encoder2(w2))
+        else:
+            e1 = self.encoder1(w1)
+            e2 = self.encoder2(w2)
+        latent = torch.cat([e1, e2], dim=1)
+        recon = self.decoder(latent)
         return recon
 
     def predict_step(self, batch: tuple, batch_idx: int, dataloader_idx: int = 0) -> Any:
-        if len(batch)==3:
-            context = batch[2]
+        if len(batch)==2:
+            context = batch[1]
             sample = self.generate(batch).squeeze(1)
+            #context = context.repeat(1, n_over).reshape(-1, 1)
             sample = sample.reshape(-1, sample.shape[-1])
+            # Return dict of data, sample and log prob
             result = {var_name: column.reshape(-1, 1) for var_name, column in zip(self.var_group_list[0], sample.T)}
             result.update({var_name: column.reshape(-1, 1) for var_name, column in zip(self.var_group_list[1], context.T)})
             return result
+
 

@@ -146,34 +146,14 @@ def evaluate_model(cfg, original_data, target_data, template_data):
     #print("batch1:", batch1)
 
     model.eval() # Set the model to evaluation mode to deactivate dropout layers
-    batch_size=batch1[0].shape[0]
-    w1 = batch1[0]
+    x_inp = batch1[0]
     w2 = batch1[1]
     m_dn = w2
-    if model.use_m:
-        x = w1[:, :-w2.shape[1]]
-    else:
-        x = w1
+    w1 = torch.concatenate((x_inp, w2), dim=1)
 
-    e1, e2 = model.encode(w1, w2)
-    latent = torch.cat([e1, e2], dim=1)
-    recon = model.decoder(latent)
-    
-    # Reverse pass
-    e1_p = e1[torch.randperm(batch_size)]
-    latent_p = torch.cat([e1_p, e2], dim=1)
-    recon_p = model.decoder(latent_p)
-    x_n = recon_p[:, :x.shape[1]]
-    m_n = recon_p[:, x.shape[1]:]
-    
-    if model.use_m:
-        w1_n = torch.cat([x_n, m_n*model.use_m], dim=1)
-    else:
-        w1_n = x_n
-    w2_n = m_n
-
-    e1_n, e2_n = model.encode(w1_n, w2_n)
-
+    e1 = model.encode_content(x_inp, m_dn)
+    e2 = model.encode_style(m_dn)
+    recon = model.decode(e1, e2)
     matrix = e1 @ e2.T
 
     plt.figure()
@@ -304,9 +284,9 @@ def draw_event_transport_trajectories(model, plot_path, w1, var, var_name, mass_
     w1 = w1[:max_traj]
     for m in masses:
         w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float()
-        e1, e2 = model.encode(w1, w2)
-        latent = torch.cat([e1, e2], dim=1)
-        recon = model.decoder(latent)
+        e1 = model.encode_content(w1, w2)
+        e2 = model.encode_style(w2)
+        recon = model.decode(e1, e2)
         recons.append(recon)
     
     plt.figure()

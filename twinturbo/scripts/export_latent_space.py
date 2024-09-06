@@ -51,7 +51,7 @@ def main(cfg: DictConfig) -> None:
     model.eval() #PL should do it but I just do it to be sure
     e1s = []
     for batch in datamodule.test_dataloader():
-        e1s.append(model.encode_e1_batch([batch[0].to(device)]))
+        e1s.append(model.encode_content(batch[0].to(device), batch[1].to(device)))
     vars = [f"e1_{i}" for i in range(e1s[0].shape[1])]
     dataset_dict = {var: T.hstack([o[:, i] for o in e1s]).detach().cpu().numpy() for i, var in enumerate(vars)}
     log.info("Saving outputs")

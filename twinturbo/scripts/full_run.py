@@ -30,8 +30,9 @@ log = logging.getLogger(__name__)
 
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="TT_reco_cons0.001_smls0.0001_adv36_D1_LCR_2048b_lr2-4_dl"
+    version_base=None, config_path=str('../config'), config_name="twinturbo_def_new"
 )
+
 def main(cfg: DictConfig) -> None:
     log.info("<<<START FULL RUN>>>")
     ## 1 - Create a separate folder for the experiment save all the relavant configs there

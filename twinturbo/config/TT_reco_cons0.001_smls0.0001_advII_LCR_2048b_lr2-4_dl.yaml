@@ -3,7 +3,7 @@
 defaults:
   - _self_
   - path: user
-  - data: LHCOp_twinturbo_CATHODE_addgapmass2048b_dl
+  - data: LHCOp_twinturbo_CATHODE_addgapmass2048b_dls
   - step_train_template: twinturbo_reco_adv
   - step_export_template: twinturbo_LHCO
   - step_evaluate: twinturbo_LHCO_fast
@@ -11,7 +11,7 @@ defaults:
   - step_export_latent: twinturbo_LHCO
   - step_plot_compare: twinturbo_LHCO
   - override step_train_template/model: twinturbo_reco_cons0.001_smls0.0001_advII
-  - override step_train_template/trainer: 400e_noclip.yaml
+  - override step_train_template/trainer: 50e_noclip.yaml
   - override step_train_template/model/optimizer: AdamW_lr2-4
 
 step_train_template:

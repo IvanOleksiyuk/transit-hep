@@ -204,8 +204,6 @@ def add_2d_hist(axes, i, j, data, sampled, x_bounds=None):
     if x_bounds is None:
         x_bounds = [-3, 3]
     
-
-    
     bins = 30
     range_x = x_bounds
     range_y = x_bounds

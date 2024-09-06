@@ -11,7 +11,7 @@ encoder_mlp_config:
 decoder_mlp_config:
   hddn_dim: [128, 128, 128, 128]
   act_h: "prelu"
-latent_norm: True
+latent_norm: False
 latent_dim: 8
 loss_cfg:
   reco:
@@ -25,7 +25,7 @@ loss_cfg:
     step: 0.1
 
 adversarial_cfg:
-  mode: "double_discriminator_default"
+  mode: "double_discriminator_priority"
   discriminator:
     hddn_dim: [64, 64, 64, 64]
     act_h: "prelu"
@@ -39,7 +39,7 @@ adversarial_cfg:
   warmup: 20
   g_loss_weight: 2
   g_loss_gen_weight: 0.5
-  every_n_steps_g: 5
+  every_n_steps_g: 1
   train_dis_in_warmup: False
   g_loss_weight_in_warmup: True
   loss_function: "binary_cross_entropy"

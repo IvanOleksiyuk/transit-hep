@@ -3,7 +3,7 @@
 defaults:
   - _self_
   - path: user
-  - data: LHCOp_twinturbo_CATHODE_addgapmass2048b_dl
+  - data: LHCOp_twinturbo_CATHODE_addgapmass2048b_dls
   - step_train_template: twinturbo_reco_adv
   - step_export_template: twinturbo_LHCO
   - step_evaluate: twinturbo_LHCO

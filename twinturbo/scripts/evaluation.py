@@ -39,7 +39,7 @@ def to_np(inpt: Union[torch.Tensor, tuple]) -> np.ndarray:
         return type(inpt)(to_np(x) for x in inpt)
     if inpt.dtype == torch.bfloat16:  # Numpy conversions don't support bfloat16s
         inpt = inpt.half()
-    return inpt.detach().cpu().numpy()
+    return inpt.detach().cpu().numpy().reshape(inpt.shape)
 
 
 @rank_zero_only
@@ -149,26 +149,68 @@ def evaluate_model(cfg, original_data, target_data, template_data):
     x_inp = batch1[0]
     w2 = batch1[1]
     m_dn = w2
-    w1 = torch.concatenate((x_inp, w2), dim=1)
 
     e1 = model.encode_content(x_inp, m_dn)
     e2 = model.encode_style(m_dn)
+    if len(e2.shape) == 1:
+        e2 = e2.unsqueeze(1)
     recon = model.decode(e1, e2)
-    matrix = e1 @ e2.T
+    
+    if recon.shape[1] == x_inp.shape[1]:
+        w1 = x_inp
+    else:
+        w1 = torch.concatenate((x_inp, w2), dim=1)
+    
+    if e1.shape[1] == e2.shape[1]:
+        matrix = e1 @ e2.T
 
-    plt.figure()
-    plot_matrix(to_np(matrix), "e1 @ e2")
-    plt.savefig(plot_path+"e1_at_e2_matrix.png", bbox_inches="tight")
-    plt.figure()
-    plt.hist(to_np(matrix).flatten(), bins=100)
-    plt.title("One batch latent embedding product <e1, e2>")
-    plt.xlabel("<e1, e2>")
-    plt.savefig(plot_path+"e1_at_e2_hist.png", bbox_inches="tight")
-    plt.figure()
-    plt.title("One batch latent embedding product <e1, e2> only diagonal")
-    plt.xlabel("<e1, e2>")
-    plt.hist(np.diagonal(to_np(matrix)), bins=100)
-    plt.savefig(plot_path+"e1_at_e2_diag_hist.png", bbox_inches="tight")
+        plt.figure()
+        plot_matrix(to_np(matrix), "e1 @ e2")
+        plt.savefig(plot_path+"e1_at_e2_matrix.png", bbox_inches="tight")
+        plt.figure()
+        plt.hist(to_np(matrix).flatten(), bins=100)
+        plt.title("One batch latent embedding product <e1, e2>")
+        plt.xlabel("<e1, e2>")
+        plt.savefig(plot_path+"e1_at_e2_hist.png", bbox_inches="tight")
+        plt.figure()
+        plt.title("One batch latent embedding product <e1, e2> only diagonal")
+        plt.xlabel("<e1, e2>")
+        plt.hist(np.diagonal(to_np(matrix)), bins=100)
+        plt.savefig(plot_path+"e1_at_e2_diag_hist.png", bbox_inches="tight")
+
+        # Same mass
+        plt.figure()	
+        plt.scatter(np.diagonal(to_np(matrix)), to_np(m_dn), alpha=scatter_alpha, s=scatter_s)
+        plt.xlabel("e1 @ e2 diagonal elements")
+        plt.ylabel("mjj")
+        plt.savefig(plot_path+"e1_at_e2_diag_vs_mjj.png", bbox_inches="tight")
+
+        # Different mass
+        n = to_np(matrix).shape[0]
+        plt.figure()	
+        diag_mask = np.eye(n, dtype=bool)
+
+        # Invert the mask to get the non-diagonal elements
+        non_diag_mask = np.logical_not(diag_mask)
+        non_diag_elements = to_np(matrix)[non_diag_mask]
+        m_1_non_diag = np.tile(m_dn, (1, n))[non_diag_mask]
+        m_2_non_diag = np.tile(m_dn.T, (n, 1))[non_diag_mask]
+        plt.figure()
+        plt.scatter(non_diag_elements, m_1_non_diag, alpha=scatter_alpha, s=scatter_s)
+        plt.xlabel("e1 @ e2 non-diagonal elements")
+        plt.ylabel("mjj1")
+        plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1.png", bbox_inches="tight")
+        plt.figure()
+        plt.scatter(non_diag_elements, m_2_non_diag, alpha=scatter_alpha, s=scatter_s)
+        plt.xlabel("e1 @ e2 non-diagonal elements")
+        plt.ylabel("mjj2")
+        plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj2.png", bbox_inches="tight")
+        plt.figure()
+        plt.scatter(non_diag_elements, m_1_non_diag-m_2_non_diag, alpha=scatter_alpha, s=scatter_s)
+        plt.xlabel("e1 @ e2 non-diagonal elements")
+        plt.ylabel("mjj1 - mjj2")
+        plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1-mjj2.png", bbox_inches="tight")
+
 
     bins= np.linspace(-3, 3, 30)
     for i in range(w1.shape[1]):
@@ -211,38 +253,6 @@ def evaluate_model(cfg, original_data, target_data, template_data):
             plt.tight_layout()
             plt.savefig(plot_path+"corerlations/"+"latent_space_e1_mass_correlations.png", bbox_inches="tight")
 
-    # Same mass
-    plt.figure()	
-    plt.scatter(np.diagonal(to_np(matrix)), to_np(m_dn), alpha=scatter_alpha, s=scatter_s)
-    plt.xlabel("e1 @ e2 diagonal elements")
-    plt.ylabel("mjj")
-    plt.savefig(plot_path+"e1_at_e2_diag_vs_mjj.png", bbox_inches="tight")
-
-    # Different mass
-    n = to_np(matrix).shape[0]
-    plt.figure()	
-    diag_mask = np.eye(n, dtype=bool)
-
-    # Invert the mask to get the non-diagonal elements
-    non_diag_mask = np.logical_not(diag_mask)
-    non_diag_elements = to_np(matrix)[non_diag_mask]
-    m_1_non_diag = np.tile(m_dn, (1, n))[non_diag_mask]
-    m_2_non_diag = np.tile(m_dn.T, (n, 1))[non_diag_mask]
-    plt.figure()
-    plt.scatter(non_diag_elements, m_1_non_diag, alpha=scatter_alpha, s=scatter_s)
-    plt.xlabel("e1 @ e2 non-diagonal elements")
-    plt.ylabel("mjj1")
-    plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1.png", bbox_inches="tight")
-    plt.figure()
-    plt.scatter(non_diag_elements, m_2_non_diag, alpha=scatter_alpha, s=scatter_s)
-    plt.xlabel("e1 @ e2 non-diagonal elements")
-    plt.ylabel("mjj2")
-    plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj2.png", bbox_inches="tight")
-    plt.figure()
-    plt.scatter(non_diag_elements, m_1_non_diag-m_2_non_diag, alpha=scatter_alpha, s=scatter_s)
-    plt.xlabel("e1 @ e2 non-diagonal elements")
-    plt.ylabel("mjj1 - mjj2")
-    plt.savefig(plot_path+"e1_at_e2_non_diag_vs_mjj1-mjj2.png", bbox_inches="tight")
 
     # Compute some numerical metrics as a summary about model performance
     results = {"max_abs_pearson": np.max(np.abs(person_correlations)), "min_abs_pearson": np.min(np.abs(person_correlations)), "mean_abs_pearson": np.mean(np.abs(person_correlations))}
@@ -328,17 +338,29 @@ def plot_correlation_plots(e1, e2, plot_path, name, c=None, one_corretation_plot
         fig, axes = plt.subplots(e1.shape[1], e2.shape[1], figsize=(3*e1.shape[1], 3*e1.shape[1]))
         fig.suptitle('Scatter plots with Pearson Correlation', fontsize=16)
         for i in range(e1.shape[1]):
-            for j in range(e1.shape[1]):
-                axes[i, j].scatter(to_np(e1[:, i]), to_np(e2[:, j]), marker="o", label="e1", c=c, cmap="viridis")
-                pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(e2[:, j]))
-                person_correlations[i, j] = pearson_correlation
-                spearman_correlation, p_value = spearmanr(to_np(e1[:, i]), to_np(e2[:, j]))
-                spearman_correlations[i, j] = spearman_correlation	
-                kendalltau_correlation, p_value = kendalltau(to_np(e1[:, i]), to_np(e2[:, j]))
-                kendalltaus[i, j] = kendalltau_correlation
-                axes[i, j].set_title(f"Corr={pearson_correlation:.3f}")
-                axes[i, j].set_xlabel(f"dim{i} e1")
-                axes[i, j].set_ylabel(f"dim{j} e2")
+            if e2.shape[1] == 1:
+                axes[i].scatter(to_np(e1[:, i]), to_np(e2[:]), marker="o", label="e1", c=c, cmap="viridis")
+                pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(e2[:]).flatten())
+                person_correlations[i, 0] = pearson_correlation
+                spearman_correlation, p_value = spearmanr(to_np(e1[:, i]), to_np(e2[:]).flatten())
+                spearman_correlations[i, 0] = spearman_correlation	
+                kendalltau_correlation, p_value = kendalltau(to_np(e1[:, i]), to_np(e2[:]).flatten())
+                kendalltaus[i, 0] = kendalltau_correlation
+                axes[i].set_title(f"Corr={pearson_correlation:.3f}")
+                axes[i].set_xlabel(f"dim{i} e1")
+                axes[i].set_ylabel(f"dim{0} e2")
+            else:
+                for j in range(e2.shape[1]):
+                    axes[i, j].scatter(to_np(e1[:, i]), to_np(e2[:, j]), marker="o", label="e1", c=c, cmap="viridis")
+                    pearson_correlation, p_value = pearsonr(to_np(e1[:, i]), to_np(e2[:, j]))
+                    person_correlations[i, j] = pearson_correlation
+                    spearman_correlation, p_value = spearmanr(to_np(e1[:, i]), to_np(e2[:, j]))
+                    spearman_correlations[i, j] = spearman_correlation	
+                    kendalltau_correlation, p_value = kendalltau(to_np(e1[:, i]), to_np(e2[:, j]))
+                    kendalltaus[i, j] = kendalltau_correlation
+                    axes[i, j].set_title(f"Corr={pearson_correlation:.3f}")
+                    axes[i, j].set_xlabel(f"dim{i} e1")
+                    axes[i, j].set_ylabel(f"dim{j} e2")
         plt.tight_layout()
         plt.savefig(plot_path+"corerlations/"+name+".png", bbox_inches="tight")
     else:

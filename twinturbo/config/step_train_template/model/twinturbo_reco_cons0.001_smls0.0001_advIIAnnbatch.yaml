@@ -8,7 +8,9 @@ use_m: True
 encoder_mlp_config: 
   hddn_dim: [128, 128, 128, 128]
   act_h: "prelu"
-  nrm_on_output: "batch"
+  nrm_on_output: True
+  nrm: "batch_nontr"
+  nrm_inside: False
 decoder_mlp_config:
   hddn_dim: [128, 128, 128, 128]
   act_h: "prelu"

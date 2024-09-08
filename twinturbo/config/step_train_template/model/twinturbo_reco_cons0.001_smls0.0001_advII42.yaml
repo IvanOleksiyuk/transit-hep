@@ -5,14 +5,14 @@ defaults:
 
 network_type: MLP_no_m_encoding
 _target_: twinturbo.src.models.twinturbo_model.TwinTURBO
-use_m: True
-encoder_mlp_config: 
+use_m_encodig: True
+encoder_cfg: 
   hddn_dim: [128, 128, 128, 128]
   act_h: "prelu"
   nrm_on_output: True
   nrm: "batch_nontr_0"
   nrm_inside: False
-decoder_mlp_config:
+decoder_cfg:
   hddn_dim: [128, 128, 128, 128]
   act_h: "prelu"
 latent_norm: False

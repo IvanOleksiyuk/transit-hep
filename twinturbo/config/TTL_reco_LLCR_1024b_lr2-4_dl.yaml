@@ -4,14 +4,13 @@ defaults:
   - _self_
   - path: user
   - data: LHCOlow
-  - step_train_template: twinturbo_reco_adv
+  - step_train_template: TTL_reco
   - step_export_template: twinturbo_LHCO
   - step_evaluate: twinturbo_LHCO_fast
   - step_cwola: BDT_LHCO_allCWOLA
   - step_export_latent: twinturbo_LHCO
   - step_plot_compare: twinturbo_LHCO
-  - override step_train_template/model: twinturbo_reco_cons0.001_smls0.0001_advII4
-  - override step_train_template/trainer: 200e_noclip.yaml
+  - override step_train_template/trainer: 5e_noclip.yaml
   - override step_train_template/model/optimizer: AdamW_lr2-4
 
 step_train_template:
@@ -21,14 +20,14 @@ step_train_template:
 
 do_train_template: True
 do_export_template: True
-do_export_latent: True
-do_evaluation: True
-do_cwola: True
-do_evaluate_cwola: True
-do_plot_compare: True
+do_export_latent: False
+do_evaluation: False
+do_cwola: False
+do_evaluate_cwola: False
+do_plot_compare: False
 
 general:
-  name: TTL_reco_cons0.001_smls0.0001_advII4s_LLCR_2048b_lr2-4_dl
-  subfolder: REFERENCE13_08onGPU033/
+  name: TTL_reco_LLCR_1024b_lr2-4_dl
+  subfolder: transformer/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

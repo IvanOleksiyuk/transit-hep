@@ -16,6 +16,7 @@ from twinturbo.src.models.pearson_correlation import PearsonCorrelation
 import matplotlib.pyplot as plt
 import PIL
 import copy
+from mattstools.mattstools.simple_transformers import TransformerEncoder, FullEncoder, TransformerVectorEncoder
 
 def to_np(inpt) -> np.ndarray:
     """More consicse way of doing all the necc steps to convert a pytorch
@@ -116,19 +117,21 @@ class TwinTURBO(LightningModule):
         latent_norm: bool,
         optimizer: partial,
         scheduler: Mapping,
-        encoder_mlp_config: Mapping,
-        decoder_mlp_config: Mapping,
+        encoder_cfg: Mapping,
+        decoder_cfg: Mapping,
         network_type = "MLP",
-        encoder_mlp_config2: Mapping = None,
+        encoder_cfg2: Mapping = None,
         latent_dim2: int = None, 
         var_group_list: list = None,
         loss_cfg: Mapping = None,
-        use_m = True,
+        use_m_encodig = True,
         input_noise_cfg=None,
         reverse_pass_mode=None,
         seed=42,
         valid_plots = True,
         adversarial_cfg = None,
+        discriminator_latent_cfg = None,
+        
     ) -> None:
         """
         Args:
@@ -148,9 +151,7 @@ class TwinTURBO(LightningModule):
                 self.adversarial = "default"
             self.automatic_optimization = False
             self.adversarial_cfg = adversarial_cfg
-            self.discriminator = MLP(inpt_dim=latent_dim+1, outp_dim=1, **adversarial_cfg.discriminator)
-            if "double_discriminator" in self.adversarial:
-                self.discriminator2 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=1, **adversarial_cfg.discriminator2)
+
             if not hasattr(adversarial_cfg, "g_loss_weight_in_warmup"):
                 setattr(adversarial_cfg, "g_loss_weight_in_warmup", True)
             if not hasattr(adversarial_cfg, "train_dis_in_warmup"):
@@ -163,7 +164,7 @@ class TwinTURBO(LightningModule):
                 self.gradient_clip_val = adversarial_cfg.gradient_clip_val
         else:
             self.adversarial = False
-        self.use_m = use_m
+        self.use_m_encodig = use_m_encodig
         self.loss_cfg = loss_cfg
         self.valid_plots = valid_plots
         self.save_hyperparameters(logger=False)
@@ -171,35 +172,77 @@ class TwinTURBO(LightningModule):
         print("SELECTED NETWORK TYPE: ", network_type)
         self.latent_norm_enc1 = latent_norm
         self.latent_norm_enc2 = latent_norm
-        if network_type == "KAN":
-            self.encoder1 = KAN(width=[inpt_dim[0][0]]+encoder_mlp_config.hddn_dim+[latent_dim], grid=encoder_mlp_config.grid, k=encoder_mlp_config.k, device=torch.device('cuda')) #model = KAN(width=[2,5,1], grid=5, k=3, seed=0) 
-            self.encoder2 = KAN(width=[inpt_dim[1][0]]+encoder_mlp_config.hddn_dim+[latent_dim], grid=encoder_mlp_config.grid, k=encoder_mlp_config.k, device=torch.device('cuda'))
+        
+        # Initialise the networks
+        x_dim = inpt_dim[0]
+        context_dim = inpt_dim[1]
+        self.second_input_mask = False #By default
+        
+        if network_type == "Transformer_conditional":
+            self.second_input_mask = True
+            self.encoder1 = FullEncoder(inpt_dim=x_dim, outp_dim=latent_dim, ctxt_dim=context_dim, **encoder_cfg)
+            self.encoder2 = lambda x: x
+            self.decoder = FullEncoder(inpt_dim=latent_dim, outp_dim=x_dim, ctxt_dim=context_dim, **decoder_cfg)
+            if self.adversarial:
+                if "lat_discriminator_cfg" in self.adversarial:
+                    self.lat_disc = TransformerVectorEncoder(inpt_dim=latent_dim, outp_dim=1, ctxt_dim=context_dim, **self.adversarial.lat_discriminator_cfg)
+                if "gen_discriminator_cfg" in self.adversarial:
+                    self.gen_disc = TransformerVectorEncoder(inpt_dim=x_dim, outp_dim=1, ctxt_dim=context_dim, **self.adversarial.gen_discriminator_cfg)
+                
+            # if discriminator_latent_cfg is not None:
+            #     self.discriminator = TransformerEncoder(inpt_dim=latent_dim, outp_dim=1, **discriminator_latent_cfg)
+            self.style_injection_cond = True
+            self.decoder_out_m = False
+        elif network_type == "MLP_cont":
+
+            self.decoder_out_m = False
+            self.encoder1 = MLP(inpt_dim=inpt_dim[0][0], ctxt_dim=inpt_dim[1][0], outp_dim=latent_dim, **encoder_cfg)
+            self.decoder = MLP(inpt_dim=latent_dim, ctxt_dim=inpt_dim[1][0], outp_dim=inpt_dim[0][0], **decoder_cfg)
+            self.style_injection_cond = True
+            if self.adversarial:
+                self.discriminator = MLP(inpt_dim=latent_dim, outp_dim=1, ctxt_dim=context_dim, **adversarial_cfg.discriminator)
+                if "double_discriminator" in self.adversarial:
+                    self.discriminator2 = MLP(inpt_dim=inpt_dim[0][0], outp_dim=1, ctxt_dim=context_dim, **adversarial_cfg.discriminator2)
+        elif network_type == "KAN":
+            self.encoder1 = KAN(width=[inpt_dim[0][0]]+encoder_cfg.hddn_dim+[latent_dim], grid=encoder_cfg.grid, k=encoder_cfg.k, device=torch.device('cuda')) #model = KAN(width=[2,5,1], grid=5, k=3, seed=0) 
+            self.encoder2 = KAN(width=[inpt_dim[1][0]]+encoder_cfg.hddn_dim+[latent_dim], grid=encoder_cfg.grid, k=encoder_cfg.k, device=torch.device('cuda'))
             decoder_out_dim = inpt_dim[0][0]+inpt_dim[1][0]
             self.decoder_out_m = True
-            if self.use_m:
-                self.decoder = KAN(width=[latent_dim*2]+decoder_mlp_config.hddn_dim+[inpt_dim[0][0]], grid=decoder_mlp_config.grid, k=decoder_mlp_config.k, device=torch.device('cuda'))
+            self.style_injection_cond = False
+            if self.use_m_encodig:
+                self.decoder = KAN(width=[latent_dim*2]+decoder_cfg.hddn_dim+[inpt_dim[0][0]], grid=decoder_cfg.grid, k=decoder_cfg.k, device=torch.device('cuda'))
             else:
-                self.decoder = KAN(width=[latent_dim*2]+decoder_mlp_config.hddn_dim+[decoder_out_dim], grid=decoder_mlp_config.grid, k=decoder_mlp_config.k, device=torch.device('cuda'))
-        elif network_type == "MLP_cont":
-            self.decoder_out_m = False
-            self.encoder = MLP(inpt_dim=inpt_dim[0][0], ctxt_dim=inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
-            self.decoder = MLP(inpt_dim=latent_dim, ctxt_dim=inpt_dim[1][0], outp_dim=inpt_dim[0][0], **decoder_mlp_config)
+                self.decoder = KAN(width=[latent_dim*2]+decoder_cfg.hddn_dim+[decoder_out_dim], grid=decoder_cfg.grid, k=decoder_cfg.k, device=torch.device('cuda'))
+            if self.adversarial:
+                self.discriminator = MLP(inpt_dim=latent_dim+1, outp_dim=1, **adversarial_cfg.discriminator)
+                if "double_discriminator" in self.adversarial:
+                    self.discriminator2 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=1, **adversarial_cfg.discriminator2)
         elif network_type == "MLP_no_m_encoding":
-            self.encoder1 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
+            self.encoder1 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=latent_dim, **encoder_cfg)
             latent_dim2 = 1
             self.encoder2 = lambda x: x
             self.decoder_out_m = False
-            self.decoder = MLP(inpt_dim=latent_dim+latent_dim2, outp_dim=inpt_dim[0][0], **decoder_mlp_config) 
+            self.decoder = MLP(inpt_dim=latent_dim+latent_dim2, outp_dim=inpt_dim[0][0], **decoder_cfg) 
             self.latent_norm_enc2 = False
+            self.style_injection_cond = False
+            if self.adversarial:
+                self.discriminator = MLP(inpt_dim=latent_dim+1, outp_dim=1, **adversarial_cfg.discriminator)
+                if "double_discriminator" in self.adversarial:
+                    self.discriminator2 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=1, **adversarial_cfg.discriminator2)
         else:
-            self.encoder1 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=latent_dim, **encoder_mlp_config)
-            if encoder_mlp_config2 is None:
-                encoder_mlp_config2 = copy.deepcopy(encoder_mlp_config)
+            self.encoder1 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=latent_dim, **encoder_cfg)
+            if encoder_cfg2 is None:
+                encoder_cfg2 = copy.deepcopy(encoder_cfg)
             if latent_dim2 is None:
                 latent_dim2 = latent_dim
-            self.encoder2 = MLP(inpt_dim=inpt_dim[1][0], outp_dim=latent_dim2, **encoder_mlp_config2)
+            self.encoder2 = MLP(inpt_dim=inpt_dim[1][0], outp_dim=latent_dim2, **encoder_cfg2)
             self.decoder_out_m = True
-            self.decoder = MLP(inpt_dim=latent_dim+latent_dim2, outp_dim=inpt_dim[0][0]+inpt_dim[1][0], **decoder_mlp_config)
+            self.decoder = MLP(inpt_dim=latent_dim+latent_dim2, outp_dim=inpt_dim[0][0]+inpt_dim[1][0], **decoder_cfg)
+            self.style_injection_cond = False
+            if self.adversarial:
+                self.discriminator = MLP(inpt_dim=latent_dim+1, outp_dim=1, **adversarial_cfg.discriminator)
+                if "double_discriminator" in self.adversarial:
+                    self.discriminator2 = MLP(inpt_dim=inpt_dim[0][0]+inpt_dim[1][0], outp_dim=1, **adversarial_cfg.discriminator2)
         
         self.var_group_list = var_group_list
         self.reverse_pass_mode = reverse_pass_mode
@@ -284,11 +327,11 @@ class TwinTURBO(LightningModule):
         layers.append(nn.Linear(f[-2], f[-1], bias=False))
         return nn.Sequential(*layers)
 
-    def encode_content(self, x_inp, m_pair):
-        if self.network_type == "MLP_cont":
-            en = self.encoder(x_inp, m_pair)
-        elif not self.use_m:
-            en = self.encoder1(x_inp)
+    def encode_content(self, x_inp, m_pair, mask=None):
+        if not self.use_m_encodig:
+            en = self.encoder1(x_inp, mask=mask)
+        if self.style_injection_cond:
+            en = self.encoder1(x_inp, mask=mask, ctxt=m_pair)
         else:
             en = self.encoder1(torch.cat([x_inp, m_pair], dim=1))
         
@@ -304,19 +347,24 @@ class TwinTURBO(LightningModule):
         else:
             return en
 
-    def decode(self, content, style):
-        if self.network_type == "MLP_cont":
-            en = self.decoder(content, style)
+    def decode(self, content, style, mask=None):
+        if self.style_injection_cond:
+            return self.decoder(content, mask=mask, ctxt=style)
         else:
             return self.decoder(torch.cat([content, style], dim=1))
 
     def _shared_step(self, sample: tuple, _batch_index = None, step_type="none") -> torch.Tensor:
         self.log(f"{step_type}_debug/global_step", self.global_step)
         batch_size=sample[0].shape[0]
-        x_inp = sample[0]
-        m_pair = sample[1]
+        if self.second_input_mask:
+            x_inp, mask, m_pair, m_add = sample
+            m_pair=m_pair.reshape([x_inp.shape[0], 1])
+            m_add=m_add.reshape([x_inp.shape[0], 1])
+        else:
+            x_inp, m_pair, m_add = sample
+            mask = None
         
-        content = self.encode_content(x_inp, m_pair)
+        content = self.encode_content(x_inp, m_pair, mask=mask)
         style = self.encode_style(m_pair)
         
         recon = self.decode(content, style)
@@ -324,7 +372,7 @@ class TwinTURBO(LightningModule):
         # Reverse pass
         rpm = torch.randperm(batch_size)
         if self.reverse_pass_mode == "additional_input":
-            style_p = self.encode_style(sample[2])[rpm]
+            style_p = self.encode_style(m_add)[rpm]
         else:
             style_p = style[rpm]
 
@@ -335,18 +383,18 @@ class TwinTURBO(LightningModule):
         else:
             x_n = recon_p
             if self.reverse_pass_mode == "additional_input":
-                m_n = sample[2][rpm]
+                m_n = m_add[rpm]
             else:
-                m_n = sample[1][rpm]
+                m_n = m_pair[rpm]
 
-        content_n = self.encode_content(x_n, m_n)
+        content_n = self.encode_content(x_n, m_n, mask=mask)
         style_n = self.encode_style(m_n)
 
         #### Losses
         total_loss = 0
 
         # Reconstruction loss
-        if self.use_m and self.decoder_out_m:
+        if self.use_m_encodig and self.decoder_out_m:
             loss_reco = mse_loss(recon, torch.cat([x_inp, m_pair], dim=1)).mean()
         else:
             loss_reco = mse_loss(recon, x_inp).mean()
@@ -470,40 +518,6 @@ class TwinTURBO(LightningModule):
             return total_loss, content, style, m_pair
         else:
             return total_loss
-
-    def loss_balabcing(self, loss_repulsive):
-        if self.loss_cfg.loss_balancing==1:
-            sum=self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive
-            if loss_repulsive>0.9:
-                self.loss_cfg.loss_weights.loss_repulsive = self.loss_cfg.loss_weights.loss_repulsive*1.01
-                self.loss_cfg.loss_weights.loss_attractive = self.loss_cfg.loss_weights.loss_attractive*0.99
-                self.loss_cfg.loss_weights.loss_repulsive = sum*self.loss_cfg.loss_weights.loss_repulsive/(self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive)
-                self.loss_cfg.loss_weights.loss_attractive = sum*self.loss_cfg.loss_weights.loss_attractive/(self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive)
-            if loss_repulsive<0.1:
-                self.loss_cfg.loss_weights.loss_repulsive = self.loss_cfg.loss_weights.loss_repulsive*0.99
-                self.loss_cfg.loss_weights.loss_attractive = self.loss_cfg.loss_weights.loss_attractive*1.01
-                self.loss_cfg.loss_weights.loss_repulsive = sum*self.loss_cfg.loss_weights.loss_repulsive/(self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive)
-                self.loss_cfg.loss_weights.loss_attractive = sum*self.loss_cfg.loss_weights.loss_attractive/(self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive)
-        if self.loss_cfg.loss_balancing==2:
-            sum=self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive
-            if loss_repulsive>0.9:
-                loss_repulsive_ = self.loss_cfg.loss_weights.loss_repulsive*1.1
-                loss_attractive_ = self.loss_cfg.loss_weights.loss_attractive*0.9
-                self.loss_cfg.loss_weights.loss_repulsive = sum*loss_repulsive_/(loss_repulsive_+loss_attractive_)
-                self.loss_cfg.loss_weights.loss_attractive = sum*loss_attractive_/(loss_repulsive_+loss_attractive_)
-            if loss_repulsive<0.1:
-                loss_repulsive_ = self.loss_cfg.loss_weights.loss_repulsive*0.9
-                loss_attractive_ = self.loss_cfg.loss_weights.loss_attractive*1.1
-                self.loss_cfg.loss_weights.loss_repulsive = sum*loss_repulsive_/(loss_repulsive_+loss_attractive_)
-                self.loss_cfg.loss_weights.loss_attractive = sum*loss_attractive_/(loss_repulsive_+loss_attractive_)
-        if self.loss_balancing==3:
-            sum=self.loss_cfg.loss_weights.loss_repulsive+self.loss_cfg.loss_weights.loss_attractive
-            if loss_repulsive>0.9:
-                self.loss_cfg.loss_weights.loss_repulsive = sum*3/4
-                self.loss_cfg.loss_weights.loss_attractive = sum/4
-            if loss_repulsive<0.1:
-                self.loss_cfg.loss_weights.loss_repulsive = sum*1/4
-                self.loss_cfg.loss_weights.loss_attractive = sum*3/4
 
     def adversarial_loss(self, y_hat, y):
         if self.adversarial_cfg.loss_function=="binary_cross_entropy":
@@ -1190,8 +1204,10 @@ class TwinTURBO(LightningModule):
                     sched.step()
     
     def generate(self, sample: tuple) -> torch.Tensor:
+        if self.second_input_mask:
+            x_inp, mask, y_pair, y_new = sample
         x_inp, y_pair, y_new = sample
-        content = self.encode_content(x_inp, y_pair)
+        content = self.encode_content(x_inp, y_pair, mask=mask)
         style = self.encode_style(y_new)
         recon = self.decode(content, style)
         return recon

@@ -4,11 +4,11 @@ defaults:
   - scheduler: cyclic.yaml
 
 _target_: twinturbo.src.models.twinturbo_model.TwinTURBO
-use_m: True
-encoder_mlp_config: 
+use_m_encodig: True
+encoder_cfg: 
   hddn_dim: [64, 64, 64, 64]
   act_h: "prelu"
-decoder_mlp_config:
+decoder_cfg:
   hddn_dim: [64, 64, 64, 64]
   act_h: "prelu"
 latent_norm: False

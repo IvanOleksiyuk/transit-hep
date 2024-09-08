@@ -291,7 +291,7 @@ class InMemoryDataFrameDictBase(Dataset):
     def __len__(self):
         return len(self.data[list(self.data.keys())[0]])
 
-    def get_dim(self):
+    def get_dims(self):
         if self.list_order is None:
             return {
                 key: value.iloc[0].to_numpy(dtype=np.float32).shape
@@ -552,8 +552,8 @@ class SimpleDataModule(LightningDataModule):
     def predict_dataloader(self) -> DataLoader:
         return self.test_dataloader()
 
-    def get_dim(self):
-        return self.train_data.get_dim()
+    def get_dims(self):
+        return self.train_data.get_dims()
 
     def get_var_group_list(self):
         var_group_list = []

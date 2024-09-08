@@ -4,13 +4,13 @@ defaults:
   - scheduler: cyclic.yaml
 
 _target_: twinturbo.src.models.twinturbo_model.TwinTURBO
-use_m: True
-encoder_mlp_config: 
+use_m_encodig: True
+encoder_cfg: 
   network_type: 'KAN'
   hddn_dim: [10, 10]
   grid: 5
   k: 3
-decoder_mlp_config:
+decoder_cfg:
   network_type: 'KAN'
   hddn_dim: [10, 10]
   grid: 5

@@ -3,7 +3,7 @@
 defaults:
   - _self_
   - path: user
-  - data: LHCOlow
+  - data: LHCOraw
   - step_train_template: TTL_reco
   - step_export_template: twinturbo_LHCO
   - step_evaluate: twinturbo_LHCO_fast

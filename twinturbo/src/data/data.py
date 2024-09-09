@@ -241,6 +241,19 @@ class ProcessorMergeFrames():
                 data_new[key] = value
         return data_new
 
+class ProcessorMergeFrames():
+    def __init__(self, frame_names, new_frame_name):
+        self.frame_names = frame_names
+        self.new_frame_name = new_frame_name
+
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+        data_new={}
+        data_new[self.new_frame_name] = pd.concat([data[name] for name in self.frame_names], axis=1)
+        for key, value in data.items():
+            if key not in self.frame_names:
+                data_new[key] = value
+        return data_new
+
 class ProcessorAddColumn():
     def __init__(self, frame_name, column_name, column_values):
         self.frame_name = frame_name

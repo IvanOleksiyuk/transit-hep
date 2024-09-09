@@ -1,10 +1,49 @@
-from libs_snap.anomdiff.src.datamodules.cnst_lhco import load_data, train_valid_split
+from libs_snap.anomdiff.src.datamodules.cnst_lhco import load_data, train_valid_split, get_cut_mask
 import numpy as np
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 from functools import partial
 from typing import Literal, Mapping
 from copy import deepcopy
+import pandas as pd
+
+class LHCOHighDataset(Dataset):
+    """Only stores the high level features and the mjj."""
+
+    def __init__(
+        self,
+        bkg_path: str,
+        sig_path: str | None = None,
+        m_add_path: str | None = None,
+        n_bkg: int | None = None,
+        n_sig: int | None = None,
+        n_csts: int | None = None,
+        mjj_window: tuple | list | None = ((2700, 3300), (3700, 6000)),
+    ) -> None:
+        super().__init__()
+
+        # Load the data
+        hlv1, hlv2, _jet1, _jet2, _label, mjj = load_data(
+            bkg_path, sig_path, n_bkg, n_sig, 0, mjj_window
+        )
+
+        # Add a tiny amount of noise to the input number of constituents (dequant)
+        hlv1[:, -1] += np.random.randn(len(hlv1))
+        hlv2[:, -1] += np.random.randn(len(hlv2))
+
+        # We are generating the joint high level variabels
+        self.hlv = np.concatenate([hlv1, hlv2], axis=-1)
+        self.mjj = mjj[..., None]  # Must be Bx1 dimension
+        cut = get_cut_mask(mjj, [[mjj_window[0][0], mjj_window[1][1]]])
+        mjj_add = pd.read_hdf(m_add_path, key="m_jj").to_numpy(np.float32)[cut.flatten()]
+        np.random.shuffle(mjj_add)
+        self.mjj_add = mjj[:len(mjj_add)]
+
+    def __len__(self) -> int:
+        return len(self.mjj)
+
+    def __getitem__(self, index: int) -> np.ndarray:
+        return self.hlv[index], self.mjj[index], self.mjj_add[index]
 
 class LHCOLowDatasetTT(Dataset):
     """Combines the jet information to train on both independantly."""

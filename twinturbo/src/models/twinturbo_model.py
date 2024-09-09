@@ -117,8 +117,8 @@ class TwinTURBO(LightningModule):
         latent_norm: bool,
         optimizer: partial,
         scheduler: Mapping,
-        encoder_cfg: Mapping,
-        decoder_cfg: Mapping,
+        encoder_cfg,
+        decoder_cfg,
         network_type = "MLP",
         encoder_cfg2: Mapping = None,
         latent_dim2: int = None, 
@@ -175,7 +175,7 @@ class TwinTURBO(LightningModule):
         
         # Initialise the networks
         x_dim = inpt_dim[0]
-        context_dim = inpt_dim[1]
+        context_dim = inpt_dim[1][0]
         self.second_input_mask = False #By default
         
         if network_type == "Transformer_conditional":
@@ -193,8 +193,17 @@ class TwinTURBO(LightningModule):
             #     self.discriminator = TransformerEncoder(inpt_dim=latent_dim, outp_dim=1, **discriminator_latent_cfg)
             self.style_injection_cond = True
             self.decoder_out_m = False
+        elif network_type == "partial_context":
+            self.decoder_out_m = False
+            self.encoder1 = encoder_cfg(inpt_dim=inpt_dim[0][0], ctxt_dim=inpt_dim[1][0], outp_dim=latent_dim)
+            self.decoder = decoder_cfg(inpt_dim=latent_dim, ctxt_dim=inpt_dim[1][0], outp_dim=inpt_dim[0][0])
+            self.style_injection_cond = True
+            if self.adversarial:
+                self.discriminator = adversarial_cfg.discriminator(inpt_dim=latent_dim, outp_dim=1, ctxt_dim=context_dim)
+                if "double_discriminator" in self.adversarial:
+                    self.discriminator2 = adversarial_cfg.discriminator2(inpt_dim=inpt_dim[0][0], outp_dim=1, ctxt_dim=context_dim)
+            self.encoder2 = lambda x: x
         elif network_type == "MLP_cont":
-
             self.decoder_out_m = False
             self.encoder1 = MLP(inpt_dim=inpt_dim[0][0], ctxt_dim=inpt_dim[1][0], outp_dim=latent_dim, **encoder_cfg)
             self.decoder = MLP(inpt_dim=latent_dim, ctxt_dim=inpt_dim[1][0], outp_dim=inpt_dim[0][0], **decoder_cfg)
@@ -331,7 +340,10 @@ class TwinTURBO(LightningModule):
         if not self.use_m_encodig:
             en = self.encoder1(x_inp, mask=mask)
         if self.style_injection_cond:
-            en = self.encoder1(x_inp, mask=mask, ctxt=m_pair)
+            if self.second_input_mask:
+                en = self.encoder1(x_inp, mask=mask, ctxt=m_pair)
+            else:
+                en = self.encoder1(x_inp, ctxt=m_pair)
         else:
             en = self.encoder1(torch.cat([x_inp, m_pair], dim=1))
         
@@ -349,9 +361,24 @@ class TwinTURBO(LightningModule):
 
     def decode(self, content, style, mask=None):
         if self.style_injection_cond:
-            return self.decoder(content, mask=mask, ctxt=style)
+            if self.second_input_mask:
+                return self.decoder(content, mask=mask, ctxt=style)
+            else:
+                return self.decoder(content, ctxt=style)
         else:
             return self.decoder(torch.cat([content, style], dim=1))
+
+    def disc_lat(self, e1, e2):
+        if self.style_injection_cond:
+            return self.discriminator(e1, ctxt=e2)
+        else:
+            return self.discriminator(torch.cat([e1, e2], dim=1))
+
+    def disc_reco(self, w1, w2):
+        if self.style_injection_cond:
+            return self.discriminator2(w1, ctxt=w2)
+        else:
+            return self.discriminator2(torch.cat([w1, w2], dim=1))
 
     def _shared_step(self, sample: tuple, _batch_index = None, step_type="none") -> torch.Tensor:
         self.log(f"{step_type}_debug/global_step", self.global_step)
@@ -761,7 +788,7 @@ class TwinTURBO(LightningModule):
                 optimizer_g.step()
                 optimizer_g.zero_grad()
                 self.untoggle_optimizer(optimizer_g)
-        elif self.adversarial=="double_discriminator_default": 
+        elif self.adversarial=="double_discriminator_default" or self.adversarial=="double_discriminator_priority": 
             optimizer_g, optimizer_d, optimizer_d2 = self.optimizers()
             # adversarial loss is binary cross-entropy
             total_loss, e1, e2, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
@@ -778,8 +805,10 @@ class TwinTURBO(LightningModule):
                 threshold=0.25
             # train discriminator
             # Measure discriminator's ability to classify encoded samples with correct mass and encoded samples with incorrect mass
+            allow_gen_train = True
             if self.current_epoch>=self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
-                d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
+                # Train discriminator for latent space
+                d_loss = self.adversarial_loss(self.disc_lat(torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)), labels)
                 self.toggle_optimizer(optimizer_d)
                 self.log("d_loss", d_loss, prog_bar=True)
                 self.zero_grad()
@@ -787,10 +816,9 @@ class TwinTURBO(LightningModule):
                 self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
                 optimizer_d.step()
                 self.untoggle_optimizer(optimizer_d)
-                #self.dis_steps_per_gen+1
                 
-            if self.current_epoch>=self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
-                d_loss_gen = self.adversarial_loss(self.discriminator2(torch.cat([torch.cat([sample[0], sample[1]], dim=1), generated], dim=0)), labels)
+                # Train discriminator for reconstruction/transport
+                d_loss_gen= self.adversarial_loss(self.disc_reco(torch.cat([sample[0], generated], dim=0), torch.cat([w2, w2_perm], dim=0)),  labels)
                 self.toggle_optimizer(optimizer_d2)
                 self.log("d_loss_gen", d_loss_gen, prog_bar=True)
                 self.zero_grad()
@@ -799,12 +827,20 @@ class TwinTURBO(LightningModule):
                 optimizer_d2.step()
                 self.untoggle_optimizer(optimizer_d2)
                 self.dis_steps_per_gen+=1
+                
+                # Pause genrator training if discriminator is too weak
+                if self.adversarial=="double_discriminator_priority":
+                    if d_loss>threshold or d_loss_gen>threshold:
+                        allow_gen_train = False
+                else:
+                    if self.dis_steps_per_gen%self.adversarial_cfg.every_n_steps_g<self.adversarial_cfg.every_n_steps_g:
+                        allow_gen_train = False
 
             # Train generator
-            if self.current_epoch<self.adversarial_cfg.warmup or self.dis_steps_per_gen%self.adversarial_cfg.every_n_steps_g==0:
+            if self.current_epoch<self.adversarial_cfg.warmup or allow_gen_train:
                 if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.g_loss_weight_in_warmup:
-                    g_loss = - self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
-                    g_loss_gen = - self.adversarial_loss(self.discriminator2(torch.cat([torch.cat([sample[0], sample[1]], dim=1), generated], dim=0)), labels)
+                    g_loss = - self.adversarial_loss(self.disc_lat(torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)), labels)
+                    g_loss_gen = - self.adversarial_loss(self.disc_reco(torch.cat([sample[0], generated], dim=0), torch.cat([w2, w2_perm], dim=0)),  labels)                        
                     total_loss2 = total_loss + g_loss*self.adversarial_cfg.g_loss_weight + g_loss_gen*self.adversarial_cfg.g_loss_weight
                 else:
                     total_loss2 = total_loss
@@ -816,120 +852,7 @@ class TwinTURBO(LightningModule):
                 self.untoggle_optimizer(optimizer_g)
                 self.log("dis_steps_per_gen", self.dis_steps_per_gen)
                 self.dis_steps_per_gen = 0
-        elif self.adversarial=="double_discriminator_priority": 
-            optimizer_g, optimizer_d, optimizer_d2 = self.optimizers()
-            # adversarial loss is binary cross-entropy
 
-            total_loss, e1, e2, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
-            batch_size=sample[0].shape[0]
-            rpm = torch.randperm(batch_size)
-            w2_perm = w2.clone()
-            w2_perm = w2_perm[rpm]
-            labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
-            e1_copy = e1.clone()
-            generated = self.decode(e1, e2[rpm])
-            if not self.decoder_out_m:
-                generated = torch.cat([generated, w2_perm], dim=1)
-            if self.adversarial_cfg.loss_function=="binary_cross_entropy":
-                threshold=np.log(2)
-            elif self.adversarial_cfg.loss_function=="mse":
-                threshold=0.25
-            # train discriminator
-            # Measure discriminator's ability to classify encoded samples with correct mass and encoded samples with incorrect mass
-            if self.current_epoch>=self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
-                d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
-                self.toggle_optimizer(optimizer_d)
-                self.log("d_loss", d_loss, prog_bar=True)
-                self.zero_grad()
-                self.manual_backward(d_loss, retain_graph=True)
-                self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
-                optimizer_d.step()
-                self.untoggle_optimizer(optimizer_d)
-                self.dis_steps_per_gen+=1
-                
-            if self.current_epoch>=self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
-                d_loss_gen = self.adversarial_loss(self.discriminator2(torch.cat([torch.cat([sample[0], sample[1]], dim=1), generated], dim=0)), labels)
-                self.toggle_optimizer(optimizer_d2)
-                self.log("d_loss_gen", d_loss_gen, prog_bar=True)
-                self.zero_grad()
-                self.manual_backward(d_loss_gen, retain_graph=True)
-                self.clip_gradients(optimizer_d2, gradient_clip_val=self.gradient_clip_val)
-                optimizer_d2.step()
-                self.untoggle_optimizer(optimizer_d2)
-                self.dis_steps_per_gen+=1
-
-            # Train generator
-            if self.current_epoch<self.adversarial_cfg.warmup or (d_loss<threshold and d_loss_gen<threshold):
-                if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.g_loss_weight_in_warmup:
-                    g_loss = - self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
-                    g_loss_gen = - self.adversarial_loss(self.discriminator2(torch.cat([torch.cat([sample[0], sample[1]], dim=1), generated], dim=0)), labels)
-                    total_loss2 = total_loss + g_loss*self.adversarial_cfg.g_loss_weight + g_loss_gen*self.adversarial_cfg.g_loss_weight
-                else:
-                    total_loss2 = total_loss
-                self.log("total_loss2", total_loss2, prog_bar=True)
-                self.zero_grad()
-                self.manual_backward(total_loss2)
-                self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
-                optimizer_g.step()
-                self.untoggle_optimizer(optimizer_g)
-                self.log("dis_steps_per_gen", self.dis_steps_per_gen)
-                self.dis_steps_per_gen = 0
-        elif self.adversarial=="double_discriminator_priority_same_oder": 
-            optimizer_g, optimizer_d, optimizer_d2 = self.optimizers()
-            # adversarial loss is binary cross-entropy
-
-            total_loss, e1, e2, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
-            batch_size=sample[0].shape[0]
-            rpm = torch.randperm(batch_size)
-            w2_perm = w2.clone()
-            w2_perm = w2_perm[rpm]
-            labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
-            e1_copy = e1.clone()
-            generated = self.decode(e1, e2[rpm])
-            if self.adversarial_cfg.loss_function=="binary_cross_entropy":
-                threshold=np.log(2)
-            elif self.adversarial_cfg.loss_function=="mse":
-                threshold=0.25
-            # train discriminator
-            # Measure discriminator's ability to classify encoded samples with correct mass and encoded samples with incorrect mass
-            if self.current_epoch>=self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
-                d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
-                self.toggle_optimizer(optimizer_d)
-                self.log("d_loss", d_loss, prog_bar=True)
-                self.zero_grad()
-                self.manual_backward(d_loss, retain_graph=True)
-                self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
-                optimizer_d.step()
-                self.untoggle_optimizer(optimizer_d)
-                self.dis_steps_per_gen+=1
-                
-            if self.current_epoch>=self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
-                d_loss_gen = self.adversarial_loss(self.discriminator2(torch.cat([torch.cat([sample[0], sample[1]], dim=1), generated], dim=0)), labels)
-                self.toggle_optimizer(optimizer_d2)
-                self.log("d_loss_gen", d_loss_gen, prog_bar=True)
-                self.zero_grad()
-                self.manual_backward(d_loss_gen, retain_graph=True)
-                self.clip_gradients(optimizer_d2, gradient_clip_val=self.gradient_clip_val)
-                optimizer_d2.step()
-                self.untoggle_optimizer(optimizer_d2)
-                self.dis_steps_per_gen+=1
-
-            # Train generator
-            if self.current_epoch<self.adversarial_cfg.warmup or (d_loss<threshold and d_loss_gen<threshold):
-                if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.g_loss_weight_in_warmup:
-                    g_loss = - self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
-                    g_loss_gen = - self.adversarial_loss(self.discriminator2(torch.cat([torch.cat([sample[0], sample[1]], dim=1), generated], dim=0)), labels)
-                    total_loss2 = total_loss + g_loss*self.adversarial_cfg.g_loss_weight + g_loss_gen*self.adversarial_cfg.g_loss_weight
-                else:
-                    total_loss2 = total_loss
-                self.log("total_loss2", total_loss2, prog_bar=True)
-                self.zero_grad()
-                self.manual_backward(total_loss2)
-                self.clip_gradients(optimizer_g, gradient_clip_val=self.gradient_clip_val)
-                optimizer_g.step()
-                self.untoggle_optimizer(optimizer_g)
-                self.log("dis_steps_per_gen", self.dis_steps_per_gen)
-                self.dis_steps_per_gen = 0
         elif self.adversarial=="discriminator_priority": 
             optimizer_g, optimizer_d = self.optimizers()
             # adversarial loss is binary cross-entropy
@@ -1015,6 +938,8 @@ class TwinTURBO(LightningModule):
             total_loss = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
             return total_loss
 
+
+
     def _draw_event_transport_trajectories(self, w1_, m_pair_, var, var_name, masses=np.linspace(-2.5, 2.5, 126), max_traj=20):
         w1 = copy.deepcopy(w1_)[:max_traj]
         m_pair = m_pair_[:max_traj]
@@ -1028,7 +953,7 @@ class TwinTURBO(LightningModule):
             recon = self.decode(content, style)
             recons.append(recon)
             if self.adversarial:
-                zs.append(self.discriminator(torch.cat([content, w2], dim=1)))
+                zs.append(self.disc_lat(content, style))
         if self.adversarial:
             vmin = min([float(z[:max_traj].min().cpu().detach().numpy()) for z in zs])
             vmax = max([float(z[:max_traj].max().cpu().detach().numpy()) for z in zs])
@@ -1151,7 +1076,10 @@ class TwinTURBO(LightningModule):
                 sched_e = self.adversarial_cfg.scheduler.scheduler_e(opt_e)
                 return [opt_e, opt_g, opt_d], [sched_e, sched_g, sched_d]            
         elif self.adversarial=="double_discriminator_priority":
-            enc2_params =  list(self.encoder2.parameters()) if hasattr(self.encoder2, "parameters") else []
+            if hasattr(self, "encoder2"):
+                enc2_params =  list(self.encoder2.parameters()) if hasattr(self.encoder2, "parameters") else []
+            else:
+                enc2_params = []
             enc_dec_params = list(self.encoder1.parameters()) + enc2_params + list(self.decoder.parameters())
             opt_g = self.hparams.optimizer(params=enc_dec_params)
             opt_d = self.hparams.optimizer(params=self.discriminator.parameters())
@@ -1206,6 +1134,9 @@ class TwinTURBO(LightningModule):
     def generate(self, sample: tuple) -> torch.Tensor:
         if self.second_input_mask:
             x_inp, mask, y_pair, y_new = sample
+        else:
+            x_inp, y_pair, y_new = sample
+            mask = None
         x_inp, y_pair, y_new = sample
         content = self.encode_content(x_inp, y_pair, mask=mask)
         style = self.encode_style(y_new)

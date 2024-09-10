@@ -31,7 +31,7 @@ decoder_cfg:
   ctxt_in_hddn: True
   ctxt_in_out: False
 latent_norm: False
-latent_dim: 8
+latent_dim: 16
 loss_cfg:
   reco:
     w: 1
@@ -87,4 +87,4 @@ adversarial_cfg:
   gradient_clip_val: 0.1
 
 valid_plots: ${verbose_validation}
-use_norm_layer: False
+use_norm_layer: True

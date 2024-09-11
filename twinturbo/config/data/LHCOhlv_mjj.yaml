@@ -10,17 +10,37 @@ template_training:
     sig_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_sig.h5
     m_add_path: /srv/beegfs/scratch/groups/rodem/LHCO/lhco_event_masses.h5
     n_bkg: null
-    n_sig: 2000
+    n_sig: 3000
     n_csts: 64
     mjj_window: [[2700, 3300], [3700, 6000]]
 
   loader_kwargs:
     pin_memory: true
-    batch_size: 512
+    batch_size: 2048
     num_workers: 0
     drop_last: True
 
-export_template: null
+export_template: 
+  _target_: twinturbo.src.data.lhco_constituents.LHCOhlvModuleTT
+
+  val_frac: 0.1
+
+  dataset:
+    _target_: twinturbo.src.data.lhco_constituents.LHCOhlvDatasetTT_export
+    _partial_: true
+    bkg_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_bkg.h5
+    sig_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_sig.h5
+    m_add_path: /srv/beegfs/scratch/groups/rodem/LHCO/lhco_event_masses.h5
+    n_bkg: null
+    n_sig: 3000
+    n_csts: 64
+    mjj_window: [[2700, 3300], [3700, 6000]]
+
+  loader_kwargs:
+    pin_memory: true
+    batch_size: 2048
+    num_workers: 0
+    drop_last: False
 
 export_latent_all: null
 

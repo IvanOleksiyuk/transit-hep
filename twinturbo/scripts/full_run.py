@@ -19,7 +19,7 @@ import os
 from omegaconf import DictConfig, OmegaConf
 from twinturbo.src.utils.hydra_utils import instantiate_collection, log_hyperparameters, print_config, reload_original_config, save_config
 import twinturbo.scripts.evaluation as evaluation
-import scripts.train_ptl as train_ptl
+import twinturbo.scripts.train_ptl as train_ptl
 import twinturbo.scripts.generate_teplate as generate_teplate
 import twinturbo.scripts.run_cwola_curtains2 as run_cwola_curtains2
 import twinturbo.scripts.cwola_evaluation as cwola_evaluation

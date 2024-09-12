@@ -21,7 +21,9 @@ template_training:
 
 export_template: 
   _target_: twinturbo.src.data.lhco_constituents.LHCOLowModuleTT
+
   val_frac: 0.1
+
   dataset:
     _target_: twinturbo.src.data.lhco_constituents.LHCOLowDatasetTT_export
     _partial_: true

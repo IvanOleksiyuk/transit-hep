@@ -11,13 +11,14 @@ defaults:
   - step_export_latent: twinturbo_LHCO
   - step_plot_compare: twinturbo_LHCO
   - override step_train_template/model: twinturbo_reco_cons0.001_smls0.0001_advII5
-  - override step_train_template/trainer: 200e_noclip.yaml
+  - override step_train_template/trainer: 400e_noclip.yaml
   - override step_train_template/model/optimizer: AdamW_lr2-4
 
 step_train_template:
   model:
     reverse_pass_mode: additional_input
     valid_plots: False
+    afterglow_epoch: 200
 
 do_train_template: True
 do_export_template: True

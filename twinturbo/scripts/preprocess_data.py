@@ -19,7 +19,7 @@ def main(cfg: DictConfig) -> None:
     log.info("Instantiating the data module")
     dataset = hydra.utils.instantiate(data)
     dataset.reset_index()
-    dataset.save("/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5")
+    dataset.save("/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5")
     print(len(dataset))
 
 if __name__ == "__main__":

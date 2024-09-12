@@ -34,3 +34,21 @@ class SigmoidAnnealing():
             return self.min_val + self.amplitude / (1 + np.exp(-self.slope * (self.end - self.middle)))
         else:
             return self.min_val + self.amplitude / (1 + np.exp(-self.slope * (batch - self.middle))) 
+        
+class ExponentialAnnealing():
+    def __init__(self, start = None, end = None, start_val = 0, end_val=1):
+        
+        self.start = start
+        self.end = end
+        self.start_val = start_val
+        self.end_val = end_val
+        self.slope = (np.log(end_val)-np.log(start_val))/(end - start)
+        
+    def __call__(self, batch):
+        if batch < self.start:
+            return self.start_val 
+        elif batch > self.end:
+            return self.end_val  
+        else:
+            return np.exp(self.slope * (batch - self.start)+np.log(self.start_val))
+        

@@ -6,7 +6,7 @@ template_training:
     dataset1:
       _target_: twinturbo.src.data.data.InMemoryDataFrameDict
       list_order: ["data", "mass"]
-      file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+      file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
       plotting_path: ${general.run_dir}/plots/input/train_d1/
       processor_cfg: 
         - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -30,7 +30,7 @@ template_training:
     dataset2:
       _target_: twinturbo.src.data.data.InMemoryDataFrameDict
       list_order: ["mass_add"]
-      file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+      file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
       plotting_path: ${general.run_dir}/plots/input/train_d2/
       processor_cfg: 
         - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -73,7 +73,7 @@ export_template:
     dataset1:
       _target_: twinturbo.src.data.data.InMemoryDataFrameDict
       list_order: ["data"]
-      file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+      file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
       plotting_path: ${general.run_dir}/plots/input/export_d1/
       processor_cfg: 
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -99,7 +99,7 @@ export_template:
     dataset2:
       _target_: twinturbo.src.data.data.InMemoryDataFrameDict
       list_order: ["mass"]
-      file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+      file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
       plotting_path: ${general.run_dir}/plots/input/export_d2/
       processor_cfg: 
         - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -136,7 +136,7 @@ export_latent_all:
   test_data:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/input/export_latent_sr/
     processor_cfg:  
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -157,7 +157,7 @@ evaluation:
   original_data: 
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data", "mass"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/input/eval_orig/
     processor_cfg: 
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -182,7 +182,7 @@ evaluation:
   target_data: 
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data", "mass"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/inputs/eval_target/
     processor_cfg: 
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -208,7 +208,7 @@ cwola:
   datasr_3000:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/inputs/cwola/datasr/
     processor_cfg: 
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -236,7 +236,7 @@ cwola:
   extra_signal_3000: 
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/inputs/cwola/extra_sig/
     processor_cfg: 
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -266,7 +266,7 @@ cwola:
   extra_bkg_3000: 
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/inputs/cwola/extra_bkg/
     processor_cfg:
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -294,7 +294,7 @@ cwola:
   datasr_0:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/inputs/cwola/datasr/
     processor_cfg: 
     - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -322,7 +322,7 @@ cwola:
   extra_signal_0: 
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/inputs/cwola/extra_sig/
     processor_cfg: 
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -351,7 +351,7 @@ cwola:
   extra_bkg_0:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["data"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/inputs/cwola/extra_bkg/
     processor_cfg: 
       - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
@@ -379,7 +379,7 @@ cwola:
   dataSR_latent_3000:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["latent"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/inputs/cwola/dataSR_latent_3000_latent/
     processor_cfg: 
       - _target_: twinturbo.src.data.data.ProcessorLoadInsertDatasets
@@ -404,7 +404,7 @@ cwola:
   dataSB_latent_3000:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["latent"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/inputs/cwola/dataSB_latent_3000_latent/
     processor_cfg: 
       - _target_: twinturbo.src.data.data.ProcessorLoadInsertDatasets
@@ -433,7 +433,7 @@ cwola:
   data_extra_sig_latent_3000:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["latent"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/inputs/cwola/data_extra_sig_latent_3000_latent/
     processor_cfg: 
       - _target_: twinturbo.src.data.data.ProcessorLoadInsertDatasets
@@ -460,7 +460,7 @@ cwola:
   data_extra_bkg_latent_3000:
     _target_: twinturbo.src.data.data.InMemoryDataFrameDict
     list_order: ["latent"]
-    file_path: "/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
+    file_path: "/home/users/o/oleksiyu/DATA/LHCO/events_anomalydetection_v2.features_prepCURTAINS.h5"
     plotting_path: ${general.run_dir}/plots/inputs/cwola/datasr/
     processor_cfg: 
       - _target_: twinturbo.src.data.data.ProcessorLoadInsertDatasets

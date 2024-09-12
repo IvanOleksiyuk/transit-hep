@@ -38,7 +38,7 @@ adversarial_cfg:
   optimizer_d: default.yaml
   warmup: 0
   g_loss_weight: 2
-  g_loss_gen_weight: 0.5
+  g_loss_gen_weight: 2
   every_n_steps_g: 1
   train_dis_in_warmup: False
   g_loss_weight_in_warmup: True

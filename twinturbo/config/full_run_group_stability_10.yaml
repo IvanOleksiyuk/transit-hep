@@ -5,6 +5,7 @@ several_template_train_seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 redo: False
 run_sequentially: True # Run the experiments sequentially
 do_stability_analysis: True
+not_just_seeds: False
 
 stability_analysis_cfg:
   run_dir: null

@@ -30,7 +30,7 @@ do_plot_compare: False
 verbose_validation: True
 
 general:
-  name: TT_reco_cons0.001_smls0.0001_advII5s_HVL_2048b_lr2-4_dl
+  name: TRANSITv1_HLV
   subfolder: devv/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

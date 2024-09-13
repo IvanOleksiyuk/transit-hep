@@ -431,15 +431,21 @@ class TwinTURBO(LightningModule):
         else:
             return self.decoder(torch.cat([content, style], dim=1))
 
-    def disc_lat(self, e1, e2):
+    def disc_lat(self, e1, e2, mask=None):
         if self.style_injection_cond:
-            return self.discriminator(e1, ctxt=e2)
+            if self.second_input_mask:
+                return self.discriminator(e1, mask=mask, ctxt=e2)
+            else:
+                return self.discriminator(e1, ctxt=e2)
         else:
             return self.discriminator(torch.cat([e1, e2], dim=1))
 
-    def disc_reco(self, w1, w2):
+    def disc_reco(self, w1, w2, mask=None):
         if self.style_injection_cond:
-            return self.discriminator2(w1, ctxt=w2)
+            if self.second_input_mask:
+                return self.discriminator2(w1, mask=mask, ctxt=w2)
+            else:
+                return self.discriminator2(w1, ctxt=w2)
         else:
             return self.discriminator2(torch.cat([w1, w2], dim=1))
 
@@ -451,6 +457,20 @@ class TwinTURBO(LightningModule):
         else:
             x_inp, m_pair, m_add = sample
             mask = None
+            m_pair=m_pair.reshape([x_inp.shape[0], -1])
+            m_add=m_add.reshape([x_inp.shape[0], -1])
+        
+        #Make sure the inputs are in the right shape
+        m_pair=m_pair.reshape([x_inp.shape[0], -1])
+        m_add=m_add.reshape([x_inp.shape[0], -1])
+        
+        if self.add_standardizing_layer:
+            # if step_type == "train":
+            #     self.std_layer_x.update(x_inp, mask=mask)
+            #     self.std_layer_ctxt.update(m_pair)
+            x_inp = self.std_layer_x(x_inp, mask=mask)
+            m_pair = self.std_layer_ctxt(m_pair)
+            m_add = self.std_layer_ctxt(m_add)
         
         #Make sure the inputs are in the right shape
         m_pair=m_pair.reshape([x_inp.shape[0], -1])
@@ -890,7 +910,7 @@ class TwinTURBO(LightningModule):
             allow_gen_train = True
             if self.current_epoch>=self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
                 # Train discriminator for latent space
-                d_loss = self.adversarial_loss(self.disc_lat(torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)), labels)
+                d_loss = self.adversarial_loss(self.disc_lat(torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0), mask=mask_dis), labels)
                 self.toggle_optimizer(optimizer_d)
                 self.log("d_loss", d_loss, prog_bar=True)
                 self.zero_grad()
@@ -1241,6 +1261,8 @@ class TwinTURBO(LightningModule):
     def generate(self, sample: tuple) -> torch.Tensor:
         if self.second_input_mask:
             x_inp, mask, y_pair, y_new = sample
+            y_pair = y_pair.reshape([x_inp.shape[0], -1])
+            y_new = y_new.reshape([x_inp.shape[0], -1])
         else:
             x_inp, y_pair, y_new = sample
             mask = None

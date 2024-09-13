@@ -32,6 +32,7 @@ export_template:
     sig_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_sig.h5
     m_add_path: /srv/beegfs/scratch/groups/rodem/LHCO/lhco_event_masses.h5
     n_bkg: null
+<<<<<<< HEAD
     n_sig: 3000
     n_csts: 64
     mjj_window: [[2700, 3300], [3700, 6000]]
@@ -39,6 +40,16 @@ export_template:
   loader_kwargs:
     pin_memory: true
     batch_size: 2048
+=======
+    n_sig: 2000
+    n_csts: 64
+    mjj_window: [[2700, 3300], [3700, 6000]]
+    oversampling: 5
+
+  loader_kwargs:
+    pin_memory: true
+    batch_size: 512
+>>>>>>> 4dffb3b (some unclear CUDA errors)
     num_workers: 0
     drop_last: False
 

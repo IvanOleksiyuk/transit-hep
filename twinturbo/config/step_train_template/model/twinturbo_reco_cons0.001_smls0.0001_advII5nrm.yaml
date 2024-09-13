@@ -31,7 +31,7 @@ decoder_cfg:
   ctxt_in_hddn: True
   ctxt_in_out: False
 latent_norm: False
-latent_dim: 8
+latent_dim: 16
 loss_cfg:
   reco:
     w: 1
@@ -63,7 +63,7 @@ adversarial_cfg:
   optimizer_d: default.yaml
   warmup: 5
   g_loss_weight: 2
-  g_loss_gen_weight: 2
+  g_loss_gen_weight: 0.5
   every_n_steps_g: 1
   train_dis_in_warmup: False
   g_loss_weight_in_warmup: True
@@ -87,7 +87,4 @@ adversarial_cfg:
   gradient_clip_val: 0.1
 
 valid_plots: ${verbose_validation}
-<<<<<<< HEAD
-=======
-use_norm_layer: False
->>>>>>> 4dffb3b (some unclear CUDA errors)
+use_norm_layer: True

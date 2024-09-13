@@ -1,11 +1,11 @@
 #!/bin/sh
-#SBATCH --job-name=TT_reco_cons0.001_smls0.0001_advII6S4s_LCRF_2048b_lr2-4_dl
+#SBATCH --job-name=TRANSITv1_dopings
 #SBATCH --cpus-per-task=16
 #SBATCH --ntasks=1
-#SBATCH --time=10:00:00
+#SBATCH --time=12:00:00
 #SBATCH --partition=shared-gpu,private-dpnc-gpu
 #SBATCH --nodes=1
-#SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/TT_reco_cons0.001_smls0.0001_advII6S4s_LCRF_2048b_lr2-4_dl-%A-%x_%a.out
+#SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/TRANSITv1_dopings-%A-%x_%a.out
 #SBATCH --mem=16GB
 #SBATCH --gres=gpu:1
 
@@ -18,9 +18,9 @@ cd sing_images/
 singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  bash -c "cd /home/users/o/oleksiyu/WORK/hyperproject/ &&\
  python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run_group.py\
- --config-name full_run_group_stability_10.yaml\
- full_run_cfg=TT_reco_cons0.001_smls0.0001_advII6S4s_LCRF_2048b_lr2-4_dl\
- run_dir=twinturbo/workspaces/groups4/TT_reco_cons0.001_smls0.0001_advII6S4s_LCRF_2048b_lr2-4_dl"
+ --config-name full_run_group_doping_3seeds.yaml\
+ full_run_cfg=TRANSITv1\
+ run_dir=twinturbo/workspaces/groups4/TRANSITv1_dopings"
 
 # Record the end time
 end_time=$(date +%s)

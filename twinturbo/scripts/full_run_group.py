@@ -24,7 +24,7 @@ import copy
 import twinturbo.scripts.plot_compare as plot_compare
 log = logging.getLogger(__name__)
 
-def expand_template_train_seed(config_list, several_template_train_seeds):
+def expand_template_train_seed(config_list, several_template_train_seeds, not_just_seeds=False):
     new_config_list = []
     if several_template_train_seeds is None:
         return config_list
@@ -32,7 +32,10 @@ def expand_template_train_seed(config_list, several_template_train_seeds):
         for seed in several_template_train_seeds:
             new_config=copy.deepcopy(cfg)
             new_config.step_train_template.seed = seed
-            new_config.general.run_dir = cfg.general.run_dir + f"-TTS_{seed}"
+            if not_just_seeds:
+                new_config.general.run_dir = cfg.general.run_dir + f"/run-TTS_{seed}"
+            else:
+                new_config.general.run_dir = cfg.general.run_dir + f"-TTS_{seed}"
             new_config_list.append(new_config)
     return new_config_list
 
@@ -116,7 +119,7 @@ def main(cfg: DictConfig) -> None:
     config_list[0].general.run_dir = cfg.run_dir + "/run"
     
     if hasattr(cfg, "several_template_train_seeds"):
-        config_list = expand_template_train_seed(config_list, cfg.several_template_train_seeds)
+        config_list = expand_template_train_seed(config_list, cfg.several_template_train_seeds, not_just_seeds=cfg.not_just_seeds)
     if hasattr(cfg, "several_SBSR"):
         config_list = expand_SBSR(config_list, cfg.several_SBSR, cfg.check_SBSR)
     if hasattr(cfg, "several_doping"):
@@ -146,8 +149,17 @@ def main(cfg: DictConfig) -> None:
     if cfg.do_stability_analysis:
         log.info("Stability analysis")
         if cfg.stability_analysis_cfg.run_dir is None:
-            cfg.stability_analysis_cfg.run_dir = group_dir
-        plot_compare.main(cfg.stability_analysis_cfg)
+            if cfg.not_just_seeds:
+                cfg.stability_analysis_cfg.run_dir = group_dir
+                plot_compare.main(cfg.stability_analysis_cfg)
+            else:
+                for item in os.listdir(group_dir):
+                    item_path = os.path.join(group_dir, item)
+                    cfg.stability_analysis_cfg.run_dir = str(item_path)
+                    plot_compare.main(cfg.stability_analysis_cfg)
+        else:
+            plot_compare.main(cfg.stability_analysis_cfg)
+        
 
 if __name__ == "__main__":
     main()

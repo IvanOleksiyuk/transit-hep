@@ -60,6 +60,11 @@ def get_bins(data, nbins=20, sd=None):
         min_ent = min(min_ent, sd.min().item())
     return np.linspace(min_ent, max_ent, num=nbins)
 
+def get_bins_std(data, nbins=20, sd=None):
+    std_ent = data.std().item()
+    mean_ent = data.mean().item()
+    return np.linspace(mean_ent - 4 * std_ent, mean_ent + 4 * std_ent, num=nbins)
+
 
 def plot_marginals(
     originals, sample, labels=None, legend=True, axs_nms=None, limits=None, nbins=20
@@ -203,6 +208,9 @@ def add_contour(axes, i, j, data, sampled, x_bounds=None):
 def add_2d_hist(axes, i, j, data, sampled, x_bounds=None):
     if x_bounds is None:
         x_bounds = [-3, 3]
+    else:
+        if x_bounds[0] is None and x_bounds[1] is None:
+            x_bounds = None
     
     bins = 30
     range_x = x_bounds
@@ -295,7 +303,10 @@ def plot_feature_spread(
                         )
                 if i == j:
                     og = target_data[:, i]
-                    bins = np.linspace(-4, 4, nbins)
+                    if x_bounds[0] is None and x_bounds[1] is None:
+                        bins = get_bins_std(og, nbins=nbins)
+                    else:
+                        bins = np.linspace(-4, 4, nbins)
                     bins = add_hist(
                         axes[i, j],
                         sampled[:, i],
@@ -328,6 +339,7 @@ def plot_feature_spread(
                         color="blue",
                     )
                     axes[i, j].set_yticklabels([])
+                    axes[i, j].set_xlim(x_bounds)
 
                 if i > j:
                     # TODO fix the singular matrix issue

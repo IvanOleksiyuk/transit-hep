@@ -10,7 +10,7 @@ defaults:
   - step_cwola: BDT_LHCO_allCWOLA
   - step_export_latent: twinturbo_LHCO
   - step_plot_compare: twinturbo_LHCO
-  - override step_train_template/model: TRANSITv1Ano_smooth_no_consistency
+  - override step_train_template/model: TRANSITv2
   - override step_train_template/trainer: 200e_noclip.yaml
   - override step_train_template/model/optimizer: AdamW_lr2-4
 
@@ -31,7 +31,7 @@ do_plot_compare: True
 verbose_validation: False
 
 general:
-  name: TRANSITv1Ano_smooth_no_consistency
+  name: TRANSITv2
   subfolder: REFERENCE13_08onGPU033/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

@@ -190,6 +190,7 @@ class TwinTURBO(LightningModule):
         discriminator_latent_cfg = None,
         add_standardizing_layer = False,
         afterglow_epoch = np.inf,
+        second_input_mask = False,
     ) -> None:
         """
         Args:
@@ -235,7 +236,7 @@ class TwinTURBO(LightningModule):
         # Initialise the networks
         x_dim = inpt_dim[0][0]
         context_dim = inpt_dim[1][0]
-        self.second_input_mask = False #By default
+        self.second_input_mask = second_input_mask #By default
         
         if network_type == "Transformer_conditional":
             self.second_input_mask = True
@@ -243,10 +244,16 @@ class TwinTURBO(LightningModule):
             self.encoder2 = lambda x: x
             self.decoder = FullEncoder(inpt_dim=latent_dim, outp_dim=x_dim, ctxt_dim=context_dim, **decoder_cfg)
             if self.adversarial:
-                self.discriminator = DiscPC(inpt_dim=latent_dim, ctxt_dim=context_dim, **self.adversarial_cfg.discriminator)
-                if "double_discriminator" in self.adversarial:
+                if hasattr(adversarial_cfg, "discriminator"):
+                    self.discriminator = DiscPC(inpt_dim=latent_dim, ctxt_dim=context_dim, **self.adversarial_cfg.discriminator)
+                    self.use_disc_lat = True
+                else:
+                    self.use_disc_lat = False
+                if hasattr(adversarial_cfg, "discriminator2"):
                     self.discriminator2 = DiscPC(inpt_dim=x_dim, ctxt_dim=context_dim, **self.adversarial_cfg.discriminator2)
-                
+                    self.use_disc_reco = True
+                else:
+                    self.use_disc_reco = False
             # if discriminator_latent_cfg is not None:
             #     self.discriminator = TransformerEncoder(inpt_dim=latent_dim, outp_dim=1, **discriminator_latent_cfg)
             self.style_injection_cond = True
@@ -257,9 +264,16 @@ class TwinTURBO(LightningModule):
             self.decoder = decoder_cfg(inpt_dim=latent_dim, ctxt_dim=inpt_dim[1][0], outp_dim=x_dim)
             self.style_injection_cond = True
             if self.adversarial:
-                self.discriminator = adversarial_cfg.discriminator(inpt_dim=latent_dim, outp_dim=1, ctxt_dim=context_dim)
-                if "double_discriminator" in self.adversarial:
-                    self.discriminator2 = adversarial_cfg.discriminator2(inpt_dim=x_dim, outp_dim=1, ctxt_dim=context_dim)
+                if hasattr(adversarial_cfg, "discriminator"):
+                    self.discriminator = adversarial_cfg.discriminator(inpt_dim=latent_dim, ctxt_dim=context_dim)
+                    self.use_disc_lat = True
+                else:
+                    self.use_disc_lat = False
+                if hasattr(adversarial_cfg, "discriminator2"):
+                    self.discriminator2 = adversarial_cfg.discriminator2(inpt_dim=x_dim, ctxt_dim=context_dim)
+                    self.use_disc_reco = True
+                else:
+                    self.use_disc_reco = False
             self.encoder2 = lambda x: x
         elif network_type == "MLP_cont":
             self.decoder_out_m = False
@@ -871,7 +885,14 @@ class TwinTURBO(LightningModule):
                 optimizer_g.zero_grad()
                 self.untoggle_optimizer(optimizer_g)
         elif "double_discriminator" in self.adversarial: 
-            optimizer_g, optimizer_d, optimizer_d2 = self.optimizers()
+            if self.use_disc_lat and self.use_disc_reco:
+                optimizer_g, optimizer_d, optimizer_d2 = self.optimizers()
+            elif self.use_disc_lat and not self.use_disc_reco:
+                optimizer_g, optimizer_d = self.optimizers()
+            elif not self.use_disc_lat and self.use_disc_reco:
+                optimizer_g, optimizer_d2 = self.optimizers()
+            else:
+                optimizer_g = self.optimizers()
             # adversarial loss is binary cross-entropy
             total_loss, e1, e2, w1, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
             batch_size=sample[0].shape[0]
@@ -889,26 +910,32 @@ class TwinTURBO(LightningModule):
             # Measure discriminator's ability to classify encoded samples with correct mass and encoded samples with incorrect mass
             allow_gen_train = True
             if self.current_epoch>=self.adversarial_cfg.warmup or self.adversarial_cfg.train_dis_in_warmup:
-                # Train discriminator for latent space
-                d_loss = self.adversarial_loss(self.disc_lat(torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)), labels)
-                self.toggle_optimizer(optimizer_d)
-                self.log("d_loss", d_loss, prog_bar=True)
-                self.zero_grad()
-                self.manual_backward(d_loss, retain_graph=True)
-                self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
-                optimizer_d.step()
-                self.untoggle_optimizer(optimizer_d)
+                if self.use_disc_lat:
+                    # Train discriminator for latent space
+                    d_loss = self.adversarial_loss(self.disc_lat(torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)), labels)
+                    self.toggle_optimizer(optimizer_d)
+                    self.log("d_loss", d_loss, prog_bar=True)
+                    self.zero_grad()
+                    self.manual_backward(d_loss, retain_graph=True)
+                    self.clip_gradients(optimizer_d, gradient_clip_val=self.gradient_clip_val)
+                    optimizer_d.step()
+                    self.untoggle_optimizer(optimizer_d)
+                else:
+                    d_loss = 0
                 
-                # Train discriminator for reconstruction/transport
-                d_loss_gen= self.adversarial_loss(self.disc_reco(torch.cat([w1, generated], dim=0), torch.cat([w2, w2_perm], dim=0)),  labels)
-                self.toggle_optimizer(optimizer_d2)
-                self.log("d_loss_gen", d_loss_gen, prog_bar=True)
-                self.zero_grad()
-                self.manual_backward(d_loss_gen, retain_graph=True)
-                self.clip_gradients(optimizer_d2, gradient_clip_val=self.gradient_clip_val)
-                optimizer_d2.step()
-                self.untoggle_optimizer(optimizer_d2)
-                self.dis_steps_per_gen+=1
+                if self.use_disc_reco:
+                    # Train discriminator for reconstruction/transport
+                    d_loss_gen= self.adversarial_loss(self.disc_reco(torch.cat([w1, generated], dim=0), torch.cat([w2, w2_perm], dim=0)),  labels)
+                    self.toggle_optimizer(optimizer_d2)
+                    self.log("d_loss_gen", d_loss_gen, prog_bar=True)
+                    self.zero_grad()
+                    self.manual_backward(d_loss_gen, retain_graph=True)
+                    self.clip_gradients(optimizer_d2, gradient_clip_val=self.gradient_clip_val)
+                    optimizer_d2.step()
+                    self.untoggle_optimizer(optimizer_d2)
+                    self.dis_steps_per_gen+=1
+                else:
+                    d_loss_gen = 0
                 
                 # Pause genrator training if discriminator is too weak
                 if self.adversarial=="double_discriminator_priority":
@@ -932,9 +959,8 @@ class TwinTURBO(LightningModule):
 
             # Train generator
             if self.current_epoch<self.adversarial_cfg.warmup or allow_gen_train:
+                total_loss2 = total_loss
                 if self.current_epoch>self.adversarial_cfg.warmup or self.adversarial_cfg.g_loss_weight_in_warmup:
-                    g_loss = - self.adversarial_loss(self.disc_lat(torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)), labels)
-                    g_loss_gen = - self.adversarial_loss(self.disc_reco(torch.cat([w1, generated], dim=0), torch.cat([w2, w2_perm], dim=0)),  labels)                        
                     if isinstance(self.adversarial_cfg.g_loss_weight, float) or isinstance(self.adversarial_cfg.g_loss_weight, int):
                         g_loss_weight = self.adversarial_cfg.g_loss_weight
                     else:
@@ -945,7 +971,12 @@ class TwinTURBO(LightningModule):
                     else:
                         g_loss_gen_weight = self.adversarial_cfg.g_loss_gen_weight(self.global_step)
                         self.log("g_loss_gen_weight", g_loss_gen_weight)
-                    total_loss2 = total_loss + g_loss*g_loss_weight + g_loss_gen*g_loss_gen_weight
+                    if self.use_disc_lat:
+                        g_loss = - self.adversarial_loss(self.disc_lat(torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)), labels)
+                        total_loss2 += g_loss*g_loss_weight
+                    if self.use_disc_reco:
+                        g_loss_gen = - self.adversarial_loss(self.disc_reco(torch.cat([w1, generated], dim=0), torch.cat([w2, w2_perm], dim=0)),  labels)  
+                        total_loss2 += g_loss_gen*g_loss_gen_weight
                 else:
                     total_loss2 = total_loss
                 self.log("total_loss2", total_loss2, prog_bar=True)
@@ -1106,7 +1137,7 @@ class TwinTURBO(LightningModule):
         recons = []
         for m in masses:
             w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float().to(w1.device)
-            content = self.encode_content(w1, m_pair)
+            content = self.encode_content(w1, m_pair_)
             style = self.encode_style(w2)
             recon = self.decode(content, style)
             recons.append(recon)
@@ -1188,21 +1219,26 @@ class TwinTURBO(LightningModule):
             else:
                 enc2_params = []
             enc_dec_params = list(self.encoder1.parameters()) + enc2_params + list(self.decoder.parameters())
-            opt_g = self.hparams.optimizer(params=enc_dec_params)
-            opt_d = self.hparams.optimizer(params=self.discriminator.parameters())
-            opt_d2 = self.hparams.optimizer(params=self.discriminator2.parameters())
+            optimisers, schedulers = [], []
+            opt_g= self.hparams.optimizer(params=enc_dec_params)
+            optimisers.append(opt_g)
+            if self.use_disc_lat: 
+                opt_d = self.hparams.optimizer(params=self.discriminator.parameters())
+                optimisers.append(opt_d)
+            if self.use_disc_reco: 
+                opt_d2 = self.hparams.optimizer(params=self.discriminator2.parameters())
+                optimisers.append(opt_d2)
             if getattr(self.adversarial_cfg, "scheduler", None) is None:
-                return [opt_g, opt_d, opt_d2], []
+                pass
             elif self.adversarial_cfg.scheduler == "same_given":
-                sched_g = self.hparams.scheduler.scheduler(opt_g)
-                sched_d = self.hparams.scheduler.scheduler(opt_d)
-                sched_d2 = self.hparams.scheduler.scheduler(opt_d2)
-                return [opt_g, opt_d, opt_d2], [sched_g, sched_d, sched_d2]
+                schedulers.append( self.hparams.scheduler.scheduler(opt_g))
+                if self.use_disc_lat: schedulers.append(self.hparams.scheduler.scheduler(opt_d))
+                if self.use_disc_reco: schedulers.append(self.hparams.scheduler.scheduler(opt_d2))
             else: 
-                sched_g = self.adversarial_cfg.scheduler.scheduler_g(opt_g)
-                sched_d = self.adversarial_cfg.scheduler.scheduler_d(opt_d)
-                sched_d2 = self.adversarial_cfg.scheduler.scheduler_d2(opt_d2)
-                return [opt_g, opt_d, opt_d2], [sched_g, sched_d, sched_d2]
+                schedulers.append(self.adversarial_cfg.scheduler.scheduler_g(opt_g))
+                if self.use_disc_lat: schedulers.append(self.adversarial_cfg.scheduler.scheduler_d(opt_d))
+                if self.use_disc_reco: schedulers.append(self.adversarial_cfg.scheduler.scheduler_d2(opt_d2))
+            return optimisers, schedulers
         elif self.adversarial:	
             enc2_params =  list(self.encoder2.parameters()) if hasattr(self.encoder2, "parameters") else []
             enc_dec_params = list(self.encoder1.parameters()) + enc2_params + list(self.decoder.parameters())
@@ -1247,7 +1283,8 @@ class TwinTURBO(LightningModule):
         
         if self.add_standardizing_layer:
             x_inp = self.std_layer_x(x_inp)
-            content = self.std_layer_ctxt(y_pair)
+            y_pair = self.std_layer_ctxt(y_pair)
+            y_new = self.std_layer_ctxt(y_new)
         
         content = self.encode_content(x_inp, y_pair, mask=mask)
         style = self.encode_style(y_new)
@@ -1260,16 +1297,21 @@ class TwinTURBO(LightningModule):
 
     def predict_step(self, batch: tuple, batch_idx: int, dataloader_idx: int = 0) -> Any:
         if self.second_input_mask:
-            context = batch[3].reshape([len(batch[0]), -1])
+            batch[3] = batch[3].reshape([len(batch[0]), -1])
+            batch[2] = batch[2].reshape([len(batch[0]), -1])
+            context = batch[3]
         else:
-            context = batch[2].reshape([len(batch[0]), -1])
-        sample = self.generate(batch).squeeze(1)
-        sample = sample.reshape(-1, sample.shape[-1])
+            batch[2] = batch[2].reshape([len(batch[0]), -1])
+            batch[1] = batch[1].reshape([len(batch[0]), -1])
+            context = batch[2]
         if self.var_group_list is not None:
+            sample = self.generate(batch).squeeze(1)
+            sample = sample.reshape(-1, sample.shape[-1])
             result = {var_name: column.reshape(-1, 1) for var_name, column in zip(self.var_group_list[0], sample.T)}
             result.update({var_name: column.reshape(-1, 1) for var_name, column in zip(self.var_group_list[1], context.T)})                
             return result
         else:
+            sample = self.generate(batch)
             result = sample
             return result
 

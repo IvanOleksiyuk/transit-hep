@@ -46,6 +46,9 @@ def main(cfg: DictConfig) -> None:
     else:
         datamodule = hydra.utils.instantiate(orig_cfg.datamodule)
 
+    if hasattr(datamodule, "setup"):
+        datamodule.setup("test")
+    
     # Cycle through the datasets and create the dataloader
     log.info("Running latent prediction")
     model.eval() #PL should do it but I just do it to be sure

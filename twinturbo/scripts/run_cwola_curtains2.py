@@ -20,6 +20,7 @@ def main(cfg: DictConfig) -> None:
     os.makedirs(cfg.cwola_path, exist_ok=True)
     datasr = hydra.utils.instantiate(cfg.datasets.datasr)
     print("datasr len:", len(datasr))
+    cfg.cwola_subfolders = f"window_{cfg.sideband_1}__{cfg.sideband_2}/dope_{cfg.num_signal}/"
     datasr.write_npy_single(file_path_str=cfg.cwola_path+cfg.cwola_subfolders+"sr.npy", key="data")
     datasr.write_features_txt(file_path_str=cfg.cwola_path+cfg.cwola_subfolders+"features.txt", key="data")
     

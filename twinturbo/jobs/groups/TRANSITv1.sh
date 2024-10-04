@@ -1,11 +1,11 @@
 #!/bin/sh
-#SBATCH --job-name=TRANSITv1_dopings
+#SBATCH --job-name=TRANSITv1
 #SBATCH --cpus-per-task=16
 #SBATCH --ntasks=1
-#SBATCH --time=12:00:00
+#SBATCH --time=10:00:00
 #SBATCH --partition=shared-gpu,private-dpnc-gpu
 #SBATCH --nodes=1
-#SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/TRANSITv1_dopings-%A-%x_%a.out
+#SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/TRANSITv1-%A-%x_%a.out
 #SBATCH --mem=16GB
 #SBATCH --gres=gpu:1
 
@@ -18,9 +18,9 @@ cd sing_images/
 singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  bash -c "cd /home/users/o/oleksiyu/WORK/hyperproject/ &&\
  python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run_group.py\
- --config-name full_run_group_dopings_3seeds.yaml\
+ --config-name full_run_group_stability_10.yaml\
  full_run_cfg=TRANSITv1\
- run_dir=twinturbo/workspaces/DOPING/TRANSITv1_dopings"
+ run_dir=twinturbo/workspaces/groups5/TRANSITv1"
 
 # Record the end time
 end_time=$(date +%s)

@@ -9,7 +9,7 @@ import os
 # Define the YAML structure as a string
 yaml_str = """
 stability_analysis_cfg:
-  run_dir: "/home/users/o/oleksiyu/WORK/hyperproject/plot/user/compare3"
+  run_dir: "/home/users/o/oleksiyu/WORK/hyperproject/plot/user/compare_v1_v2"
   save_curves: True
   postfix: "comb_seeds_CWOLA"
 
@@ -18,21 +18,13 @@ stability_analysis_cfg:
       abs_directory: "/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_3000/standard"
       prefix: ""
       postfix: ""
-    TwinTurbo_advIIs: 
-      abs_directory: "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/groups/TT_reco_cons0.001_smls0.0001_advIIs_LCR_2048b_lr2-4_dl/"
+    TRANSITv1: 
+      abs_directory: "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/groups5/TRANSITv1/"
       prefix: "TwinTurbo_"
       postfix: "_comb_CWOLA"
-    TwinTurboLatent_advIIs: 
-      abs_directory : "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/groups/TT_reco_cons0.001_smls0.0001_advIIs_LCR_2048b_lr2-4_dl/"
-      prefix: "TwinTurboLatent_"
-      postfix: "_comb_CWOLA"
-    TwinTurbo_advIIsAnn:
-      abs_directory: "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/groups2/TT_reco_cons0.001_smls0.0001_advIIsAnn_LCR_2048b_lr2-4_dl/"
+    TRANSITv2: 
+      abs_directory : "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/groups5/TRANSITv2/"
       prefix: "TwinTurbo_"
-      postfix: "_comb_CWOLA"
-    TwinTurboLatent_advIIsAnn: 
-      abs_directory : "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/groups2/TT_reco_cons0.001_smls0.0001_advIIsAnn_LCR_2048b_lr2-4_dl/"
-      prefix: "TwinTurboLatent_"
       postfix: "_comb_CWOLA"
 
   methods:

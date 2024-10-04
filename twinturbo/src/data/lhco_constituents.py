@@ -6,6 +6,7 @@ from functools import partial
 from typing import Literal, Mapping
 from copy import deepcopy
 import pandas as pd
+from pathlib import Path
 
 class LHCOhlvDatasetTT(Dataset):
     """Only stores the high level features and the mjj."""
@@ -23,29 +24,46 @@ class LHCOhlvDatasetTT(Dataset):
         super().__init__()
 
         # Load the data
-        hlv1, hlv2, _jet1, _jet2, _label, mjj = load_data(
+        hlv1, hlv2, _jet1, _jet2, label, mjj = load_data(
             bkg_path, sig_path, n_bkg, n_sig, 0, mjj_window
         )
 
         # Add a tiny amount of noise to the input number of constituents (dequant)
         hlv1[:, -1] += np.random.randn(len(hlv1))
         hlv2[:, -1] += np.random.randn(len(hlv2))
+        self.label = label[..., None]
 
         # We are generating the joint high level variabels
         self.hlv = np.concatenate([hlv1, hlv2], axis=-1)
         self.mjj = mjj[..., None]  # Must be Bx1 dimension
         
         mjj_add = pd.read_hdf(m_add_path, "mass").to_numpy(np.float32)
-        cut = get_cut_mask(mjj_add, [[mjj_window[0][0], mjj_window[1][1]]])
+        if len(mjj_window) == 1:
+            cut = get_cut_mask(mjj_add, [[mjj_window[0][0], mjj_window[0][1]]])
+        else:
+            cut = get_cut_mask(mjj_add, [[mjj_window[0][0], mjj_window[1][1]]])
         mjj_add = mjj_add[cut.flatten()]
         np.random.shuffle(mjj_add)
         self.mjj_add = mjj_add[:len(mjj)]
-
+        self.data={}
+        self.data["data"] = pd.DataFrame(np.concatenate([self.hlv, self.mjj, self.label], -1), columns=["pt1", "eta1", "phi1", "m1", "Ncons1", "pt2", "eta2", "phi2", "m2", "Ncons2", "mjj", "is_signal"])
     def __len__(self) -> int:
         return len(self.mjj)
 
     def __getitem__(self, index: int) -> np.ndarray:
         return self.hlv[index], self.mjj[index], self.mjj_add[index]
+
+    def write_npy_single(self, file_path_str: str, key):
+        filepath = Path(file_path_str)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        np.save(file_path_str, self.data[key].to_numpy())
+    
+    def write_features_txt(self, file_path_str, key):
+        filepath = Path(file_path_str)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        with open(file_path_str, "w") as f:
+            for feature in self.data[key].columns.tolist():
+                f.write("%s " % feature)
 
 class LHCOhlvDatasetTT_export(Dataset):
     """Only stores the high level features and the mjj."""
@@ -64,10 +82,19 @@ class LHCOhlvDatasetTT_export(Dataset):
     ) -> None:
         super().__init__()
 
-        # Load the data
-        hlv1, hlv2, _jet1, _jet2, _label, mjj = load_data(
-            bkg_path, sig_path, n_bkg, n_sig, 0, mjj_window
-        )
+        if n_sig >= 0:
+            # Load the data
+            hlv1, hlv2, _jet1, _jet2, _label, mjj = load_data(
+                bkg_path, sig_path, n_bkg, n_sig, 0, mjj_window
+            )
+        elif n_sig < 0:
+            # Load the data
+            hlv1, hlv2, _jet1, _jet2, _label, mjj = load_data(
+                bkg_path, sig_path, n_bkg, None, 0, mjj_window
+            )
+            hlv1 = hlv1[-n_sig:]
+            hlv2 = hlv2[-n_sig:]
+            mjj = mjj[-n_sig:]
 
         # Add a tiny amount of noise to the input number of constituents (dequant)
         hlv1[:, -1] += np.random.randn(len(hlv1))
@@ -229,9 +256,9 @@ class LHCOLowDatasetTT_export(Dataset):
             self.jet1 = jet1[:needed]
             self.jet2 = jet2[:needed]
             
-        self.hlv = np.concatenate([hlv1, hlv2])
+        self.hlv = np.concatenate([self.hlv1, self.hlv2])
         self.hlv_gen = np.concatenate([hlv1_gen, hlv2_gen])
-        self.jet = np.concatenate([jet1, jet2])
+        self.jet = np.concatenate([self.jet1, self.jet2])
         self.mask = np.any(self.jet, axis=-1)
 
     def __len__(self) -> int:

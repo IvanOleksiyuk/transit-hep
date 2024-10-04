@@ -1422,11 +1422,15 @@ class FullTransformerDecoder(nn.Module):
         kv_seq: T.Tensor,
         q_mask: Optional[T.BoolTensor] = None,
         kv_mask: Optional[T.BoolTensor] = None,
+        mask: Optional[T.BoolTensor] = None,
         ctxt: T.Tensor | None = None,
         attn_bias: T.Tensor | None = None,
         attn_mask: Optional[T.BoolTensor] = None,
     ) -> T.Tensor:
         """Pass the input through all layers sequentially."""
+        if mask is not None:
+            q_mask = mask
+            kv_mask = mask
         if self.ctxt_dim:
             ctxt = self.ctxt_emdb(ctxt)
         if self.edge_dim:

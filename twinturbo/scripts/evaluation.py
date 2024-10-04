@@ -96,7 +96,8 @@ def main(cfg):
             feature_nms = variables,
             save_dir=Path(cfg.general.run_dir),
             plot_mode=plot_mode,
-            do_2d_hist_instead_of_contour=cfg.step_evaluate.do_2d_hist_instead_of_contour)
+            do_2d_hist_instead_of_contour=cfg.step_evaluate.do_2d_hist_instead_of_contour,
+            x_bounds=cfg.step_evaluate.x_bounds or None)
         print("contour plot is done")
     evaluate_model(cfg, original_data, target_data, template_data)
     plt.close("all")
@@ -125,6 +126,7 @@ def evaluate_model(cfg, original_data, target_data, template_data):
     cfg_exp = orig_cfg
 
     plot_path= cfg_exp["paths"]["output_dir"]+"/../plots/"
+    os.makedirs(plot_path, exist_ok=True)
 
     log.info("Loading best checkpoint")
     #device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -138,6 +140,8 @@ def evaluate_model(cfg, original_data, target_data, template_data):
 
     # Instantiate the datamodule use a different config for data then for training
     datamodule = hydra.utils.instantiate(cfg_exp.data.datamodule)
+    if hasattr(datamodule, "setup"):
+        datamodule.setup("test")
     var_group_list=datamodule.get_var_group_list()
 
     tra_dataloader = datamodule.train_dataloader()

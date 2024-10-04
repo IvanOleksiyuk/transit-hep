@@ -3,21 +3,24 @@ defaults:
   - optimizer: default.yaml
   - scheduler: cyclic.yaml
 
-network_type: Transformer_conditional
 _target_: twinturbo.src.models.twinturbo_model.TwinTURBO
+network_type: partial_context
 latent_norm: False
 latent_dim: 16
 use_m_encodig: True
-encoder_cfg: 
-  transformer:
-    _target_: mattstools.mattstools.simple_transformers.TransformerEncoder
-    _partial_: true
-    dim: 64
+second_input_mask: True
+encoder_cfg:
+  _target_: mattstools.mattstools.transformers.FullTransformerEncoder
+  _partial_: true
+  te_config:
+    model_dim: 64
     num_layers: 4
-    init_method: beit
-    layer_config:
-      ff_mult: 2
-      num_heads: 8
+    dense_config:
+      hddn_dim: 64
+      num_blocks: 3
+      n_lyr_pbk: 1
+      act_h: silu
+      nrm: lyr
   node_embd_config:
     hddn_dim: 64
     num_blocks: 1
@@ -35,15 +38,17 @@ encoder_cfg:
     act_h: silu
     nrm: lyr
 decoder_cfg:
-  transformer:
-    _target_: mattstools.mattstools.simple_transformers.TransformerEncoder
-    _partial_: true
-    dim: 64
+  _target_: mattstools.mattstools.transformers.FullTransformerEncoder
+  _partial_: true
+  te_config:
+    model_dim: 64
     num_layers: 4
-    init_method: beit
-    layer_config:
-      ff_mult: 2
-      num_heads: 8
+    dense_config:
+      hddn_dim: 64
+      num_blocks: 3
+      n_lyr_pbk: 1
+      act_h: silu
+      nrm: lyr
   node_embd_config:
     hddn_dim: 64
     num_blocks: 1
@@ -67,6 +72,8 @@ loss_cfg:
 adversarial_cfg:
   mode: "double_discriminator_priority"
   discriminator2:
+    _target_: twinturbo.src.models.twinturbo_model.DiscPC
+    _partial_: true
     architecture:
       _target_: mattstools.mattstools.simple_transformers.FullEncoder
       _partial_: true
@@ -106,7 +113,12 @@ adversarial_cfg:
   optimizer_d: default.yaml
   warmup: 5
   g_loss_weight: 0
-  g_loss_gen_weight: 0.5
+  g_loss_gen_weight: 
+    _target_: twinturbo.src.models.loss_annealing.ExponentialAnnealing
+    start: 5000
+    end: 10000
+    start_val: 0.0000001
+    end_val: 0.2
   every_n_steps_g: 1
   train_dis_in_warmup: False
   g_loss_weight_in_warmup: True

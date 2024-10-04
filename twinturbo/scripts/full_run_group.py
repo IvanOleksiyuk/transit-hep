@@ -16,7 +16,7 @@ import logging
 import hydra
 from pathlib import Path
 import os
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, ListConfig
 from twinturbo.src.utils.hydra_utils import instantiate_collection, log_hyperparameters, print_config, reload_original_config, save_config
 import twinturbo.scripts.evaluation as evaluation
 import twinturbo.scripts.full_run as full_run
@@ -60,6 +60,9 @@ def expand_doping(config_list, several_doping, check_doping):
         for doping in several_doping:
             new_config=copy.deepcopy(cfg)
             replace_specific_name_in_omegacfg(new_config, "n_sig", doping, check_value=check_doping)
+            replace_specific_name_in_omegacfg(new_config, "num_signal", doping, check_value=check_doping)
+            #find_specific_name_in_omegacfg(new_config, "n_sig")
+            #find_specific_name_in_omegacfg(new_config, "num_signal")
             new_config.general.run_dir = cfg.general.run_dir + f"-doping_{doping}"
             new_config_list.append(new_config)
     return new_config_list            
@@ -83,21 +86,64 @@ def equal_list_list_simple(a, b):
 def replace_specific_name_in_omegacfg(cfg, search_name, insert_value, check_value=None, check_func=equal_simple):
     # Recursively search and replace search_name in the config
     def replace_in_dict(d):
-        for key, value in d.items():
-            if key == search_name:
-                if check_func is not None:
-                    if check_func(value, check_value):
+        if isinstance(d, (list, ListConfig)):
+            for item in d:
+                if isinstance(item, (dict, DictConfig, list, ListConfig)):
+                    replace_in_dict(item) 
+            return
+        elif isinstance(d, (dict, DictConfig)):
+            for key, value in d.items():
+                if key == search_name:
+                    if check_func is not None:
+                        if check_func(value, check_value):
+                            d[key] = insert_value
+                    else:
                         d[key] = insert_value
+                elif isinstance(value, (dict, DictConfig)):
+                    replace_in_dict(value)
+                elif isinstance(value, (list, ListConfig)):
+                    for item in value:
+                        if isinstance(item, (dict, DictConfig, list, ListConfig)):
+                            replace_in_dict(item)
+                elif isinstance(value, (int, float, str, bool, type(None))):
+                    pass
                 else:
-                    d[key] = insert_value
-            elif isinstance(value, dict):
-                replace_in_dict(value)
-            elif isinstance(value, list):
-                for item in value:
-                    if isinstance(item, dict):
-                        replace_in_dict(item)
+                    raise ValueError(f"Unknown type {type(value)}")
+        else:
+            raise ValueError(f"Unknown type {type(d)}")
     replace_in_dict(cfg)
     return cfg
+
+# def find_specific_name_in_omegacfg(cfg, search_name):
+#     print("started")
+#     # Recursively search and replace search_name in the config
+#     def find_in_dict(d):
+#         if isinstance(d, (list, ListConfig)):
+#             for item in d:
+#                 if isinstance(item, (dict, DictConfig, list, ListConfig)):
+#                     find_in_dict(item) 
+#             return
+#         elif isinstance(d, (dict, DictConfig)):
+#             for key, value in d.items():
+#                 if key == search_name:
+#                     print("!!!!!!!! FOUND !!!!!!!!")
+#                     print(key, value)
+#                 elif isinstance(value, (dict, DictConfig)):
+#                     find_in_dict(value)
+#                 elif isinstance(value, (list, ListConfig)):
+#                     for item in value:
+#                         if isinstance(item, (dict, DictConfig, list, ListConfig)):
+#                             find_in_dict(item)
+#                 elif isinstance(value, (int, float, str, bool, type(None))):
+#                     pass
+#                 else:
+#                     pass
+#                     #raise ValueError(f"Unknown type {type(value)}")
+#         else:
+#             pass
+#             raise ValueError(f"Unknown type {type(d)}")
+#     find_in_dict(cfg)
+
 
 def replace_specific_name_in_cfg(cfg, search_name, insert_value, check_value=None, check_func=equal_simple):
     cfg_dict = OmegaConf.to_container(cfg, resolve=True)
@@ -110,7 +156,7 @@ def replace_specific_name_in_cfg(cfg, search_name, insert_value, check_value=Non
 
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="full_run_group_stability.yaml"
+    version_base=None, config_path=str('../config'), config_name="full_run_group_dopings_3seeds.yaml"
 )
 def main(cfg: DictConfig) -> None:
     log.info("<<<START FULL RUN>>>")
@@ -118,12 +164,13 @@ def main(cfg: DictConfig) -> None:
     config_list = [copy.deepcopy(orig_full_run)]
     config_list[0].general.run_dir = cfg.run_dir + "/run"
     
-    if hasattr(cfg, "several_template_train_seeds"):
-        config_list = expand_template_train_seed(config_list, cfg.several_template_train_seeds, not_just_seeds=cfg.not_just_seeds)
+
     if hasattr(cfg, "several_SBSR"):
         config_list = expand_SBSR(config_list, cfg.several_SBSR, cfg.check_SBSR)
     if hasattr(cfg, "several_doping"):
         config_list = expand_doping(config_list, cfg.several_doping, cfg.check_doping)
+    if hasattr(cfg, "several_template_train_seeds"):
+        config_list = expand_template_train_seed(config_list, cfg.several_template_train_seeds, not_just_seeds=cfg.not_just_seeds)
     
     # Create a folder for the run group
     group_dir = Path(cfg.run_dir)
@@ -149,11 +196,13 @@ def main(cfg: DictConfig) -> None:
     if cfg.do_stability_analysis:
         log.info("Stability analysis")
         if cfg.stability_analysis_cfg.run_dir is None:
-            if cfg.not_just_seeds:
+            if not cfg.not_just_seeds:
                 cfg.stability_analysis_cfg.run_dir = group_dir
                 plot_compare.main(cfg.stability_analysis_cfg)
             else:
                 for item in os.listdir(group_dir):
+                    print("run combination in")
+                    print(os.path.join(group_dir, item))
                     item_path = os.path.join(group_dir, item)
                     cfg.stability_analysis_cfg.run_dir = str(item_path)
                     plot_compare.main(cfg.stability_analysis_cfg)

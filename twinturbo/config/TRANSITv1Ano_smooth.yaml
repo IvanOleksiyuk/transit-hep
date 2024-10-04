@@ -31,7 +31,7 @@ do_plot_compare: True
 verbose_validation: False
 
 general:
-  name: TRANSIT
+  name: TRANSITv1Ano_smooth
   subfolder: REFERENCE13_08onGPU033/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

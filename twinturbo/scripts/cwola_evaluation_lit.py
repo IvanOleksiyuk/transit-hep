@@ -13,81 +13,82 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from sklearn.metrics import auc, roc_curve
-# TODO pyroot utils will remove the need for ../configs
-@hydra.main(
-    version_base=None, config_path=str('../config'), config_name="twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS1024b"
-)
-def main(cfg: DictConfig) -> None:
+
+def main() -> None:
     n_dope_per_run=[0, 50, 100, 333, 500, 667, 1000, 3000, 4000, 6000, 8000]
+    runs = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11]
     seeds=[0, 1, 2, 3, 4]
     run_number=8
     #CURTAINS
-    for seed in seeds:
-        run_dir = Path(f"/home/users/o/oleksiyu/WORK/hyperproject/lit/curtains/run_{run_number}/seed_"+str(seed)+"/")
-        os.makedirs(run_dir, exist_ok=True)
-        file_path = f"/srv/beegfs/scratch/groups/rodem/forcomparison/curtains/run_{run_number}/bdt/standard/seed_"+str(seed)+"/fulldata_mean.h5"
-        data = {}
-        with pd.HDFStore(file_path, "r") as store:
-                # Iterate over all the keys (dataset names) in the file
-                for key in store:
-                    # Read each dataset into a pandas DataFrame and store in the dictionary
-                    data[key[1:]] = store[key]
-                    
-        print(data)
-        df = data["df"]
-        true_data = pd.concat([df[df["CWoLa Label"] == 1], df[df["CWoLa Label"] == -2]])
-
-        plot_ROC(true_data["preds"], 
-                np.abs(true_data["Truth"]), 
-                save_path=run_dir / "ROC")
-        do_SI_v_rej(true_data["preds"], 
-                    np.abs(true_data["Truth"]), 
-                    save_path=run_dir / "SI_v_rej")
-        do_rejection_v_TPR(true_data["preds"], 
-                            np.abs(true_data["Truth"]),
-                            save_path=run_dir / "rejection_v_TPR")
-    
-    #OLIWS Idealised SUpervised
-    for method in ["supervised", "idealised", "standard"]:
-        for seed in seeds:
-            run_dir = Path("/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_3000/"+method+"/seed_"+str(seed)+"/")
-            os.makedirs(run_dir, exist_ok=True)
-            file_path = "/srv/beegfs/scratch/groups/rodem/forcomparison/radot/dope_3000/"+method+"/seed_"+str(seed)+"/cwola_outputs.h5"
-            data = {}
-            with pd.HDFStore(file_path, "r") as store:
-                    # Iterate over all the keys (dataset names) in the file
-                    for key in store:
-                        # Read each dataset into a pandas DataFrame and store in the dictionary
-                        data[key[1:]] = store[key]
+    # for run_number in runs:
+    #     for seed in seeds:
+    #         run_dir = Path(f"/home/users/o/oleksiyu/WORK/hyperproject/lit/curtains/run_{run_number}/seed_"+str(seed)+"/")
+    #         os.makedirs(run_dir, exist_ok=True)
+    #         file_path = f"/srv/beegfs/scratch/groups/rodem/forcomparison/curtains/run_{run_number}/bdt/standard/seed_"+str(seed)+"/fulldata_mean.h5"
+    #         data = {}
+    #         with pd.HDFStore(file_path, "r") as store:
+    #                 # Iterate over all the keys (dataset names) in the file
+    #                 for key in store:
+    #                     # Read each dataset into a pandas DataFrame and store in the dictionary
+    #                     data[key[1:]] = store[key]
                         
-            print(data)
-            df = data["df"]
-            if method == "supervised":
-                true_data = df
-            if method == "idealised":
-                true_data = df
-            if method == "standard":
-                true_data = df[df["CWoLa"] == 1]
+    #         print(data)
+    #         df = data["df"]
+    #         true_data = pd.concat([df[df["CWoLa Label"] == 1], df[df["CWoLa Label"] == -2]])
 
-            plot_ROC(true_data["preds"], 
-                    true_data["is_signal"], 
-                    save_path=run_dir / "ROC")
-            do_SI_v_rej(true_data["preds"], 
+    #         plot_ROC(true_data["preds"], 
+    #                 np.abs(true_data["Truth"]), 
+    #                 save_path=run_dir / "ROC")
+    #         do_SI_v_rej(true_data["preds"], 
+    #                     np.abs(true_data["Truth"]), 
+    #                     save_path=run_dir / "SI_v_rej")
+    #         do_rejection_v_TPR(true_data["preds"], 
+    #                             np.abs(true_data["Truth"]),
+    #                             save_path=run_dir / "rejection_v_TPR")
+    # exit()
+    #OLIWS Idealised Supervised
+    dopings = [0, 50, 100, 333, 500, 667, 1000, 3000]
+    for doping in dopings:
+        for method in ["supervised", "idealised", "standard"]:
+            for seed in seeds:
+                run_dir = Path(f"/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_{doping}/"+method+"/seed_"+str(seed)+"/")
+                os.makedirs(run_dir, exist_ok=True)
+                file_path = f"/srv/beegfs/scratch/groups/rodem/forcomparison/radot/dope_{doping}/"+method+"/seed_"+str(seed)+"/cwola_outputs.h5"
+                data = {}
+                with pd.HDFStore(file_path, "r") as store:
+                        # Iterate over all the keys (dataset names) in the file
+                        for key in store:
+                            # Read each dataset into a pandas DataFrame and store in the dictionary
+                            data[key[1:]] = store[key]
+                            
+                print(data)
+                df = data["df"]
+                if method == "supervised":
+                    true_data = df
+                if method == "idealised":
+                    true_data = df
+                if method == "standard":
+                    true_data = df[df["CWoLa"] == 1]
+
+                plot_ROC(true_data["preds"], 
                         true_data["is_signal"], 
-                        save_path=run_dir / "SI_v_rej")
-            do_rejection_v_TPR(true_data["preds"], 
-                                true_data["is_signal"],
-                                save_path=run_dir / "rejection_v_TPR")
-            
-            if method == "standard":
-                templatesr = df[df["CWoLa"] == 0]
-                datasr_bkg = true_data[true_data["is_signal"] == 0]
-                preds = pd.concat([templatesr["preds"], datasr_bkg["preds"]])
-                labels = np.concatenate([np.zeros(len(templatesr)), np.ones(len(datasr_bkg))])
-                plot_ROC(preds, 
-                    labels, 
-                    save_path=run_dir / "ROC_closure",
-                    title="ROC closure")
+                        save_path=run_dir / "ROC")
+                do_SI_v_rej(true_data["preds"], 
+                            true_data["is_signal"], 
+                            save_path=run_dir / "SI_v_rej")
+                do_rejection_v_TPR(true_data["preds"], 
+                                    true_data["is_signal"],
+                                    save_path=run_dir / "rejection_v_TPR")
+                
+                if method == "standard":
+                    templatesr = df[df["CWoLa"] == 0]
+                    datasr_bkg = true_data[true_data["is_signal"] == 0]
+                    preds = pd.concat([templatesr["preds"], datasr_bkg["preds"]])
+                    labels = np.concatenate([np.zeros(len(templatesr)), np.ones(len(datasr_bkg))])
+                    plot_ROC(preds, 
+                        labels, 
+                        save_path=run_dir / "ROC_closure",
+                        title="ROC closure")
     
 def calc_TPR_FPR(scores, true_labels):
     sorted_indices = np.argsort(scores)[::-1]

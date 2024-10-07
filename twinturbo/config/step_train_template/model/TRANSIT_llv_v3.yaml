@@ -116,7 +116,7 @@ adversarial_cfg:
   g_loss_gen_weight: 
     _target_: twinturbo.src.models.loss_annealing.ExponentialAnnealing
     start: 5000
-    end: 10000
+    end: 100000
     start_val: 0.0000001
     end_val: 0.2
   every_n_steps_g: 1

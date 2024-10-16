@@ -52,7 +52,7 @@ def main(cfg) -> None:
         
 def filter_finite_values(x):
     return x[np.isfinite(x)]
-    
+
 def get_curve(method, curve_type, prefix="", postfix="", ignore_missing=False):
     files = find_files_with_name(method, prefix+curve_type+postfix+".npy")
     if len(files) == 0:

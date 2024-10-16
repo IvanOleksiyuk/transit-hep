@@ -20,7 +20,7 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py\
  --config-name TRANSIT_LLV_v2_1cst general.subfolder=TEST/\
  verbose_validation=1"
-
+ 
 # Record the end time
 end_time=$(date +%s)
 echo "Job ended at: $(date)"

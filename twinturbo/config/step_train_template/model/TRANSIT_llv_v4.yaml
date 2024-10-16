@@ -112,11 +112,11 @@ adversarial_cfg:
       act_o: "sigmoid"
   optimizer_main: default.yaml
   optimizer_d: default.yaml
-  warmup: 5
+  warmup: 0
   g_loss_weight: 0
   g_loss_gen_weight: 
     _target_: twinturbo.src.models.loss_annealing.ExponentialAnnealing
-    start: 5000
+    start: 0
     end: 100000
     start_val: 0.0000001
     end_val: 0.2

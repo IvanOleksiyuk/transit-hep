@@ -2,7 +2,7 @@
 #SBATCH --job-name=TRANSIT_LLV_v2_8cst
 #SBATCH --cpus-per-task=16
 #SBATCH --ntasks=1
-#SBATCH --time=14:00:00
+#SBATCH --time=11:00:00
 #SBATCH --partition=shared-gpu
 #SBATCH --nodes=1
 #SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/TRANSIT_LLV_v2_8cst-%A-%x_%a.out

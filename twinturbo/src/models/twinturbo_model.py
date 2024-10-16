@@ -191,6 +191,7 @@ class TwinTURBO(LightningModule):
         add_standardizing_layer = False,
         afterglow_epoch = np.inf,
         second_input_mask = False,
+        total_skip = False,
     ) -> None:
         """
         Args:
@@ -232,6 +233,7 @@ class TwinTURBO(LightningModule):
         print("SELECTED NETWORK TYPE: ", network_type)
         self.latent_norm_enc1 = latent_norm
         self.latent_norm_enc2 = latent_norm
+        self.total_skip = total_skip
         
         # Initialise the networks
         x_dim = inpt_dim[0][0]
@@ -481,7 +483,10 @@ class TwinTURBO(LightningModule):
         content = self.encode_content(x_inp, m_pair, mask=mask)
         style = self.encode_style(m_pair)
         
-        recon = self.decode(content, style)
+        if self.total_skip:
+            recon = x_inp + self.decode(content, style)
+        else:
+            recon = self.decode(content, style)
         
         # Reverse pass
         rpm = torch.randperm(batch_size)
@@ -1166,7 +1171,20 @@ class TwinTURBO(LightningModule):
         return img
 
     def validation_step (self, sample: tuple, batch_idx: int) -> torch.Tensor:
-        total_loss = self._shared_step(sample, step_type="valid", _batch_index=batch_idx)
+        
+        total_loss, e1, e2, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
+        batch_size=sample[0].shape[0]
+        rpm = torch.randperm(batch_size)
+        w2_perm = w2.clone()
+        w2_perm = w2_perm[rpm]
+        labels = torch.cat([torch.ones(batch_size), torch.zeros(batch_size)]).type_as(w2_perm)
+        e1_copy = e1.clone()
+        # train discriminator
+        # Measure discriminator's ability to classify real from generated samples
+        if self.adversarial=="discriminator_priority":
+            d_loss = self.adversarial_loss(self.discriminator(torch.cat([torch.cat([e1, e1_copy], dim=0), torch.cat([w2, w2_perm], dim=0)], dim=1)), labels)
+            self.log("valid/d_loss", d_loss)
+            
         if batch_idx == 0 and self.valid_plots:
             w1 = sample[0]
             if self.second_input_mask:
@@ -1176,6 +1194,9 @@ class TwinTURBO(LightningModule):
             if self.add_standardizing_layer:
                 w1 = self.std_layer_x(w1)
                 w2 = self.std_layer_ctxt(w2)
+            
+                
+            
             for var in range(w1.shape[1]):
                 image = wandb.Image(self._draw_event_transport_trajectories(w1, w2, var=var, var_name=self.var_group_list[0][var], max_traj=20))
                 if wandb.run is not None:
@@ -1288,7 +1309,11 @@ class TwinTURBO(LightningModule):
         
         content = self.encode_content(x_inp, y_pair, mask=mask)
         style = self.encode_style(y_new)
-        recon = self.decode(content, style)
+
+        if self.total_skip:
+            recon = x_inp + self.decode(content, style)
+        else:
+            recon = self.decode(content, style)
         
         if self.add_standardizing_layer:
             recon = self.std_layer_x.reverse(recon)

@@ -20,10 +20,10 @@ step_train_template:
     valid_plots: False
 
 do_train_template: False
-do_export_template: False
+do_export_template: True
 do_export_latent: False
 do_evaluation: False
-do_cwola: True
+do_cwola: False
 do_evaluate_cwola: False
 do_plot_compare: False
 

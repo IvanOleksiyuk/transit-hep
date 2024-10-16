@@ -10,21 +10,19 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--config-name",
-                "twinturbo_reco_DisCo_massfromgap_smooth_shed1",
-                "general.subfolder=gauss_corr_4_gap_twinturbo_usem_addgapmass/",
-                "do_train_template=0"],
+            "args": ["mode=standard",
+            "n_csts=1",
+            "output_folder=/home/users/o/oleksiyu/WORK/hyperproject/user/classifiers/low_class_outs_TRANSIT_LLV_v2_1cst",
+            "network_name=class_llv_1cst_debug",
+            "tem_path=/home/users/o/oleksiyu/WORK/hyperproject/user/llv_hlv_templates/TRANSIT_LLV_v2_1cst.h5"]
         },
         {
             "name": "Python Debugger: Command Translator",
+            "justMyCode": false,
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/twinturbo/scripts/full_run.py",
-            "console": "integratedTerminal",
-            "args": ["--config-name",
-                "twinturbo_reco_DisCo_massfromgap_smooth_shed1",
-                "general.subfolder=gauss_corr_4_gap_twinturbo_usem_addgapmass/",
-                "do_train_template=0"],
+            "console": "integratedTerminal"
         }
     ]
 

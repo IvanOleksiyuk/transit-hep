@@ -53,7 +53,7 @@ def main() -> None:
             for seed in seeds:
                 run_dir = Path(f"/home/users/o/oleksiyu/WORK/hyperproject/lit/radot/dope_{doping}/"+method+"/seed_"+str(seed)+"/")
                 os.makedirs(run_dir, exist_ok=True)
-                file_path = f"/srv/beegfs/scratch/groups/rodem/forcomparison/radot/dope_{doping}/"+method+"/seed_"+str(seed)+"/cwola_outputs.h5"
+                file_path = f"/srv/beegfs/scratch/groups/rodem/oliws/sbwidthimpure/window_2900_3300__3700_4100/dope_{doping}/"+method+"/seed_"+str(seed)+"/cwola_outputs.h5"
                 data = {}
                 with pd.HDFStore(file_path, "r") as store:
                         # Iterate over all the keys (dataset names) in the file

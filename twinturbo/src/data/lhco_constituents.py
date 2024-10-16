@@ -107,6 +107,7 @@ class LHCOhlvDatasetTT_export(Dataset):
         mjj_add = pd.read_hdf(m_add_path).to_numpy(np.float32)
         cut = get_cut_mask(mjj_add, [[mjj_window[0][1], mjj_window[1][0]]])
         self.mjj_add = mjj_add[cut.flatten()]
+        print(f"Number of events in the SR: {len(self.mjj_add)}")
         
         # Count how many we need
         if oversample_x_sr is not None:

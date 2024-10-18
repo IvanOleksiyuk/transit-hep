@@ -314,6 +314,7 @@ class TransformerEncoderLayer(nn.Module):
         mha_config: Mapping | None = None,
         dense_config: Mapping | None = None,
         ctxt_dim: int = 0,
+        nrm_type: str = "layer",
     ) -> None:
         """
         Args:
@@ -337,8 +338,12 @@ class TransformerEncoderLayer(nn.Module):
         )
 
         # The pre MHA and pre FFN layer normalisations
-        self.norm1 = nn.LayerNorm(model_dim)
-        self.norm2 = nn.LayerNorm(model_dim)
+        if nrm_type == "layer":
+            self.norm1 = nn.LayerNorm(model_dim)
+            self.norm2 = nn.LayerNorm(model_dim)
+        elif nrm_type == "none":
+            self.norm1 = nn.Identity()
+            self.norm2 = nn.Identity()
 
     def forward(
         self,
@@ -542,6 +547,7 @@ class TransformerEncoder(nn.Module):
         mha_config: Mapping | None = None,
         dense_config: Mapping | None = None,
         ctxt_dim: int = 0,
+        nrm_type: str = "layer",
     ) -> None:
         """
         Args:
@@ -556,7 +562,7 @@ class TransformerEncoder(nn.Module):
         self.num_layers = num_layers
         self.layers = nn.ModuleList(
             [
-                TransformerEncoderLayer(model_dim, mha_config, dense_config, ctxt_dim)
+                TransformerEncoderLayer(model_dim, mha_config, dense_config, ctxt_dim, nrm_type)
                 for _ in range(num_layers)
             ]
         )

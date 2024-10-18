@@ -1,11 +1,11 @@
 #!/bin/sh
-#SBATCH --job-name=CLASS_TRANSIT_LLV_v2_1cst
+#SBATCH --job-name=CLASS_TRANSIT_LLV_v2_0cst
 #SBATCH --cpus-per-task=16
 #SBATCH --ntasks=1
-#SBATCH --time=7:00:008
+#SBATCH --time=1:00:00
 #SBATCH --partition=shared-gpu
 #SBATCH --nodes=1
-#SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/CLASS_TRANSIT_LLV_v2_1cst-%A-%x_%a.out
+#SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/CLASS_TRANSIT_LLV_v2_0cst-%A-%x_%a.out
 #SBATCH --mem=32GB
 #SBATCH --gres=gpu:1
 
@@ -20,10 +20,10 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  HYDRA_FULL_ERROR=1 /opt/conda/bin/python\
  /home/users/o/oleksiyu/WORK/hyperproject/libs_snap/anomdiff/scripts/train_disc.py\
  --config-name=train_disc_0cst.yaml\
- mode=standard\
+ mode=supervised\
  n_csts=1\
- output_folder=/home/users/o/oleksiyu/WORK/hyperproject/user/classifiers/low_class_outs_TRANSIT_LLV_v2_1cst\
- network_name=class_llv_0cst_$(date +"%Y%m%d%H%M%S")\
+ output_folder=/home/users/o/oleksiyu/WORK/hyperproject/user/classifiers_nofold2/super_0cst_$(date +"%Y%m%d%H%M%S")\
+ network_name=class_llv_super_0cst_$(date +"%Y%m%d%H%M%S")\
  tem_path=/home/users/o/oleksiyu/WORK/hyperproject/user/llv_hlv_templates/TRANSIT_LLV_v2_0cst.h5"
 
 # Record the end time

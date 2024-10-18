@@ -10,10 +10,11 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["mode=standard",
+            "args": ["--config-name=train_disc_0cst.yaml",
+            "mode=supervised",
             "n_csts=1",
-            "output_folder=/home/users/o/oleksiyu/WORK/hyperproject/user/classifiers/low_class_outs_TRANSIT_LLV_v2_1cst",
-            "network_name=class_llv_1cst_debug",
+            "output_folder=/home/users/o/oleksiyu/WORK/hyperproject/user/classifiers/super_0cst_debug",
+            "network_name=class_llv_super_0cst_debug",
             "tem_path=/home/users/o/oleksiyu/WORK/hyperproject/user/llv_hlv_templates/TRANSIT_LLV_v2_1cst.h5"]
         },
         {

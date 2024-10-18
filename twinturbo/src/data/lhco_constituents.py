@@ -196,6 +196,7 @@ class LHCOLowDatasetTT(Dataset):
         n_sig: int | None = None,
         n_csts: int | None = None,
         mjj_window: tuple | list | None = ((2700, 3300), (3700, 6000)),
+        no_mask = False,
     ) -> None:
         super().__init__()
 
@@ -207,7 +208,10 @@ class LHCOLowDatasetTT(Dataset):
         # Combine the leading and subleading jets into one array
         self.hlv = np.concatenate([hlv1, hlv2])
         self.jet = np.concatenate([jet1, jet2])
-        self.mask = np.any(self.jet, axis=-1)
+        if not no_mask:
+            self.mask = np.any(self.jet, axis=-1)
+        else:
+            self.mask = np.any(self.jet>-10000000, axis=-1)
 
     def __len__(self) -> int:
         return len(self.mask)

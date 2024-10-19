@@ -1,16 +1,17 @@
 template_training:
   _target_: twinturbo.src.data.lhco_constituents.LHCOLowModuleTT
-
+  no_N: true
   val_frac: 0.1
 
   dataset:
     _target_: twinturbo.src.data.lhco_constituents.LHCOLowDatasetTT
     _partial_: true
+    no_N: true
     bkg_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_bkg.h5
     sig_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_sig.h5
     n_bkg: null
     n_sig: 3000
-    n_csts: 4
+    n_csts: 32
     mjj_window: [[2700, 3300], [3700, 6000]]
 
   loader_kwargs:
@@ -21,18 +22,19 @@ template_training:
 
 export_template: 
   _target_: twinturbo.src.data.lhco_constituents.LHCOLowModuleTT
-
+  no_N: true
   val_frac: 0.1
 
   dataset:
     _target_: twinturbo.src.data.lhco_constituents.LHCOLowDatasetTT_export
     _partial_: true
+    no_N: true
     bkg_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_bkg.h5
     sig_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_sig.h5
     hlv_gen_path: /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/2024_09_09/TRANSITv1_HLV/template/outputs/template_sample.h5
     n_bkg: null
     n_sig: 3000
-    n_csts: 4
+    n_csts: 32
     mjj_window: [[2700, 3300], [3700, 6000]]
 
   loader_kwargs:

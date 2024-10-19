@@ -197,6 +197,7 @@ class LHCOLowDatasetTT(Dataset):
         n_csts: int | None = None,
         mjj_window: tuple | list | None = ((2700, 3300), (3700, 6000)),
         no_mask = False,
+        no_N = False,
     ) -> None:
         super().__init__()
 
@@ -206,6 +207,9 @@ class LHCOLowDatasetTT(Dataset):
         )
 
         # Combine the leading and subleading jets into one array
+        if no_N:
+            hlv1 = hlv1[:, :-1]
+            hlv2 = hlv2[:, :-1]
         self.hlv = np.concatenate([hlv1, hlv2])
         self.jet = np.concatenate([jet1, jet2])
         if not no_mask:
@@ -281,16 +285,17 @@ class LHCOLowModuleTT(LightningDataModule):
         dataset: partial,
         loader_kwargs: Mapping,
         val_frac: float = 0.1,
+        no_N = False,
     ) -> None:
         super().__init__()
         self.save_hyperparameters(logger=False)
+        self.no_N =  no_N
 
     def setup(self, stage: str) -> None:
         """Set up the relevant datasets."""
 
         # Load the full sideband data
         full_set = self.hparams.dataset()
-
         self.train_set, self.valid_set = train_valid_split(
             full_set, self.hparams.val_frac
         )
@@ -313,7 +318,10 @@ class LHCOLowModuleTT(LightningDataModule):
         return self.test_dataloader()
 
     def get_dims(self) -> tuple:
-        return [3], [5], [5]
+        if self.no_N:
+            return [3], [4], [4]
+        else:
+            return [3], [5], [5]
 
     def get_var_group_list(self):
         return None

@@ -1091,7 +1091,10 @@ class TwinTURBO(LightningModule):
             recon = self.decode(content, style)
             recons.append(recon)
             if self.adversarial:
-                zs.append(self.disc_lat(content, style))
+                if self.use_disc_lat:
+                    zs.append(self.disc_lat(content, style))
+                elif self.use_disc_reco:
+                    zs.append(self.disc_reco(w1, w2))
         if self.adversarial:
             vmin = min([float(z[:max_traj].min().cpu().detach().numpy()) for z in zs])
             vmax = max([float(z[:max_traj].max().cpu().detach().numpy()) for z in zs])

@@ -32,7 +32,7 @@ datamodule:
           frame_names: ["data"]
       - _target_: twinturbo.src.data.data.InMemoryDataFrameDict
         list_order: ["data"]
-        file_path: "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/test/twinTURBO_test_CURTAINS/template/outputs/template_sample_con3000.h5"
+        file_path: "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/test/twinTURBO_test_CURTAINS/template/outputs/template_sample.h5"
         plotting_path: /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/test/twinTURBO_test_CURTAINS/plots/cwola_template/
   loader_kwargs:
     pin_memory: true

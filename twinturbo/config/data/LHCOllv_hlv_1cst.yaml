@@ -29,7 +29,7 @@ export_template:
     _partial_: true
     bkg_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_bkg.h5
     sig_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_sig.h5
-    hlv_gen_path: /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/2024_09_09/TRANSITv1_HLV/template/outputs/template_sample_con.h5
+    hlv_gen_path: /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/2024_09_09/TRANSITv1_HLV/template/outputs/template_sample.h5
     n_bkg: null
     n_sig: 3000
     n_csts: 1

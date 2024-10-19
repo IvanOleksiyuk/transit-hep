@@ -10,7 +10,7 @@ several_confs:
         _target_: twinturbo.src.data.data.InMemoryDataFrameDict
         plotting_path: ${general.run_dir}/plots/input/cwola/template/
         list_order: ["data"]
-        file_path: ${general.run_dir}/template/outputs/template_sample_con3000.h5
+        file_path: ${general.run_dir}/template/outputs/template_sample.h5
         processor_cfg: 
           - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
             frame_name: "template"

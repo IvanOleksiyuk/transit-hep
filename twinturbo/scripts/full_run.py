@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="TRANSIT_LLV_v8_16cst"
+    version_base=None, config_path=str('../config'), config_name="TRANSITv3f_test"
 )
 
 def main(cfg: DictConfig) -> None:
@@ -57,15 +57,7 @@ def main(cfg: DictConfig) -> None:
         log.info("===================================")
         log.info("Start: Generate a template dataset using the model")
         name = cfg.step_export_template.output_name
-        if hasattr(cfg.step_export_template, "signal_contamination_ns"):
-            for cont_n in cfg.step_export_template.signal_contamination_ns:
-                for processor in cfg.step_export_template["data"]["test_data"]["dataset2"]["processor_cfg"]:
-                    if processor["_target_"] == "twinturbo.src.data.processors.SignalContamination":
-                        processor["n_sig"] = cont_n
-                cfg.step_export_template["output_name"] = name + f"{cont_n}"
-                generate_teplate.main(cfg.step_export_template)
-        else:
-            generate_teplate.main(cfg.step_export_template)
+        generate_teplate.main(cfg.step_export_template)
         log.info(f"Finish: Generate a template dataset using the model. Time taken: {datetime.now() - start_time}")
         log.info("===================================")
     

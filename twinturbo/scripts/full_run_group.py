@@ -187,7 +187,10 @@ def main(cfg: DictConfig) -> None:
         os.makedirs(run_dir, exist_ok=True)
         os.makedirs(run_cfg.step_train_template.paths.full_path, exist_ok=True)
         OmegaConf.save(run_cfg, Path(run_cfg.general.run_dir, "full_config.yaml"), resolve=True)
-        if cfg.run_sequentially:
+    
+    # Run for ech config in the list
+    if cfg.run_sequentially:
+        for i, run_cfg in enumerate(config_list):
             full_run.main(run_cfg)
             with open(done_file_path, "w") as f:
                 f.write("All done for this run!")

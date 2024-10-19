@@ -10,7 +10,7 @@ defaults:
   - step_cwola: BDT_LHCO_CWOLA_HLV
   - step_export_latent: twinturbo_LHCO
   - step_plot_compare: twinturbo_LHCO
-  - override step_train_template/model: TRANSITv1_hlv_std
+  - override step_train_template/model: TRANSITv3f_hlv_std
   - override step_train_template/trainer: 200e_noclip.yaml
   - override step_train_template/model/optimizer: AdamW_lr2-4
 
@@ -19,18 +19,18 @@ step_train_template:
     reverse_pass_mode: additional_input
     valid_plots: False
 
-do_train_template: False
+do_train_template: True
 do_export_template: True
-do_export_latent: False
-do_evaluation: False
-do_cwola: False
-do_evaluate_cwola: False
-do_plot_compare: False
+do_export_latent: True
+do_evaluation: True
+do_cwola: True
+do_evaluate_cwola: True
+do_plot_compare: True
 
 verbose_validation: True
 
 general:
-  name: TRANSITv1_HLV_try2
-  subfolder: 2024_09_09/
+  name: TRANSITv3f_HLV
+  subfolder: TEST/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

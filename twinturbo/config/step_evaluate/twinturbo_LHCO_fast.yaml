@@ -5,7 +5,7 @@ template_file:  ${general.run_dir}/template/outputs/template_sample.h5
 debug_eval: False
 get_best: False
 do_2d_hist_instead_of_contour: True
-x_bounds: [null, null]
+x_bounds: [-3, 3]
 
 procedures: 
   lazy_predict: False

@@ -76,7 +76,23 @@ class MLPBlock(nn.Module):
         self.init_zeros = init_zeros
 
         # If this layer includes an additive residual connection
-        self.do_res = do_res and (inpt_dim == outp_dim)
+        if do_res == "adjust":
+            self.do_res = do_res
+            print("DELETE_THIS")
+            print("Forcing residual connection!")
+            print("Forcing residual connection!")
+            print("Forcing residual connection!")
+            print("Forcing residual connection!")
+            print("Forcing residual connection!")
+            print("Forcing residual connection!")
+            print("Forcing residual connection!")
+            print("Forcing residual connection!")
+            print("Forcing residual connection!")
+            print("Forcing residual connection!")
+            print("Forcing residual connection!")
+            print("Forcing residual connection!")
+        else:
+            self.do_res = do_res and (inpt_dim == outp_dim)
 
         # Initialise the block layers as a module list
         self.block = nn.ModuleList()
@@ -127,7 +143,12 @@ class MLPBlock(nn.Module):
             temp = layer(temp)
 
         # Add the original inputs again for the residual connection
-        if self.do_res:
+        if self.do_res=="adjust":
+            if self.inpt_dim < self.outp_dim:
+                temp[:, :self.inpt_dim] += inpt
+            else:
+                temp += inpt[:, :self.outp_dim]
+        elif self.do_res:
             temp = temp + inpt
 
         return temp
@@ -264,6 +285,7 @@ class DenseNetwork(nn.Module):
             drp=drp,
             do_bayesian=do_bayesian,
             use_bias=use_bias,
+            do_res=do_res,
         )
 
         # All hidden blocks as a single module list
@@ -299,6 +321,7 @@ class DenseNetwork(nn.Module):
                 nrm=nrm if nrm_on_output else "none",
                 drp=drp if drp_on_output else 0,
                 use_bias=use_bias,
+                do_res=do_res,
             )
 
     def forward(self, inputs: T.Tensor, ctxt: T.Tensor | None = None) -> T.Tensor:

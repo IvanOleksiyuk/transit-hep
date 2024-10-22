@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="TRANSITv3f_test"
+    version_base=None, config_path=str('../config'), config_name="TRANSITv16f"
 )
 
 def main(cfg: DictConfig) -> None:

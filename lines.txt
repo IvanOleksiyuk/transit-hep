@@ -1,0 +1,5 @@
+[2024-10-22 01:15:59,061][twinturbo.scripts.train_ptl][INFO] - Starting training!
+[2024-10-22 01:33:29,139][twinturbo.scripts.train_ptl][INFO] - Starting training!
+[2024-10-22 01:52:44,019][twinturbo.scripts.train_ptl][INFO] - Starting training!
+[2024-10-22 02:12:02,158][twinturbo.scripts.train_ptl][INFO] - Starting training!
+[2024-10-22 02:31:08,969][twinturbo.scripts.train_ptl][INFO] - Starting training!

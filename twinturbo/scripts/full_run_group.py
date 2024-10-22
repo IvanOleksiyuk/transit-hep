@@ -16,6 +16,7 @@ import logging
 import hydra
 from pathlib import Path
 import os
+import shutil
 from omegaconf import DictConfig, OmegaConf, ListConfig
 from twinturbo.src.utils.hydra_utils import instantiate_collection, log_hyperparameters, print_config, reload_original_config, save_config
 import twinturbo.scripts.evaluation as evaluation
@@ -82,6 +83,18 @@ def equal_list_list_simple(a, b):
         if a[i] != b[i]:
             return False
     return True
+
+def delete_folder_if_exists(folder_path):
+    try:
+        # Check if the folder exists
+        if os.path.exists(folder_path) and os.path.isdir(folder_path):
+            # Remove the folder and all its contents
+            shutil.rmtree(folder_path)
+            print(f"Folder '{folder_path}' has been deleted.")
+        else:
+            print(f"Folder '{folder_path}' does not exist.")
+    except Exception as e:
+        print(f"An error occurred while deleting the folder: {e}")
 
 def replace_specific_name_in_omegacfg(cfg, search_name, insert_value, check_value=None, check_func=equal_simple):
     # Recursively search and replace search_name in the config
@@ -191,10 +204,15 @@ def main(cfg: DictConfig) -> None:
     # Run for ech config in the list
     if cfg.run_sequentially:
         for i, run_cfg in enumerate(config_list):
-            full_run.main(run_cfg)
-            with open(done_file_path, "w") as f:
-                f.write("All done for this run!")
-                f.close()
+            done_file_path = run_cfg.general.run_dir+"/ALL.DONE"
+            if os.path.isfile(done_file_path) and not cfg.redo:
+                print("already done " + done_file_path)
+            else:
+                delete_folder_if_exists(run_cfg.general.run_dir+"/template")
+                full_run.main(run_cfg)
+                with open(done_file_path, "w") as f:
+                    f.write("All done for this run!")
+                    f.close()
     
     if cfg.do_stability_analysis:
         log.info("Stability analysis")

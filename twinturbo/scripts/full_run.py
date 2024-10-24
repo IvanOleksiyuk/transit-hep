@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="TRANSITv16f"
+    version_base=None, config_path=str('../config'), config_name="TRANSITv20f"
 )
 
 def main(cfg: DictConfig) -> None:
@@ -102,6 +102,10 @@ def main(cfg: DictConfig) -> None:
     if cfg.do_plot_compare:
         log.info("Produce a set of final plots and tables for one run")
         plot_compare.main(cfg.step_plot_compare)
+        
+    if hasattr(cfg, "do_cleanup") and cfg.do_cleanup:
+        pass
+            
     
     log.info("<<<END FULL RUN>>>")
 

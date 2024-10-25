@@ -70,15 +70,17 @@ def reload_original_config(cfg: OmegaConf, get_best: bool = False) -> OmegaConf:
     version_base=None, config_path=str('../conf'), config_name="evaluate"
 )
 def main(cfg):
-    print("Starting evaluation")
+    log.info("Starting evaluation")
     # Get two dataframes to compare	
-    print("Loading original data")
+    log.info("Loading original data")
     original_data = hydra.utils.instantiate(cfg.step_evaluate.original_data).data["data"]
-    print("Loading target data")
+    log.info("Loading target data")
     target_data = hydra.utils.instantiate(cfg.step_evaluate.target_data).data["data"]
-    print("Loading template data")
+    log.info("Loading template data")
     template_data = pd.read_hdf(cfg.step_evaluate.template_file)
 
+
+    
     variables = original_data.columns.tolist()
     print(len(target_data.to_numpy()))
     print(len(template_data.to_numpy()))
@@ -99,8 +101,41 @@ def main(cfg):
             do_2d_hist_instead_of_contour=cfg.step_evaluate.do_2d_hist_instead_of_contour,
             x_bounds=cfg.step_evaluate.x_bounds or None)
         print("contour plot is done")
+        
+    if getattr(cfg.step_evaluate.procedures, "plot_contour_SB1vsSB2", True):
+        log.info("Loading SB1 gen data")
+        SB1_gen = pd.read_hdf(cfg.step_evaluate.SB1_gen_file)
+        log.info("Loading SB2 gen data")
+        SB2_gen = pd.read_hdf(cfg.step_evaluate.SB2_gen_file)
+        
+        SB1_data = original_data[original_data["m_jj"]<-0.5]
+        SB2_data = original_data[original_data["m_jj"]>-0.5]
+        
+        pltt.plot_feature_spread(
+            SB1_data[variables].to_numpy(),
+            SB1_gen[variables].to_numpy(),
+            original_data = SB2_data[variables].to_numpy(),
+            feature_nms = variables,
+            save_dir=Path(cfg.general.run_dir),
+            plot_mode=plot_mode,
+            do_2d_hist_instead_of_contour=cfg.step_evaluate.do_2d_hist_instead_of_contour,
+            x_bounds=cfg.step_evaluate.x_bounds or None,
+            save_name="SB2_to_SB1")
+        pltt.plot_feature_spread(
+            SB2_data[variables].to_numpy(),
+            SB2_gen[variables].to_numpy(),
+            original_data = SB1_data[variables].to_numpy(),
+            feature_nms = variables,
+            save_dir=Path(cfg.general.run_dir),
+            plot_mode=plot_mode,
+            do_2d_hist_instead_of_contour=cfg.step_evaluate.do_2d_hist_instead_of_contour,
+            x_bounds=cfg.step_evaluate.x_bounds or None,
+            save_name="SB1_to_SB2")
+    
     evaluate_model(cfg, original_data, target_data, template_data)
     plt.close("all")
+    
+
 
 def plot_matrix(matrix, title, vmin=-1, vmax=1, abs=False):
     fig, ax = plt.subplots(figsize=(8, 8))
@@ -113,19 +148,21 @@ def plot_matrix(matrix, title, vmin=-1, vmax=1, abs=False):
     return fig, ax
 
 def evaluate_model(cfg, original_data, target_data, template_data):
+
+    # define some plotting parameters
     scatter_alpha=1
     scatter_s=2
+    
+    # get the config from the run
     if GlobalHydra().is_initialized():
         GlobalHydra().clear()
     hydra.initialize(version_base=None, config_path= "../config")
-
-    log.info("Loading run information")
+    log.info("Loading training config")
     cfg_exp = cfg.step_export_template
     print(cfg_exp.paths.full_path)
     orig_cfg = reload_original_config(cfg_exp, get_best=cfg_exp.get_best)
     cfg_exp = orig_cfg
-
-    plot_path= cfg_exp["paths"]["output_dir"]+"/../plots/"
+    plot_path= orig_cfg["paths"]["output_dir"]+"/../plots/"
     os.makedirs(plot_path, exist_ok=True)
 
     log.info("Loading best checkpoint")
@@ -139,7 +176,7 @@ def evaluate_model(cfg, original_data, target_data, template_data):
     #trainer = hydra.utils.instantiate(orig_cfg.trainer)
 
     # Instantiate the datamodule use a different config for data then for training
-    datamodule = hydra.utils.instantiate(cfg_exp.data.datamodule)
+    datamodule = hydra.utils.instantiate(orig_cfg.data.datamodule)
     if hasattr(datamodule, "setup"):
         datamodule.setup("test")
     var_group_list=datamodule.get_var_group_list()

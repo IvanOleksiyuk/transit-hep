@@ -23,13 +23,13 @@ step_train_template:
     valid_plots: False
     afterglow_epoch: 999999999
 
-do_train_template: True
-do_export_template: True
-do_export_latent: True
+do_train_template: False
+do_export_template: False
+do_export_latent: False
 do_evaluation: True
-do_cwola: True
-do_evaluate_cwola: True
-do_plot_compare: True
+do_cwola: False
+do_evaluate_cwola: False
+do_plot_compare: False
 
 do_transport_sideband: True
 
@@ -37,6 +37,6 @@ verbose_validation: False
 
 general:
   name: TRANSITv15f
-  subfolder: TEST/
+  subfolder: ML4Jets/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

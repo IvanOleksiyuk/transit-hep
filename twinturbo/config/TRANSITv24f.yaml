@@ -12,7 +12,7 @@ defaults:
   - step_cwola: BDT_LHCO_allCWOLA
   - step_export_latent: twinturbo_LHCO
   - step_plot_compare: twinturbo_LHCO
-  - override step_train_template/model: TRANSITv15f
+  - override step_train_template/model: TRANSITv24f
   - override step_train_template/trainer: 200e_noclip.yaml
   - override step_train_template/model/optimizer: AdamW_lr2-4
 
@@ -36,7 +36,7 @@ do_transport_sideband: True
 verbose_validation: False
 
 general:
-  name: TRANSITv15f
+  name: TRANSITv24f
   subfolder: TEST/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

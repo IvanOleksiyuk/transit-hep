@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 
 # TODO pyroot utils will remove the need for ../configs
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="TRANSITv20f"
+    version_base=None, config_path=str('../config'), config_name="TRANSITv21f"
 )
 
 def main(cfg: DictConfig) -> None:
@@ -61,7 +61,17 @@ def main(cfg: DictConfig) -> None:
         log.info(f"Finish: Generate a template dataset using the model. Time taken: {datetime.now() - start_time}")
         log.info("===================================")
     
-    if cfg.do_export_latent:
+    if hasattr(cfg, "do_transport_sideband") and cfg.do_transport_sideband:
+        start_time = datetime.now()
+        log.info("===================================")
+        log.info("Start: Generate a template dataset using the model")
+        name = cfg.step_export_template.output_name
+        generate_teplate.main(cfg.step_export_SB1)
+        generate_teplate.main(cfg.step_export_SB2)
+        log.info(f"Finish: Generate a template dataset using the model. Time taken: {datetime.now() - start_time}")
+        log.info("===================================")
+    
+    if hasattr(cfg, "do_export_latent") and cfg.do_export_latent:
         start_time = datetime.now()
         log.info("===================================")
         log.info("Start:Generate latent representation of events in SR and Sidebands")

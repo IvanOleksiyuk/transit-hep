@@ -250,6 +250,7 @@ def plot_feature_spread(
     x_bounds=None,
     shuffle=True,
     do_2d_hist_instead_of_contour=False,
+    save_name=None,
 ):
     nbins = 60
     n_features = sampled.shape[1] #- 1
@@ -388,7 +389,9 @@ def plot_feature_spread(
         fig.align_xlabels(axes)
         fig.align_ylabels(axes)
         fig.legend(handles, labels, **legend_dict)
-        if combined:
+        if save_name is not None:
+            fig.savefig(save_dir / save_name, bbox_inches="tight")
+        elif combined:
             fig.savefig(
                 save_dir / f"feature_spread_SB12_to_SR.png", bbox_inches="tight"
             )

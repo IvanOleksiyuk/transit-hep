@@ -28,6 +28,7 @@ from twinturbo.src.utils.hsic import HSIC_np, HSIC_torch
 log = logging.getLogger(__name__)
 from lazypredict.Supervised import LazyClassifier
 from sklearn.model_selection import train_test_split
+import copy
 
 def to_np(inpt: Union[torch.Tensor, tuple]) -> np.ndarray:
     """More consicse way of doing all the necc steps to convert a pytorch
@@ -327,10 +328,79 @@ def evaluate_model(cfg, original_data, target_data, template_data):
         print(key, value)
     w1 = batch1[0]
     w2 = batch1[1]
+    processor = pickle.load(open("/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/ML4Jets/TRANSITv25f_group/run-TTS_1/cathode_preprocessor.pkl", "rb"))
     for var in range(w1.shape[1]):
-        draw_event_transport_trajectories(model, plot_path, w1, w2, var=var, var_name=var_group_list[0][var], masses=np.linspace(-4, 4, 1000), max_traj=20)
+        var_name=var_group_list[0][var]
+        if var_name=="del_R":
+            var_name="$\Delta R$"
+        if var_name=="del_m":
+            var_name="$\Delta m$"
+        _draw_event_transport_trajectories(model, plot_path, w1, w2, var=var, var_name=var_name, masses=np.linspace(3000, 4600, 1000), max_traj=20, processor=processor)
+
+def _draw_event_transport_trajectories(model, plot_path, w1_, m_pair_, var, var_name, masses=np.linspace(-2.5, 2.5, 126), max_traj=20, processor=None):
+    if processor is not None:
+        masses_true = copy.deepcopy(masses)
+        tensor = torch.zeros((len(masses), 6))
+        tensor[:, -1]=torch.Tensor(masses)
+        masses = processor.transform(tensor)[:, -1].cpu().detach().numpy().flatten()
+    else:
+        masses_true = masses
+    w1 = copy.deepcopy(w1_)[:max_traj]
+    m_pair = m_pair_[:max_traj]
+    if processor is not None:
+        tensor = torch.zeros((len(m_pair), 6))
+        tensor[:, -1]=torch.Tensor(m_pair).flatten()
+        m_pair_plot = processor.inverse_transform(tensor)[:, -1:]
+    content = model.encode_content(w1, m_pair)
+    recons = []
+    if model.adversarial:
+        zs = []
+    for m in masses:
+        w2 = torch.tensor(m).unsqueeze(0).expand(w1.shape[0], 1).float().to(w1.device)
+        style = model.encode_style(w2)
+        recon = model.decode(content, style)
+        if processor is not None:
+            tensor = torch.zeros((len(recon), 6))
+            tensor[:, :-1]=recon
+            recon = processor.inverse_transform(tensor)[:, :-1]
+        recons.append(recon)
+        if model.adversarial:
+            if model.use_disc_lat:
+                zs.append(model.disc_lat(content, style))
+            elif model.use_disc_reco:
+                zs.append(model.disc_reco(w1, w2))
+    if model.adversarial:
+        vmin = min([float(z[:max_traj].min().cpu().detach().numpy()) for z in zs])
+        vmax = max([float(z[:max_traj].max().cpu().detach().numpy()) for z in zs])
+    plt.figure()
+    if max_traj is None:
+        max_traj = x.shape[0]
+    for i in range(max_traj):
+        x=masses_true
+        y = np.array([float(recon[i, var].cpu().detach().numpy()) for recon in recons])
+        if model.adversarial:
+            z = np.array([float(z[i].cpu().detach().numpy()) for z in zs])
+            plt.plot(x, y, "black", zorder=i*2+1)
+            plt.scatter(x, y, c=z, cmap="turbo", s=2, zorder=i*2+2, vmin=vmin, vmax=vmax)
+            if i==0:
+                plt.colorbar()
+        else:
+            plt.plot(x, y, "r")
+
+    for i in range(max_traj):
+        if processor is not None:
+            tensor = torch.zeros((len(w1), 6))
+            tensor[:, :-1]=w1
+            w1_plot = processor.inverse_transform(tensor)[:, :-1]
+        else:
+            w1_plot = w1
+        plt.scatter(to_np(m_pair_plot)[:max_traj], to_np(w1_plot[:, var])[:max_traj],  marker="x", label="originals", c="green")
+    plt.xlabel("$m_{jj}$")
+    plt.ylabel(var_name)
+    plt.title(f"Event transport for {var_name}")
+    plt.savefig(plot_path+f"event_transport_trajectories{var}.png", bbox_inches="tight")
     
-def draw_event_transport_trajectories(model, plot_path, w1, w2, var, var_name, mass_name="m_jj", masses=np.linspace(-4, 4, 801), max_traj=20):
+def draw_event_transport_trajectories_old(model, plot_path, w1, w2, var, var_name, mass_name="m_jj", masses=np.linspace(-4, 4, 801), max_traj=20):
     recons = []
     w1 = w1[:max_traj]
     w2 = w2[:max_traj]

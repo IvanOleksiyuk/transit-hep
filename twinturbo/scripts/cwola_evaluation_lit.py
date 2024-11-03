@@ -69,7 +69,10 @@ def main() -> None:
                     true_data = df
                 if method == "standard":
                     true_data = df[df["CWoLa"] == 1]
-
+                    
+                plot_ROC(df["preds"][df["is_signal"] != 1], 
+                        df["CWoLa"][df["is_signal"] != 1], 
+                        save_path=run_dir / "closure_ROC")
                 plot_ROC(true_data["preds"], 
                         true_data["is_signal"], 
                         save_path=run_dir / "ROC")

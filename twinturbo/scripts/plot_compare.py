@@ -53,6 +53,16 @@ def main(cfg) -> None:
 def filter_finite_values(x):
     return x[np.isfinite(x)]
 
+def get_common_x(curves, mode="concat"):
+    min_x = max([filter_finite_values(curve[0])[0] for curve in curves])
+    max_x = min([filter_finite_values(curve[0])[-1] for curve in curves])
+    if mode == "concat":
+        common_x = np.sort(np.unique(np.concatenate([filter_finite_values(curve[0]) for curve in curves])))
+        common_x = common_x[(common_x >= min_x) & (common_x <= max_x)]
+    else:
+        common_x = np.linspace(min_x, max_x, 1000)
+    return common_x
+
 def get_curve(method, curve_type, prefix="", postfix="", ignore_missing=False):
     files = find_files_with_name(method, prefix+curve_type+postfix+".npy")
     if len(files) == 0:

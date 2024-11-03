@@ -73,24 +73,40 @@ def main(cfg: DictConfig) -> None:
                 save_path=plot_path / "ROC_closure",
                 title="ROC closure")
         
+        # do_mass_sculpting(data["df"]["m_jj"], 
+        #                   data["df"]["preds"], 
+        #                   data["df"]["is_signal"], 
+        #                   save_path=plot_path / "mass_sculpting.png")
+        # do_mass_sculpting(data["df"]["m_jj"], 
+        #                   data["df"]["preds"], 
+        #                   data["df"]["is_signal"], 
+        #                   save_path=plot_path / "mass_sculpting_den2.png",
+        #                   density=True,
+        #                   rej_cuts = [0.9, 0.99],
+        #                   bins=30)
         do_mass_sculpting(data["df"]["m_jj"], 
                           data["df"]["preds"], 
                           data["df"]["is_signal"], 
-                          save_path=plot_path / "mass_sculpting.png")
-        do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra_bkg["df"]["m_jj"]]), 
-                    pd.concat([datasr["preds"], data_extra_bkg["df"]["preds"]]), 
-                    pd.concat([datasr["is_signal"], data_extra_bkg["df"]["m_jj"]*0]), 
-                    save_path=plot_path / "mass_sculpting_density.png", 
-                    density=True, 
-                    rej_cuts = [0.9, 0.99], bins=100)
-        do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra_bkg["df"]["m_jj"]]), 
-                    pd.concat([datasr["preds"], data_extra_bkg["df"]["preds"]]), 
-                    pd.concat([datasr["is_signal"], data_extra_bkg["df"]["m_jj"]*0]), 
-                    save_path=plot_path / "mass_sculpting_density_bkg_only.png", 
-                    density=True, 
-                    filter_bkg=True, 
-                    rej_cuts = [0.9, 0.99], 
-                    bins=100)
+                          save_path=plot_path / "mass_sculpting_den2_bkg.png",
+                          density=True,
+                          filter_bkg=True,
+                          rej_cuts = [0.9, 0.99],
+                          draw_signal=False,
+                          bins=30)
+        # do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra_bkg["df"]["m_jj"]]), 
+        #             pd.concat([datasr["preds"], data_extra_bkg["df"]["preds"]]), 
+        #             pd.concat([datasr["is_signal"], data_extra_bkg["df"]["m_jj"]*0]), 
+        #             save_path=plot_path / "mass_sculpting_density.png", 
+        #             density=True, 
+        #             rej_cuts = [0.9, 0.99], bins=100)
+        # do_mass_sculpting(pd.concat([datasr["m_jj"], data_extra_bkg["df"]["m_jj"]]), 
+        #             pd.concat([datasr["preds"], data_extra_bkg["df"]["preds"]]), 
+        #             pd.concat([datasr["is_signal"], data_extra_bkg["df"]["m_jj"]*0]), 
+        #             save_path=plot_path / "mass_sculpting_density_bkg_only.png", 
+        #             density=True, 
+        #             filter_bkg=True, 
+        #             rej_cuts = [0.9, 0.99], 
+        #             bins=100)
     print(f"Finished in {(time.time()-start_time)/60} minutes")
 
     

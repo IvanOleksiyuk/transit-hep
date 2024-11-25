@@ -16,6 +16,35 @@ from .modules import DenseNetwork
 # # Set the default operation to be flass attention
 # T.backends.cuda.sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=False)
 
+class PositionalEncoding(nn.Module):
+
+    def __init__(self, d_model: int, seq_len: int, dropout: float, first_n = None) -> None:
+        super().__init__()
+        if first_n is not None:
+            self.first_n = d_model
+        self.d_model = d_model
+        self.seq_len = seq_len
+        self.dropout = nn.Dropout(dropout)
+        # Create a matrix of shape (seq_len, d_model)
+        pe = T.zeros(seq_len, first_n)
+        # Create a vector of shape (seq_len)
+        position = T.arange(0, seq_len, dtype=T.float).unsqueeze(1) # (seq_len, 1)
+        # Create a vector of shape (d_model)
+        div_term = T.exp(T.arange(0, first_n, 2).float() * (-math.log(10000.0) / first_n)) # (d_model / 2)
+        # Apply sine to even indices
+        pe[:, 0::2] = T.sin(position * div_term) # sin(position * (10000 ** (2i / d_model))
+        # Apply cosine to odd indices
+        pe[:, 1::2] = T.cos(position * div_term) # cos(position * (10000 ** (2i / d_model))
+        # Add a batch dimension to the positional encoding
+        pe = pe.unsqueeze(0) # (1, seq_len, d_model)
+        # Register the positional encoding as a buffer
+        pe_all = T.zeros(1, seq_len, d_model)
+        pe_all[:, :, :first_n] = pe
+        self.register_buffer('pe', pe_all)
+
+    def forward(self, x,**kwargs):
+        x = x + (self.pe[:, :x.shape[1], :]).requires_grad_(False) # (batch, seq_len, d_model)
+        return self.dropout(x)
 
 def merge_masks(
     kv_mask: Union[T.BoolTensor, None],
@@ -548,6 +577,9 @@ class TransformerEncoder(nn.Module):
         dense_config: Mapping | None = None,
         ctxt_dim: int = 0,
         nrm_type: str = "layer",
+        positional_encoding: bool = False,
+        pe_first_n: int = 4,
+        pe_sequence_length = 200,
     ) -> None:
         """
         Args:
@@ -560,13 +592,18 @@ class TransformerEncoder(nn.Module):
         super().__init__()
         self.model_dim = model_dim
         self.num_layers = num_layers
+        md_lst= []
+        if positional_encoding:
+            md_lst+= [PositionalEncoding(model_dim, pe_sequence_length, 0.0, pe_first_n)]
+
         self.layers = nn.ModuleList(
-            [
+            md_lst + [
                 TransformerEncoderLayer(model_dim, mha_config, dense_config, ctxt_dim, nrm_type)
                 for _ in range(num_layers)
             ]
         )
         self.final_norm = nn.LayerNorm(model_dim)
+
 
     def forward(self, x: T.Tensor, **kwargs) -> T.Tensor:
         """Pass the input through all layers sequentially."""
@@ -960,7 +997,8 @@ class FullTransformerEncoder(nn.Module):
             ctxt_embd_config,
             te_config["dense_config"],
         ]:
-            insert_if_not_present(d, "hddn_dim", 2 * model_dim)
+            if not isinstance(d, str):
+                insert_if_not_present(d, "hddn_dim", 2 * model_dim)
 
         # Initialise the context embedding network (optional)
         if self.ctxt_dim:
@@ -974,18 +1012,26 @@ class FullTransformerEncoder(nn.Module):
         self.model_dim = self.te.model_dim
 
         # Initialise all embedding networks
-        self.node_embd = DenseNetwork(
-            inpt_dim=self.inpt_dim,
-            outp_dim=self.model_dim,
-            ctxt_dim=self.ctxt_out,
-            **node_embd_config,
-        )
-        self.outp_embd = DenseNetwork(
-            inpt_dim=self.model_dim,
-            outp_dim=self.outp_dim,
-            ctxt_dim=self.ctxt_out,
-            **outp_embd_config,
-        )
+        
+        if node_embd_config=="none":
+            self.node_embd = lambda x, ctxt: x
+        else:
+            self.node_embd = DenseNetwork(
+                inpt_dim=self.inpt_dim,
+                outp_dim=self.model_dim,
+                ctxt_dim=self.ctxt_out,
+                **node_embd_config,
+            )
+            
+        if outp_embd_config=="none":
+            self.outp_embd = lambda x, ctxt: x
+        else:
+            self.outp_embd = DenseNetwork(
+                inpt_dim=self.model_dim,
+                outp_dim=self.outp_dim,
+                ctxt_dim=self.ctxt_out,
+                **outp_embd_config,
+            )
 
         # Initialise the edge embedding network (optional)
         if self.edge_dim:

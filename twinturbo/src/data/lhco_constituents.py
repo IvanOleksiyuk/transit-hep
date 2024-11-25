@@ -198,6 +198,7 @@ class LHCOLowDatasetTT(Dataset):
         mjj_window: tuple | list | None = ((2700, 3300), (3700, 6000)),
         no_mask = False,
         no_N = False,
+        hlvs = None,
     ) -> None:
         super().__init__()
 
@@ -207,9 +208,18 @@ class LHCOLowDatasetTT(Dataset):
         )
 
         # Combine the leading and subleading jets into one array
-        if no_N:
-            hlv1 = hlv1[:, :-1]
-            hlv2 = hlv2[:, :-1]
+        if hlvs is not None:
+            if len(hlvs)==0:
+                hlv1 = hlv1[:]*0
+                hlv2 = hlv2[:]*0
+            else:
+                hlv1 = hlv1[:, np.array(hlvs)]
+                hlv2 = hlv2[:, np.array(hlvs)]
+        else:
+            if no_N:
+                hlv1 = hlv1[:, :-1]
+                hlv2 = hlv2[:, :-1]
+        
         self.hlv = np.concatenate([hlv1, hlv2])
         self.jet = np.concatenate([jet1, jet2])
         if not no_mask:
@@ -235,6 +245,8 @@ class LHCOLowDatasetTT_export(Dataset):
         n_sig: int | None = None,
         n_csts: int | None = None,
         mjj_window: tuple | list | None = ((2700, 3300), (3700, 6000)),
+        no_N = False,
+        hlvs = None,
     ) -> None:
         super().__init__()
 
@@ -244,7 +256,17 @@ class LHCOLowDatasetTT_export(Dataset):
         )
 
         # Combine the leading and subleading jets into one array
-        
+        if hlvs is not None:
+            if len(hlvs)==0:
+                hlv1 = hlv1[:]*0
+                hlv2 = hlv2[:]*0
+            else:
+                hlv1 = hlv1[:, np.array(hlvs)]
+                hlv2 = hlv2[:, np.array(hlvs)]
+        else:
+            if no_N:
+                hlv1 = hlv1[:, :-1]
+                hlv2 = hlv2[:, :-1]
 
         hlv_gen_df = pd.read_hdf(hlv_gen_path).to_numpy(np.float32)
         mjj_add = hlv_gen_df[:, -1]

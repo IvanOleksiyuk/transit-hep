@@ -1206,8 +1206,6 @@ class TwinTURBO(LightningModule):
                 w1 = self.std_layer_x(w1)
                 w2 = self.std_layer_ctxt(w2)
             
-                
-            
             for var in range(w1.shape[1]):
                 image = wandb.Image(self._draw_event_transport_trajectories(w1, w2, var=var, var_name=self.var_group_list[0][var], max_traj=20))
                 if wandb.run is not None:

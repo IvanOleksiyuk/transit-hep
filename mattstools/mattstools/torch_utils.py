@@ -98,6 +98,21 @@ def rmse(tens_a: T.Tensor, tens_b: T.Tensor, dim: int = 0) -> T.Tensor:
     """Return RMSE without using torch's warning filled mseloss method."""
     return (tens_a - tens_b).pow(2).mean(dim=dim).sqrt()
 
+class MixedActivation(nn.Module):
+    """A mixed activation function that can be used to combine multiple activation functions.
+
+    Parameters
+    ----------
+    activations : List[Union[str, nn.Module]]
+        A list of activation functions to combine.
+    """
+
+    def __init__(self, activations: List[Union[str, nn.Module]]) -> None:
+        super().__init__()
+        self.act = nn.ModuleList([get_act(act) for act in activations])
+
+    def forward(self, x: T.Tensor) -> T.Tensor:
+        return T.cat([self.act[0](x[..., ::2]), self.act[1](x[..., 1::2])], dim=-1)
 
 def get_act(name: str) -> nn.Module:
     """Return a pytorch activation function given a name."""
@@ -127,6 +142,8 @@ def get_act(name: str) -> nn.Module:
         return nn.Sigmoid()
     if name == "identity" or name == "none":
         return nn.Identity()
+    if isinstance(name, Iterable):
+        return MixedActivation(name)
     raise ValueError("No activation function with name: ", name)
 
 

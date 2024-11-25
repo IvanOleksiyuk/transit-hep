@@ -110,7 +110,7 @@ class DiscPC(nn.Module):
 
 
 
-class TwinTURBO(LightningModule):
+class TRANSIT(LightningModule):
     
     def __init__(
         self,
@@ -139,6 +139,7 @@ class TwinTURBO(LightningModule):
         afterglow_epoch = np.inf,
         second_input_mask = False,
         total_skip = False,
+        token_cutoff_sheduler = lambda x: 0,
     ) -> None:
         """
         Args:
@@ -152,6 +153,7 @@ class TwinTURBO(LightningModule):
         # TODO need to preprocess the data properly!
         torch.manual_seed(seed)
         self.afterglow_epoch = afterglow_epoch
+        self.token_cutoff_sheduler = token_cutoff_sheduler
         if adversarial_cfg is not None:
             if hasattr(adversarial_cfg, "mode"):
                 self.adversarial = adversarial_cfg.mode
@@ -283,7 +285,6 @@ class TwinTURBO(LightningModule):
         self.reverse_pass_mode = reverse_pass_mode
         self.input_noise_cfg = input_noise_cfg
         
-        self.projector = self.get_projector(latent_dim, [32, 64, 128]) #TODO fix this 
         self.num_features = 2 # TODO fix this
         if hasattr(loss_cfg, "DisCO_loss_cfg"):
             self.DisCO_loss = dcor.DistanceCorrelation()
@@ -322,43 +323,6 @@ class TwinTURBO(LightningModule):
                 self.loss_cfg.DisCO_loss_cfg.mode = "e1_vs_e2"
         self.dis_steps_per_gen = 0
 
-    def VICloss(self, x, y):
-        x = self.projector(x)
-        y = self.projector(y)
-        batch_size = x.size(0)
-        repr_loss = F.mse_loss(x, y)
-
-        #x = torch.cat(FullGatherLayer.apply(x), dim=0)
-        #y = torch.cat(FullGatherLayer.apply(y), dim=0)
-        x = x - x.mean(dim=0)
-        y = y - y.mean(dim=0)
-
-        std_x = torch.sqrt(x.var(dim=0) + 0.0001)
-        std_y = torch.sqrt(y.var(dim=0) + 0.0001)
-        std_loss = torch.mean(F.relu(1 - std_x)) / 2 + torch.mean(F.relu(1 - std_y)) / 2
-
-        cov_x = (x.T @ x) / (batch_size - 1)
-        cov_y = (y.T @ y) / (batch_size - 1)
-        cov_loss = off_diagonal(cov_x).pow_(2).sum().div(
-            self.num_features
-        ) + off_diagonal(cov_y).pow_(2).sum().div(self.num_features)
-
-        loss = (
-            self.sim_coeff * repr_loss
-            + self.std_coeff * std_loss
-            + self.cov_coeff * cov_loss
-        )
-        return loss, repr_loss, std_loss, cov_loss
-
-    def get_projector(self, embedding, mlp):
-        layers = []
-        f = [embedding] + mlp
-        for i in range(len(f) - 2):
-            layers.append(nn.Linear(f[i], f[i + 1]))
-            layers.append(nn.BatchNorm1d(f[i + 1]))
-            layers.append(nn.ReLU(True))
-        layers.append(nn.Linear(f[-2], f[-1], bias=False))
-        return nn.Sequential(*layers)
 
     def encode_content(self, x_inp, m_pair, mask=None):
         if not self.use_m_encodig:
@@ -404,7 +368,7 @@ class TwinTURBO(LightningModule):
         else:
             return self.discriminator2(torch.cat([w1, w2], dim=1))
 
-    def _shared_step(self, sample: tuple, _batch_index = None, step_type="none") -> torch.Tensor:
+    def _shared_step(self, sample: tuple, _batch_index = None, step_type="none", token_cutoff=0) -> torch.Tensor:
         self.log(f"{step_type}_debug/global_step", self.global_step)
         batch_size=sample[0].shape[0]
         if self.second_input_mask:
@@ -412,15 +376,15 @@ class TwinTURBO(LightningModule):
         else:
             x_inp, m_pair, m_add = sample
             mask = None
-        
+            
+        if token_cutoff>0 and token_cutoff<x_inp.shape[1]:
+            x_inp = x_inp[:, :token_cutoff]
+            mask = mask[:, :token_cutoff]
         #Make sure the inputs are in the right shape
         m_pair=m_pair.reshape([x_inp.shape[0], -1])
         m_add=m_add.reshape([x_inp.shape[0], -1])
         
         if self.add_standardizing_layer:
-            # if step_type == "train":
-            #     self.std_layer_x.update(x_inp, mask=mask)
-            #     self.std_layer_ctxt.update(m_pair)
             x_inp = self.std_layer_x(x_inp, mask=mask)
             m_pair = self.std_layer_ctxt(m_pair)
             m_add = self.std_layer_ctxt(m_add)
@@ -492,15 +456,6 @@ class TwinTURBO(LightningModule):
                 else:
                     total_loss += loss_back_vec*self.loss_cfg.consistency_x.w(self.global_step)
 
-        # if self.loss_cfg.consistency_x_balanced is not None:
-        #     loss_back_vec = mse_loss(content, content_n).mean()/
-        #     self.log(f"{step_type}/loss_back_vec", loss_back_vec)
-        #     if self.loss_cfg.consistency_x.w is not None:
-        #         if isinstance(self.loss_cfg.consistency_x.w, float) or isinstance(self.loss_cfg.consistency_x.w, int):
-        #             total_loss += loss_back_vec*self.loss_cfg.consistency_x.w
-        #         else:
-        #             total_loss += loss_back_vec*self.loss_cfg.consistency_x.w(self.global_step)
-
         if self.loss_cfg.consistency_cont is not None:
             loss_back_cont = mse_loss(style_p, style_n).mean()
             self.log(f"{step_type}/loss_back_cont", loss_back_cont)
@@ -570,14 +525,6 @@ class TwinTURBO(LightningModule):
                 else:
                     total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.w(self.global_step)
 
-        # VIC loss
-        if self.loss_cfg.vic_reg_cfg is not None:
-            loss, repr_loss, std_loss, cov_loss = self.VICloss(content, style)
-            self.log(f"{step_type}/VIC_repr_loss", repr_loss)
-            self.log(f"{step_type}/VIC_std_loss", std_loss)
-            self.log(f"{step_type}/VIC_cov_loss", cov_loss)
-            total_loss += loss
-
         # Log the total loss
         self.log(f"{step_type}/total_loss", total_loss)
         if self.adversarial:
@@ -605,7 +552,9 @@ class TwinTURBO(LightningModule):
             else:
                 optimizer_g = self.optimizers()
             # adversarial loss is binary cross-entropy
-            total_loss, e1, e2, w1, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx)
+            token_cutoff = self.token_cutoff_sheduler(self.current_epoch)
+            self.log("token_cutoff", token_cutoff)
+            total_loss, e1, e2, w1, w2 = self._shared_step(sample, step_type="train", _batch_index=batch_idx, token_cutoff=token_cutoff)
             batch_size=sample[0].shape[0]
             rpm = torch.randperm(batch_size)
             w2_perm = w2.clone()

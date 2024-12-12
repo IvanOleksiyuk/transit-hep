@@ -1,11 +1,12 @@
 #!/bin/sh
-#SBATCH --job-name=v25f
+#SBATCH --job-name=v25fsu_group
 #SBATCH --cpus-per-task=16
 #SBATCH --ntasks=1
-#SBATCH --time=1:00:00
+#SBATCH --time=5:00:00
 #SBATCH --partition=shared-gpu,private-dpnc-gpu
+#SBATCH --exclude=gpu044
 #SBATCH --nodes=1
-#SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/TRANSITv25f-%A-%x_%a.out
+#SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/TRANSITv25fsu_group-%A-%x_%a.out
 #SBATCH --mem=16GB
 #SBATCH --gres=gpu:1
 
@@ -14,12 +15,13 @@ start_time=$(date +%s)
 echo "Job started at: $(date)"
 
 module load GCCcore/12.3.0 Python/3.11.3
-cd scratch/sing_images/
+cd sing_images/
 singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  bash -c "cd /home/users/o/oleksiyu/WORK/hyperproject/ &&\
- python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py\
- --config-name TRANSITv25f general.subfolder=PAPER/\
- verbose_validation=1"
+ HYDRA_FULL_ERROR=1 python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run_group.py\
+ --config-name full_run_group_stability_30.yaml\
+ full_run_cfg=TRANSITv25fsu\
+ run_dir=twinturbo/workspaces/PAPER/TRANSITv25f_su_group"
 
 # Record the end time
 end_time=$(date +%s)

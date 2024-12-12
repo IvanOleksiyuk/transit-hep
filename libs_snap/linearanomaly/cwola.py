@@ -152,7 +152,7 @@ def main():
 
     print(f"[--] Training {args.num_folds} seperate folds")
     time = process_time_ns()
-    inputs, labels, outputs, extra_preds_sig, extra_preds_bkg = run_bdt_folds(
+    inputs, labels, outputs, extra_preds_sig, extra_preds_bkg, extra_preds_dict, extra_bkg_preds_dict = run_bdt_folds(
         np.vstack((signal, background)),
         np.concatenate((np.ones(len(signal)), np.zeros(len(background)))),
         num_folds=args.num_folds,
@@ -178,18 +178,24 @@ def main():
         key="df",
         mode="w",
     )
-    pd.DataFrame(
+    extra_sig_df = pd.DataFrame(
         np.hstack((extra_signal, extra_preds_sig[:, None])),
         columns=[*features, "preds"],
-    ).to_hdf(
+    )
+    for key, preds in extra_preds_dict.items():
+        extra_sig_df[key] = preds
+    extra_sig_df.to_hdf(
         args.output_path / "cwola_outputs_extra_sig.h5",
         key="df",
         mode="w",
     )
-    pd.DataFrame(
+    extra_bkg_df = pd.DataFrame(
         np.hstack((extra_bkg, extra_preds_bkg[:, None])),
         columns=[*features, "preds"],
-    ).to_hdf(
+    )
+    for key, preds in extra_bkg_preds_dict.items():
+        extra_bkg_df[key] = preds
+    extra_bkg_df.to_hdf(
         args.output_path / "cwola_outputs_extra_bkg.h5",
         key="df",
         mode="w",

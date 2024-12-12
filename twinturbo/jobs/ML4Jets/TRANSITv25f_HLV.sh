@@ -18,7 +18,7 @@ cd scratch/sing_images/
 singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  bash -c "cd /home/users/o/oleksiyu/WORK/hyperproject/ &&\
  python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run.py\
- --config-name TRANSITv25f_HLV general.subfolder=ML4Jets/\
+ --config-name TRANSITv25f_HLV general.subfolder=PAPER_TEST/\
  verbose_validation=1"
 
 # Record the end time

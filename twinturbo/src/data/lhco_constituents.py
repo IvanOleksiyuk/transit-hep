@@ -245,6 +245,7 @@ class LHCOLowDatasetTT_export(Dataset):
         n_sig: int | None = None,
         n_csts: int | None = None,
         mjj_window: tuple | list | None = ((2700, 3300), (3700, 6000)),
+        no_mask = False,
         no_N = False,
         hlvs = None,
     ) -> None:
@@ -290,7 +291,10 @@ class LHCOLowDatasetTT_export(Dataset):
         self.hlv = np.concatenate([self.hlv1, self.hlv2])
         self.hlv_gen = np.concatenate([hlv1_gen, hlv2_gen])
         self.jet = np.concatenate([self.jet1, self.jet2])
-        self.mask = np.any(self.jet, axis=-1)
+        if not no_mask:
+            self.mask = np.any(self.jet, axis=-1)
+        else:
+            self.mask = np.any(self.jet>-10000000, axis=-1)
 
     def __len__(self) -> int:
         return len(self.mask)

@@ -41,9 +41,8 @@ def main(cfg: DictConfig) -> None:
     model = hydra.utils.instantiate(cfg.model, inpt_dim=datamodule.get_dims(), var_group_list=datamodule.get_var_group_list(), seed=cfg.seed)
     log.info(model)
 
-    if cfg.compile:
-        log.info(f"Compiling the model using torch 2.0: {cfg.compile}")
-        model = T.compile(model, mode=cfg.compile)
+    log.info("Saving config so job can be resumed")
+    save_config(cfg)
 
     log.info("Instantiating all callbacks")
     callbacks = instantiate_collection(cfg.callbacks)
@@ -54,15 +53,17 @@ def main(cfg: DictConfig) -> None:
     log.info("Instantiating the trainer")
     trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=loggers)
 
+    log.info("Starting training!")
+    start_time = time.time()
+    
+    if cfg.compile:
+        log.info(f"Compiling the model using torch 2.0: {cfg.compile}")
+        model = T.compile(model, mode=cfg.compile)
+
     if loggers:
         log.info("Logging all hyperparameters")
         log_hyperparameters(cfg, model, trainer)
 
-    log.info("Saving config so job can be resumed")
-    save_config(cfg)
-
-    log.info("Starting training!")
-    start_time = time.time()
     trainer.fit(model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
     end_time = time.time()
     elapsed_time = end_time - start_time

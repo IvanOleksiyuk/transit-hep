@@ -296,23 +296,58 @@ class InMemoryDataFrameDictBase(Dataset):
 
     def __getitem__(self, item):
         if self.list_order is None:
-            return {
-                key: value.iloc[item].to_numpy() for key, value in self.data.items()
-            }
-        return [self.data[it].to_numpy()[item] for it in self.list_order]
+            if self.in_numpy:
+                return {key: value[item] for key, value in self.data.items()}
+            else:
+                return {
+                    key: value.iloc[item].to_numpy() for key, value in self.data.items()
+                }
+        else:
+            if self.in_numpy:
+                return [self.data[it][item] for it in self.list_order]
+            else:
+                return [self.data[it].to_numpy()[item] for it in self.list_order]
 
     def __len__(self):
         return len(self.data[list(self.data.keys())[0]])
 
+    def to_np(self):
+        self.data_columns = {}
+        for key, value in self.data.items():
+            self.data_columns[key] = list(value.columns)
+            self.data[key] = value.to_numpy()
+        self.in_numpy = True
+    
+    def to_tensor(self, device=None):
+        self.data_columns = {}
+        for key, value in self.data.items():
+            self.data_columns[key] = list(value.columns)
+            self.data[key] = torch.tensor(value.to_numpy(), dtype=torch.float32)
+            if device is not None:
+                self.data[key] = self.data[key].to(device)
+        self.in_numpy = False
+        self.in_tensor = True
+    
+    def to_df(self):
+        for key, value in self.data.items():
+            self.data[key] = pd.DataFrame(value, columns=self.data_columns[key])
+        self.in_numpy = False
+    
     def get_dims(self):
-        if self.list_order is None:
-            return {
-                key: value.iloc[0].to_numpy(dtype=np.float32).shape
-                for key, value in self.data.items()
-            }
-        return [
-            self.data[it].to_numpy(dtype=np.float32)[0].shape for it in self.list_order
-        ]
+        if self.in_numpy:
+            if self.list_order is None:
+                return {key: value[0].shape for key, value in self.data.items()}
+            else:
+                return [self.data[elem][0].shape for elem in self.list_order]
+        else:
+            if self.list_order is None:
+                return {
+                    key: value.iloc[0].to_numpy(dtype=np.float32).shape
+                    for key, value in self.data.items()
+                }
+            return [
+                self.data[it].to_numpy(dtype=np.float32)[0].shape for it in self.list_order
+            ]
 
     def load(self, file_path: str) -> pd.DataFrame:
         data = {}
@@ -412,6 +447,7 @@ class InMemoryDataFrameDict(InMemoryDataFrameDictBase):
     """
 
     def __init__(self, file_path: str, processor_cfg=[], list_order=None, plotting_path= None, reset_index=False) -> None:
+        self.in_numpy = False
         self.file_path = file_path
         self.list_order = list_order
         self.data = self.load(file_path)
@@ -429,6 +465,7 @@ class InMemoryDataMerge(InMemoryDataFrameDictBase):
     """
 
     def __init__(self, dataset_list, do_shuffle=False) -> None:
+        self.in_numpy = False
         self.list_order = dataset_list[0].list_order
         if isinstance(self.list_order, list):
             self.list_order.append("label")
@@ -453,6 +490,7 @@ class InMemoryDataMergeClasses(InMemoryDataFrameDictBase):
     def __init__(
         self, dataset_list, class_lables=None, do_shuffle=True, sample_to_min=True, plotting_path= None, processor_cfg=[], 
     ) -> None:
+        self.in_numpy = False
         self.list_order = dataset_list[0].list_order
         if isinstance(self.list_order, list):
             self.list_order.append("label")
@@ -519,6 +557,7 @@ class SimpleDataModule(LightningDataModule):
         val_data = None,
         train_frac: float = 0.8,
         test_data=None,
+        to_np=False,
     ) -> None:
         super().__init__()
         self.loader_kwargs = loader_kwargs
@@ -552,6 +591,14 @@ class SimpleDataModule(LightningDataModule):
             print("No test dataset set")
         else:
             print("Test dataset set from config")
+        
+        if to_np:
+            if self.train_data is not None:
+                self.train_data.to_np()
+            if self.val_data is not None:
+                self.val_data.to_np()
+            if self.test_data is not None:
+                self.test_data.to_np()
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(self.train_data, **self.loader_kwargs, shuffle=True)
@@ -569,13 +616,19 @@ class SimpleDataModule(LightningDataModule):
         return self.train_data.get_dims()
 
     def get_var_group_list(self):
-        var_group_list = []
-        for key in self.train_data.list_order:
-            var_group_list.append(self.train_data.data[key].columns.tolist())
+        if self.train_data.in_numpy:
+            var_group_list = []
+            for key in self.train_data.list_order: 
+                var_group_list.append(self.train_data.data_columns[key])  
+        else:
+            var_group_list = []
+            for key in self.train_data.list_order:
+                var_group_list.append(self.train_data.data[key].columns.tolist())
         return var_group_list
 
 class CombDataset(InMemoryDataFrameDictBase):
     def __init__(self, dataset1, dataset2, length=None, oversample1=None, oversample2=None, seed=42, plotting_path=None) -> None:
+        self.in_numpy = False
         if oversample1 is not None:
             length = oversample1 * len(dataset1)
         if oversample2 is not None:

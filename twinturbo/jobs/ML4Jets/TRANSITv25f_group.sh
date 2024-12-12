@@ -4,6 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --time=5:00:00
 #SBATCH --partition=shared-gpu,private-dpnc-gpu
+#SBATCH --exclude=gpu044
 #SBATCH --nodes=1
 #SBATCH --output=/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/jobs/job_output/TRANSITv25f_group-%A-%x_%a.out
 #SBATCH --mem=16GB
@@ -20,7 +21,7 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  HYDRA_FULL_ERROR=1 python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run_group.py\
  --config-name full_run_group_stability_30.yaml\
  full_run_cfg=TRANSITv25f\
- run_dir=twinturbo/workspaces/ML4Jets/TRANSITv25f_group"
+ run_dir=twinturbo/workspaces/PAPER/TRANSITv25f_group"
 
 # Record the end time
 end_time=$(date +%s)

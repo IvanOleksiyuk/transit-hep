@@ -1,5 +1,6 @@
 several_confs:
-  - run_dir: ${general.run_dir}
+  cwola_template:
+    run_dir: ${general.run_dir}
     cwola_path: ${general.run_dir}/cwola/
     cwola_eval_path: ${general.run_dir}/plots/cwola_3000_eval/
     cwola_eval_name: "cwola 3000 sig"
@@ -35,7 +36,8 @@ several_confs:
     seeds: [0, 1]
     extra_bkg: 1
 
-  - run_dir: ${general.run_dir}
+  cwola_latent:
+    run_dir: ${general.run_dir}
     cwola_path: ${general.run_dir}/cwola_latent/
     cwola_eval_path: ${general.run_dir}/plots/cwola_latent_3000_eval/
     cwola_eval_title: "latent cwola 3000 sig"

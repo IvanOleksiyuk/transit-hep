@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 # TODO pyroot utils will remove the need for ../configs
 def get_git_hash():
     try:
-        git_hash = subprocess.check_output(["cd", "twinturbo", "&&", "git", "rev-parse", "HEAD"], stderr=subprocess.STDOUT).strip().decode("utf-8")
+        git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], stderr=subprocess.STDOUT).strip().decode("utf-8") #"cd", "twinturbo", "&&",
         print(f"Git hash: {git_hash}")
         return git_hash
     except subprocess.CalledProcessError as e:
@@ -57,6 +57,7 @@ def main(cfg: DictConfig) -> None:
     with open(rutime_file, 'w') as file:
         file.write('Start time: {}\n'.format(datetime.now()))
     
+    # Save git hash to a file
     git_hash_file = summary_dir / "git_hash.txt"
     git_hash=get_git_hash()
     if git_hash:
@@ -128,7 +129,7 @@ def main(cfg: DictConfig) -> None:
         log.info("===================================")
         log.info("Start: Train CWOLA model using the template dataset and the real data")
         if hasattr(cfg.step_cwola, "several_confs"):
-            for conf in cfg.step_cwola.several_confs:
+            for conf in cfg.step_cwola.several_confs.values():
                 run_cwola.main(conf)
         else:
             run_cwola.main(cfg.step_cwola)

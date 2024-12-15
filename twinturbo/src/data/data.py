@@ -32,6 +32,28 @@ OPERATORS = {
 # Collection of functions for data pre-processing
 ##############################################
 
+class ProcessorSubsample:
+    def __init__(self, n_samples, random_state=42, mode="random"):
+        self.n_samples = n_samples
+        self.random_state = random_state
+        self.mode = mode
+
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+        if self.n_samples is not None and self.n_samples > 0:
+            for key, value in data.items():
+                if self.mode == "random":
+                    data[key] = value.sample(
+                        n=self.n_samples, random_state=self.random_state
+                    )
+                elif self.mode == "head":
+                    data[key] = value.head(self.n_samples)
+                elif self.mode == "tail":
+                    data[key] = value.tail(self.n_samples)
+                elif self.mode == "head_invert":
+                    data[key] = value[self.n_samples :]
+                elif self.mode == "tail_invert":
+                    data[key] = value[: -self.n_samples]
+        return data
 
 class ProcessorIntervals:
     def __init__(self, scalar_df_name, var_name, intervals):
@@ -446,7 +468,7 @@ class InMemoryDataFrameDict(InMemoryDataFrameDictBase):
     Loaded from an HDF5 file. Preprocessing is applied.
     """
 
-    def __init__(self, file_path: str, processor_cfg=[], list_order=None, plotting_path= None, reset_index=False) -> None:
+    def __init__(self, file_path: str, processor_cfg=[], list_order=None, plotting_path= None, do_plotting=True, reset_index=False) -> None:
         self.in_numpy = False
         self.file_path = file_path
         self.list_order = list_order
@@ -455,7 +477,7 @@ class InMemoryDataFrameDict(InMemoryDataFrameDictBase):
         self.init_processors(processor_cfg)
         self.data = self.apply_processors(self.data)
         
-        if plotting_path is not None:
+        if (plotting_path is not None) and do_plotting:
             self.plot(plotting_path)
         print("Data length: ", len(self))
 

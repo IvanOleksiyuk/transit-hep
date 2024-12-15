@@ -7,7 +7,7 @@ network_type: partial_context
 _target_: twinturbo.src.models.twinturbo_model.TwinTURBO
 use_m_encodig: True
 encoder_cfg: 
-  _target_: mattstools.mattstools.modules_myy.DenseNetwork
+  _target_: twinturbo.mattstools.mattstools.modules_myy.DenseNetwork
   _partial_: true
   act_h: silu
   act_i: none
@@ -21,7 +21,7 @@ encoder_cfg:
   ctxt_in_hddn: True
   ctxt_in_out: False
 decoder_cfg:
-  _target_: mattstools.mattstools.modules_myy.DenseNetwork
+  _target_: twinturbo.mattstools.mattstools.modules_myy.DenseNetwork
   _partial_: true
   act_h: silu
   act_i: none

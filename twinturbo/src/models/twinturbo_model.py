@@ -6,7 +6,6 @@ from torch import nn
 import wandb
 from mltools.torch_utils import get_sched, get_loss_fn
 from mltools.mlp import MLP
-from kan import KAN
 import torch 
 from pytorch_lightning import LightningModule
 from functools import partial
@@ -286,20 +285,6 @@ class TwinTURBO(LightningModule):
                 self.discriminator = MLP(inpt_dim=latent_dim, outp_dim=1, ctxt_dim=context_dim, **adversarial_cfg.discriminator)
                 if "double_discriminator" in self.adversarial:
                     self.discriminator2 = MLP(inpt_dim=x_dim, outp_dim=1, ctxt_dim=context_dim, **adversarial_cfg.discriminator2)
-        elif network_type == "KAN":
-            self.encoder1 = KAN(width=[x_dim]+encoder_cfg.hddn_dim+[latent_dim], grid=encoder_cfg.grid, k=encoder_cfg.k, device=torch.device('cuda')) #model = KAN(width=[2,5,1], grid=5, k=3, seed=0) 
-            self.encoder2 = KAN(width=[inpt_dim[1][0]]+encoder_cfg.hddn_dim+[latent_dim], grid=encoder_cfg.grid, k=encoder_cfg.k, device=torch.device('cuda'))
-            decoder_out_dim = x_dim+inpt_dim[1][0]
-            self.decoder_out_m = True
-            self.style_injection_cond = False
-            if self.use_m_encodig:
-                self.decoder = KAN(width=[latent_dim*2]+decoder_cfg.hddn_dim+[x_dim], grid=decoder_cfg.grid, k=decoder_cfg.k, device=torch.device('cuda'))
-            else:
-                self.decoder = KAN(width=[latent_dim*2]+decoder_cfg.hddn_dim+[decoder_out_dim], grid=decoder_cfg.grid, k=decoder_cfg.k, device=torch.device('cuda'))
-            if self.adversarial:
-                self.discriminator = MLP(inpt_dim=latent_dim+1, outp_dim=1, **adversarial_cfg.discriminator)
-                if "double_discriminator" in self.adversarial:
-                    self.discriminator2 = MLP(inpt_dim=x_dim+inpt_dim[1][0], outp_dim=1, **adversarial_cfg.discriminator2)
         elif network_type == "MLP_no_m_encoding":
             self.encoder1 = MLP(inpt_dim=x_dim+inpt_dim[1][0], outp_dim=latent_dim, **encoder_cfg)
             latent_dim2 = 1

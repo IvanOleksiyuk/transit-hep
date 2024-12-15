@@ -41,7 +41,7 @@ check_hash:
 
 
 general:
-  name: TRANSITv0v1_LHCO_test_trXex
+  name: TRANSITv0v1_LHCO_test
   subfolder: TEST/
   seed: 12345 # For reproducibility
   run_dir: twinturbo/workspaces/${general.subfolder}${general.name}

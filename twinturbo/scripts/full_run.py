@@ -67,9 +67,9 @@ def write_git_status_to_file(file_path):
         print(f"Git status written to {file_path}")
     except Exception as e:
         print(f"Error writing to file: {str(e)}")
-#/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/config/TRANSITv0v1_LHCO_test_trXex.yaml
+
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="TRANSITv0v1_LHCO_test"
+    version_base=None, config_path=str('../config'), config_name="TRANSITv0v1_LHCO_test_trXex"
 )
 def main(cfg: DictConfig) -> None:
     log.info("<<<START FULL RUN>>>")

@@ -1,7 +1,0 @@
-defaults:
-  - _self_
-  - optimizer: default.yaml
-  - scheduler: cyclic.yaml
-
-network_type: partial_context
-_target_: twinturbo.src.models.transit_compile.TRANSIT

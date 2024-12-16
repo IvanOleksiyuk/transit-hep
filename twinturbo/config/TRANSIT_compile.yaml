@@ -39,4 +39,4 @@ general:
   name: TRANSITv25f_speed
   subfolder: PAPER_TEST/
   seed: 12345 # For reproducibility
-  run_dir: twinturbo/workspaces/${general.subfolder}${general.name}
+  run_dir: workspaces/${general.subfolder}${general.name}

@@ -1,14 +1,14 @@
-run_dir: /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/groups/twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS2048b
+run_dir: /home/users/o/oleksiyu/WORK/hyperproject/workspaces/groups/twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS2048b
 save_curves: True
 postfix: "comb_seeds_CWOLA"
 
 main_methods:
   TwinTurbo: 
-    abs_directory: /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/groups/twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS2048b
+    abs_directory: /home/users/o/oleksiyu/WORK/hyperproject/workspaces/groups/twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS2048b
     prefix: "TwinTurbo_"
     postfix: "_comb_CWOLA"
   TwinTurboLatent: 
-    abs_directory: /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/groups/twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS2048b
+    abs_directory: /home/users/o/oleksiyu/WORK/hyperproject/workspaces/groups/twinturbo_reco_cons0.01_smls0.001_adv3_LHCO_CURTAINS2048b
     prefix: "TwinTurboLatent_"
     postfix: "_comb_CWOLA"
 

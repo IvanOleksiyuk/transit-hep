@@ -19,11 +19,11 @@ stability_analysis_cfg:
       prefix: ""
       postfix: ""
     TRANSITv1: 
-      abs_directory: "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/groups5/TRANSITv1/"
+      abs_directory: "/home/users/o/oleksiyu/WORK/hyperproject/workspaces/groups5/TRANSITv1/"
       prefix: "TwinTurbo_"
       postfix: "_comb_CWOLA"
     TRANSITv2: 
-      abs_directory : "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/groups5/TRANSITv2/"
+      abs_directory : "/home/users/o/oleksiyu/WORK/hyperproject/workspaces/groups5/TRANSITv2/"
       prefix: "TwinTurbo_"
       postfix: "_comb_CWOLA"
 

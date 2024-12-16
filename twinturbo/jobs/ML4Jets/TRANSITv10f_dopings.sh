@@ -20,7 +20,7 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run_group.py\
  --config-name full_run_group_dopings_6seeds.yaml\
  full_run_cfg=TRANSITv10f\
- run_dir=twinturbo/workspaces/ML4Jets/TRANSITv10f_dopings"
+ run_dir=workspaces/ML4Jets/TRANSITv10f_dopings"
 
 # Record the end time
 end_time=$(date +%s)

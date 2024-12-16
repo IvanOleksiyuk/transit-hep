@@ -1,8 +1,8 @@
 import h5py
 
 # File names
-file_hlv = '/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/2024_09_09/TRANSITv1_HLV/template/outputs/template_sample_con.h5'
-file_llv = '/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/2024_09_09/TRANSIT_LLV/template/outputs/template_sample_con.h5'
+file_hlv = '/home/users/o/oleksiyu/WORK/hyperproject/workspaces/2024_09_09/TRANSITv1_HLV/template/outputs/template_sample_con.h5'
+file_llv = '/home/users/o/oleksiyu/WORK/hyperproject/workspaces/2024_09_09/TRANSIT_LLV/template/outputs/template_sample_con.h5'
 file_c = '/home/users/o/oleksiyu/WORK/hyperproject/user/llv_hlv_templates/a.h5'
 
 # Open the new file (c.h5) for writing

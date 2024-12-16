@@ -328,7 +328,7 @@ def evaluate_model(cfg, original_data, target_data, template_data):
         print(key, value)
     w1 = batch1[0]
     w2 = batch1[1]
-    processor = pickle.load(open("/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/ML4Jets/TRANSITv25f_group/run-TTS_1/cathode_preprocessor.pkl", "rb"))
+    processor = pickle.load(open("/home/users/o/oleksiyu/WORK/hyperproject/workspaces/ML4Jets/TRANSITv25f_group/run-TTS_1/cathode_preprocessor.pkl", "rb"))
     for var in range(w1.shape[1]):
         var_name=var_group_list[0][var]
         if var_name=="del_R":

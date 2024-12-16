@@ -156,7 +156,7 @@ def delete_path(path):
 
 if __name__ == "__main__":
     # Replace this with the starting directory path you want to search in
-    start_directory = "/home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/"
+    start_directory = "/home/users/o/oleksiyu/WORK/hyperproject/workspaces/"
     #delete_npy_files_in_cwola(start_directory)
     #total_freed = delete_by_patterns(start_directory, ["input/**.png"], dry_run=True)
     #print(f"Total disk space freed: {total_freed/1024/1024} MB")

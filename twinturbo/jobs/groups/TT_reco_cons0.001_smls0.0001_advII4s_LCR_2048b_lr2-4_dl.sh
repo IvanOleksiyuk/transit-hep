@@ -20,7 +20,7 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run_group.py\
  --config-name full_run_group_stability.yaml\
  full_run_cfg=TT_reco_cons0.001_smls0.0001_advII4s_LCR_2048b_lr2-4_dll.yaml\
- run_dir=twinturbo/workspaces/groups3/TT_reco_cons0.001_smls0.0001_advII4s_LCR_2048b_lr2-4_dll"
+ run_dir=workspaces/groups3/TT_reco_cons0.001_smls0.0001_advII4s_LCR_2048b_lr2-4_dll"
 
 # Record the end time
 end_time=$(date +%s)

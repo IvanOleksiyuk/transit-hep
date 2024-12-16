@@ -39,4 +39,4 @@ general:
   name: TRANSITv29f
   subfolder: TEST/
   seed: 12345 # For reproducibility
-  run_dir: twinturbo/workspaces/${general.subfolder}${general.name}
+  run_dir: workspaces/${general.subfolder}${general.name}

@@ -55,4 +55,4 @@ def run():
 if __name__ == "__main__":
     run()
     
-#/opt/conda/bin/python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/time_chart.py /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/TEST_jobs/TRANSITv0v1_LHCO/summary/runtime.txt --save time_plot.png
+#/opt/conda/bin/python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/time_chart.py /home/users/o/oleksiyu/WORK/hyperproject/workspaces/TEST_jobs/TRANSITv0v1_LHCO/summary/runtime.txt --save time_plot.png

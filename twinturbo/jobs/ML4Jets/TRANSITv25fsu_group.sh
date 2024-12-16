@@ -21,7 +21,7 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  HYDRA_FULL_ERROR=1 python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run_group.py\
  --config-name full_run_group_stability_30.yaml\
  full_run_cfg=TRANSITv25fsu\
- run_dir=twinturbo/workspaces/PAPER/TRANSITv25f_su_group"
+ run_dir=workspaces/PAPER/TRANSITv25f_su_group"
 
 # Record the end time
 end_time=$(date +%s)

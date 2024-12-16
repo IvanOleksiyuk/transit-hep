@@ -20,7 +20,7 @@ singularity exec --nv -B /home/users/,/srv,/tmp hyperproject_container.sif \
  python /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/scripts/full_run_group.py\
  --config-name full_run_group_dopings_3seeds.yaml\
  full_run_cfg=TRANSITv1\
- run_dir=twinturbo/workspaces/DOPING/TRANSITv1_dopings"
+ run_dir=workspaces/DOPING/TRANSITv1_dopings"
 
 # Record the end time
 end_time=$(date +%s)

@@ -72,7 +72,7 @@ callbacks:
   value:
     model_checkpoint:
       _target_: pytorch_lightning.callbacks.ModelCheckpoint
-      dirpath: twinturbo/workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/template/checkpoints
+      dirpath: workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/template/checkpoints
       filename: best_{epoch:03d}
       monitor: valid/total_loss
       mode: min
@@ -94,14 +94,14 @@ loggers:
       log_model: false
       project: twinTURBO_gauss_corr
       name: twinturbo_reco_DisCo_massfromgap_smooth_2024-07-09_14-00-02-406163
-      save_dir: twinturbo/workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth
+      save_dir: workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth
       resume: false
 paths:
   desc: null
   value:
-    output_dir: twinturbo/workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/template
+    output_dir: workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/template
     root_dir: /home/users/o/oleksiyu/WORK/hyperproject
-    full_path: twinturbo/workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/template
+    full_path: workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/template
     wandbkey: /home/users/o/oleksiyu/WORK/keys/wandb.key
 trainer:
   desc: null
@@ -115,7 +115,7 @@ trainer:
     gradient_clip_val: 5
     precision: 32
     check_val_every_n_epoch: 1
-    default_root_dir: twinturbo/workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/template
+    default_root_dir: workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/template
 data:
   desc: null
   value:
@@ -130,7 +130,7 @@ data:
           - data
           - mass
           file_path: /home/users/o/oleksiyu/WORK/hyperproject/dummydata/gauss_corr_4.h5
-          plotting_path: twinturbo/workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/plots/train/
+          plotting_path: workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/plots/train/
           processor_cfg:
           - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
             frame_name: data
@@ -159,7 +159,7 @@ data:
           list_order:
           - mass_add
           file_path: /home/users/o/oleksiyu/WORK/hyperproject/dummydata/gauss_corr_4.h5
-          plotting_path: twinturbo/workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/plots/train/
+          plotting_path: workspaces/gauss_corr_4_gap_twinturbo_usem_addgapmass/twinturbo_reco_DisCo_massfromgap_smooth/plots/train/
           processor_cfg:
           - _target_: twinturbo.src.data.data.ProcessorSplitDataFrameVars
             frame_name: data

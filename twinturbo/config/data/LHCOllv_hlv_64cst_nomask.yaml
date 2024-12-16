@@ -31,7 +31,7 @@ export_template:
     no_mask: true
     bkg_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_bkg.h5
     sig_path: /srv/beegfs/scratch/groups/rodem/LHCO/lowlevel_sig.h5
-    hlv_gen_path: /home/users/o/oleksiyu/WORK/hyperproject/twinturbo/workspaces/PAPER_TEST/TRANSITv25f_HLV/template/outputs/template_sample.h5
+    hlv_gen_path: /home/users/o/oleksiyu/WORK/hyperproject/workspaces/PAPER_TEST/TRANSITv25f_HLV/template/outputs/template_sample.h5
     n_bkg: null
     n_sig: 3000
     n_csts: 64

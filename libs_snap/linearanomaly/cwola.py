@@ -6,9 +6,9 @@ import pandas as pd
 from time import process_time_ns
 import yaml
 
-from srccwola.classifier import run_bdt_folds
-from srccwola.plotting import plot_closure, plot_svb
-from srccwola.utils import get_cwola_datasets
+from src.classifier import run_bdt_folds
+from src.plotting import plot_closure, plot_svb
+from src.utils import get_cwola_datasets
 
 
 def get_args():

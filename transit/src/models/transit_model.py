@@ -40,77 +40,6 @@ def to_np(inpt) -> np.ndarray:
         inpt = inpt.half()
     return inpt.detach().cpu().numpy()
 
-class CLIPLoss(nn.Module):
-    def __init__(self, logit_scale=1.0):
-        super().__init__()
-        self.logit_scale = logit_scale
-
-    def forward(self, embedding_1, embedding_2, valid=False):
-        device = embedding_1.device
-        logits_1 = self.logit_scale * embedding_1 @ embedding_2.T
-        logits_2 = self.logit_scale * embedding_2 @ embedding_1.T
-        num_logits = logits_1.shape[0]
-        labels = torch.arange(num_logits, device=device, dtype=torch.long)
-        loss = 0.5 * (
-            F.cross_entropy(logits_1, labels) + F.cross_entropy(logits_2, labels)
-        )
-        return loss
-
-class CLIPLossNorm(nn.Module):
-    def __init__(
-        self,
-        logit_scale_init=np.log(1 / 0.07),
-        logit_scale_max=np.log(100),
-        logit_scale_min=np.log(0.01),
-        logit_scale_learnable=False,
-    ):
-        super().__init__()
-        if logit_scale_learnable:
-            self.logit_scale = nn.Parameter(torch.ones([]) * logit_scale_init)
-        else:
-            self.logit_scale = torch.ones([], requires_grad=False) * logit_scale_init
-        self.logit_scale_max = logit_scale_max
-        self.logit_scale_min = logit_scale_min
-        self.logit_scale_learnable = logit_scale_learnable
-
-    def forward(self, embedding_1, embedding_2, valid=False):
-        scale = torch.clamp(
-            self.logit_scale, max=self.logit_scale_max, min=self.logit_scale_min
-        ).exp()
-
-        wandb.log({"scale": scale})
-        device = embedding_1.device
-        norm = (
-            embedding_1.norm(dim=1, keepdim=True)
-            @ embedding_2.norm(dim=1, keepdim=True).T
-        )
-        logits_1 = (scale * embedding_1 @ embedding_2.T) / norm
-        logits_2 = (scale * embedding_2 @ embedding_1.T) / norm.T
-        num_logits = logits_1.shape[0]
-        labels = torch.arange(num_logits, device=device, dtype=torch.long)
-        loss = 0.5 * (
-            F.cross_entropy(logits_1, labels) + F.cross_entropy(logits_2, labels)
-        )
-        return loss
-
-class FullGatherLayer(torch.autograd.Function):
-    """
-    Gather tensors from all process and support backward propagation
-    for the gradients across processes.
-    """
-
-    @staticmethod
-    def forward(ctx, x):
-        output = [torch.zeros_like(x) for _ in range(dist.get_world_size())]
-        dist.all_gather(output, x)
-        return tuple(output)
-
-    @staticmethod
-    def backward(ctx, *grads):
-        all_gradients = torch.stack(grads)
-        dist.all_reduce(all_gradients)
-        return all_gradients[dist.get_rank()]
-
 def off_diagonal(x):
     n, m = x.shape
     assert n == m
@@ -245,27 +174,7 @@ class TRANSIT(LightningModule):
         context_dim = inpt_dim[1][0]
         self.second_input_mask = second_input_mask #By default
         
-        if network_type == "Transformer_conditional":
-            self.second_input_mask = True
-            self.encoder1 = FullEncoder(inpt_dim=x_dim, outp_dim=latent_dim, ctxt_dim=context_dim, **encoder_cfg)
-            self.encoder2 = lambda x: x
-            self.decoder = FullEncoder(inpt_dim=latent_dim, outp_dim=x_dim, ctxt_dim=context_dim, **decoder_cfg)
-            if self.adversarial:
-                if hasattr(adversarial_cfg, "discriminator"):
-                    self.discriminator = DiscPC(inpt_dim=latent_dim, ctxt_dim=context_dim, **self.adversarial_cfg.discriminator)
-                    self.use_disc_lat = True
-                else:
-                    self.use_disc_lat = False
-                if hasattr(adversarial_cfg, "discriminator2"):
-                    self.discriminator2 = DiscPC(inpt_dim=x_dim, ctxt_dim=context_dim, **self.adversarial_cfg.discriminator2)
-                    self.use_disc_reco = True
-                else:
-                    self.use_disc_reco = False
-            # if discriminator_latent_cfg is not None:
-            #     self.discriminator = TransformerEncoder(inpt_dim=latent_dim, outp_dim=1, **discriminator_latent_cfg)
-            self.style_injection_cond = True
-            self.decoder_out_m = False
-        elif network_type == "partial_context":
+        if network_type == "partial_context":
             self.decoder_out_m = False
             self.encoder1 = encoder_cfg(inpt_dim=x_dim, ctxt_dim=inpt_dim[1][0], outp_dim=latent_dim)
             self.decoder = decoder_cfg(inpt_dim=latent_dim, ctxt_dim=inpt_dim[1][0], outp_dim=x_dim)
@@ -282,41 +191,8 @@ class TRANSIT(LightningModule):
                 else:
                     self.use_disc_reco = False
             self.encoder2 = lambda x: x
-        elif network_type == "MLP_cont":
-            self.decoder_out_m = False
-            self.encoder1 = MLP(inpt_dim=x_dim, ctxt_dim=inpt_dim[1][0], outp_dim=latent_dim, **encoder_cfg)
-            self.decoder = MLP(inpt_dim=latent_dim, ctxt_dim=inpt_dim[1][0], outp_dim=x_dim, **decoder_cfg)
-            self.style_injection_cond = True
-            if self.adversarial:
-                self.discriminator = MLP(inpt_dim=latent_dim, outp_dim=1, ctxt_dim=context_dim, **adversarial_cfg.discriminator)
-                if "double_discriminator" in self.adversarial:
-                    self.discriminator2 = MLP(inpt_dim=x_dim, outp_dim=1, ctxt_dim=context_dim, **adversarial_cfg.discriminator2)
-        elif network_type == "MLP_no_m_encoding":
-            self.encoder1 = MLP(inpt_dim=x_dim+inpt_dim[1][0], outp_dim=latent_dim, **encoder_cfg)
-            latent_dim2 = 1
-            self.encoder2 = lambda x: x
-            self.decoder_out_m = False
-            self.decoder = MLP(inpt_dim=latent_dim+latent_dim2, outp_dim=x_dim, **decoder_cfg) 
-            self.latent_norm_enc2 = False
-            self.style_injection_cond = False
-            if self.adversarial:
-                self.discriminator = MLP(inpt_dim=latent_dim+1, outp_dim=1, **adversarial_cfg.discriminator)
-                if "double_discriminator" in self.adversarial:
-                    self.discriminator2 = MLP(inpt_dim=x_dim+inpt_dim[1][0], outp_dim=1, **adversarial_cfg.discriminator2)
         else:
-            self.encoder1 = MLP(inpt_dim=x_dim+inpt_dim[1][0], outp_dim=latent_dim, **encoder_cfg)
-            if encoder_cfg2 is None:
-                encoder_cfg2 = copy.deepcopy(encoder_cfg)
-            if latent_dim2 is None:
-                latent_dim2 = latent_dim
-            self.encoder2 = MLP(inpt_dim=inpt_dim[1][0], outp_dim=latent_dim2, **encoder_cfg2)
-            self.decoder_out_m = True
-            self.decoder = MLP(inpt_dim=latent_dim+latent_dim2, outp_dim=x_dim+inpt_dim[1][0], **decoder_cfg)
-            self.style_injection_cond = False
-            if self.adversarial:
-                self.discriminator = MLP(inpt_dim=latent_dim+1, outp_dim=1, **adversarial_cfg.discriminator)
-                if "double_discriminator" in self.adversarial:
-                    self.discriminator2 = MLP(inpt_dim=x_dim+inpt_dim[1][0], outp_dim=1, **adversarial_cfg.discriminator2)
+            assert False, "Unknown network type"
         
         self.add_standardizing_layer = add_standardizing_layer
         if add_standardizing_layer:
@@ -327,18 +203,10 @@ class TRANSIT(LightningModule):
         self.reverse_pass_mode = reverse_pass_mode
         self.input_noise_cfg = input_noise_cfg
         
-        self.projector = self.get_projector(latent_dim, [32, 64, 128]) #TODO fix this 
-        self.num_features = 2 # TODO fix this
-        if hasattr(loss_cfg, "clip_loss_cfg") and loss_cfg.clip_loss_cfg is not None:
-            self.clip_loss = CLIPLossNorm(loss_cfg.clip_loss_cfg.clip_logit_scale)
         if hasattr(loss_cfg, "DisCO_loss_cfg"):
             self.DisCO_loss = dcor.DistanceCorrelation()
         if hasattr(loss_cfg, "pearson_loss_cfg"):
             self.pearson_loss = PearsonCorrelation()
-        if hasattr(loss_cfg, "vic_reg_cfg") and loss_cfg.vic_reg_cfg is not None:
-            self.sim_coeff = loss_cfg.vic_reg_cfg.sim_coeff
-            self.std_coeff = loss_cfg.vic_reg_cfg.std_coeff
-            self.cov_coeff = loss_cfg.vic_reg_cfg.cov_coeff
 
         # For more stable checks in the shared step
         expected_attrs = ["reco", 
@@ -367,44 +235,6 @@ class TRANSIT(LightningModule):
             if not hasattr(self.loss_cfg.DisCO_loss_cfg, "mode"):
                 self.loss_cfg.DisCO_loss_cfg.mode = "e1_vs_e2"
         self.dis_steps_per_gen = 0
-
-    def VICloss(self, x, y):
-        x = self.projector(x)
-        y = self.projector(y)
-        batch_size = x.size(0)
-        repr_loss = F.mse_loss(x, y)
-
-        #x = torch.cat(FullGatherLayer.apply(x), dim=0)
-        #y = torch.cat(FullGatherLayer.apply(y), dim=0)
-        x = x - x.mean(dim=0)
-        y = y - y.mean(dim=0)
-
-        std_x = torch.sqrt(x.var(dim=0) + 0.0001)
-        std_y = torch.sqrt(y.var(dim=0) + 0.0001)
-        std_loss = torch.mean(F.relu(1 - std_x)) / 2 + torch.mean(F.relu(1 - std_y)) / 2
-
-        cov_x = (x.T @ x) / (batch_size - 1)
-        cov_y = (y.T @ y) / (batch_size - 1)
-        cov_loss = off_diagonal(cov_x).pow_(2).sum().div(
-            self.num_features
-        ) + off_diagonal(cov_y).pow_(2).sum().div(self.num_features)
-
-        loss = (
-            self.sim_coeff * repr_loss
-            + self.std_coeff * std_loss
-            + self.cov_coeff * cov_loss
-        )
-        return loss, repr_loss, std_loss, cov_loss
-
-    def get_projector(self, embedding, mlp):
-        layers = []
-        f = [embedding] + mlp
-        for i in range(len(f) - 2):
-            layers.append(nn.Linear(f[i], f[i + 1]))
-            layers.append(nn.BatchNorm1d(f[i + 1]))
-            layers.append(nn.ReLU(True))
-        layers.append(nn.Linear(f[-2], f[-1], bias=False))
-        return nn.Sequential(*layers)
 
     def encode_content(self, x_inp, m_pair, mask=None):
         if not self.use_m_encodig:
@@ -464,9 +294,6 @@ class TRANSIT(LightningModule):
         m_add=m_add.reshape([x_inp.shape[0], -1])
         
         if self.add_standardizing_layer:
-            # if step_type == "train":
-            #     self.std_layer_x.update(x_inp, mask=mask)
-            #     self.std_layer_ctxt.update(m_pair)
             x_inp = self.std_layer_x(x_inp, mask=mask)
             m_pair = self.std_layer_ctxt(m_pair)
             m_add = self.std_layer_ctxt(m_add)
@@ -538,15 +365,6 @@ class TRANSIT(LightningModule):
                 else:
                     total_loss += loss_back_vec*self.loss_cfg.consistency_x.w(self.global_step)
 
-        # if self.loss_cfg.consistency_x_balanced is not None:
-        #     loss_back_vec = mse_loss(content, content_n).mean()/
-        #     self.log(f"{step_type}/loss_back_vec", loss_back_vec)
-        #     if self.loss_cfg.consistency_x.w is not None:
-        #         if isinstance(self.loss_cfg.consistency_x.w, float) or isinstance(self.loss_cfg.consistency_x.w, int):
-        #             total_loss += loss_back_vec*self.loss_cfg.consistency_x.w
-        #         else:
-        #             total_loss += loss_back_vec*self.loss_cfg.consistency_x.w(self.global_step)
-
         if self.loss_cfg.consistency_cont is not None:
             loss_back_cont = mse_loss(style_p, style_n).mean()
             self.log(f"{step_type}/loss_back_cont", loss_back_cont)
@@ -615,21 +433,6 @@ class TRANSIT(LightningModule):
                         total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.w
                 else:
                     total_loss += loss_disco*self.loss_cfg.pearson_loss_cfg.w(self.global_step)
-
-        # CLIP loss
-        if self.loss_cfg.clip_loss_cfg is not None:
-            loss_clip = self.clip_loss(content, style).mean()
-            self.log(f"{step_type}/clip_loss", loss_clip)
-            if self.loss_cfg.clip_loss_cfg.w is not None:
-                total_loss += loss_clip*self.loss_cfg.clip_loss_cfg.w
-
-        # VIC loss
-        if self.loss_cfg.vic_reg_cfg is not None:
-            loss, repr_loss, std_loss, cov_loss = self.VICloss(content, style)
-            self.log(f"{step_type}/VIC_repr_loss", repr_loss)
-            self.log(f"{step_type}/VIC_std_loss", std_loss)
-            self.log(f"{step_type}/VIC_cov_loss", cov_loss)
-            total_loss += loss
 
         # Log the total loss
         self.log(f"{step_type}/total_loss", total_loss)
@@ -983,7 +786,6 @@ class TRANSIT(LightningModule):
                 self.untoggle_optimizer(optimizer_g)
                 self.log("dis_steps_per_gen", self.dis_steps_per_gen)
                 self.dis_steps_per_gen = 0
-
         elif self.adversarial=="discriminator_priority": 
             optimizer_g, optimizer_d = self.optimizers()
             # adversarial loss is binary cross-entropy

@@ -28,8 +28,8 @@ verbose_validation: False
 
 check_hash:
   run_dir: ${general.run_dir}
-  generated_template_approx: 7f5d73de5093463336644230358955528ea4d9a2a52bdc05e4f22430e12552b3
-  generated_template_full: 46293e256dafcbd06ddf160ccc832a34000ba60fc0db5ac9e72982c4c372b40f #gpu023
+  generated_template_approx: d9830edca2de35b12032dd4d166ac5b1ffde04b723d33fbcc86b02b8ec6d2fdc
+  generated_template_full: 482618a1957b19fbe13dcaafb39fc828c5ce68142b1a82e2473b907ce5f30e59 #gpu023
 
 general:
   name: TRANSITv0v1_LHCO_test_trXex

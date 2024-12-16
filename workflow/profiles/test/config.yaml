@@ -1,5 +1,0 @@
-verbose: false
-printshellcmds: true
-rerun-triggers: mtime
-
-cores: 1

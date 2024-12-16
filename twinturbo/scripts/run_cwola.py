@@ -54,7 +54,7 @@ def main(cfg: DictConfig) -> None:
         # --seed=0
         command = [
             "python", 
-            "libs_snap/linearanomaly/cwola.py",
+            "twinturbo/cwola.py",
             "--input_path=" + cfg.cwola_path,
             "--mode=" + cfg.mode,
             "--num_signal=" + str(cfg.num_signal),

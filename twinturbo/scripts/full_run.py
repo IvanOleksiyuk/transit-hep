@@ -21,7 +21,7 @@ from twinturbo.src.utils.hydra_utils import instantiate_collection, log_hyperpar
 import twinturbo.scripts.evaluation as evaluation
 import twinturbo.scripts.train_ptl as train_ptl
 import twinturbo.scripts.generate_teplate as generate_teplate
-import scripts.run_cwola as run_cwola
+import twinturbo.scripts.run_cwola as run_cwola
 import twinturbo.scripts.cwola_evaluation as cwola_evaluation
 import twinturbo.scripts.plot_compare as plot_compare
 import twinturbo.scripts.export_latent_space as export_latent_space
@@ -69,7 +69,7 @@ def write_git_status_to_file(file_path):
         print(f"Error writing to file: {str(e)}")
 
 @hydra.main(
-    version_base=None, config_path=str('../config'), config_name="TRANSITv0v1_LHCO_test_trXex"
+    version_base=None, config_path=str('../config'), config_name="TRANSITv0v1_LHCO_test"
 )
 def main(cfg: DictConfig) -> None:
     log.info("<<<START FULL RUN>>>")

@@ -5,3 +5,6 @@
 [submodule "transit"]
 	path = transit
 	url = https://gitlab.cern.ch/ioleksiy/transit
+[submodule "anomdiff"]
+	path = libs_snap/anomdiff
+	url = https://gitlab.cern.ch/mleigh/AnomDiff

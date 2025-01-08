@@ -1,6 +1,0 @@
-data:
-  _target_: twinturbo.src.data.data.InMemoryDataFrameDict
-  file_path: "twinturbo/tests/unit/fixtures/data_LHCO_100events.h5"
-  processor_cfg:
-    - _target_: twinturbo.src.data.data.ProcessorLHCOcurtains
-      frame_name: "df"

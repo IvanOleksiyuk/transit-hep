@@ -1,4 +1,0 @@
-roc_curve:
-  _target_: hyperproject.plotting.templates.RocCurveTemplate
-  xlabel: "False Positive Rate"
-  ylabel: "True Positive Rate"

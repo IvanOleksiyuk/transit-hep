@@ -86,7 +86,8 @@ def run_bdt_folds(
     all_x = []
     all_y = []
     all_preds = []
-
+    extra_preds_dict = {}
+    extra_bkg_preds_dict = {}
     # Loop over the folds
     for fold_idx in trange(num_folds, leave=False):
         # Split the data from the signal region using the fold_idx
@@ -109,6 +110,15 @@ def run_bdt_folds(
         all_x.append(test_x)
         all_y.append(test_y)
         all_preds.append(preds)
+        
+        # Also get the outputs for the extra signal file
+        extra_preds_dict[f"fold_{fold_idx}"] = (
+            clf.predict_proba(extra_sig[:, :-2])[:, 1] if extra_sig is not None else None
+        )
+        extra_bkg_preds_dict[f"fold_{fold_idx}"] = (
+            clf.predict_proba(extra_bkg[:, :-2])[:, 1] if extra_bkg is not None else None
+        )
+
 
     # Combine the results
     all_x = np.vstack(all_x)
@@ -123,4 +133,4 @@ def run_bdt_folds(
         clf.predict_proba(extra_bkg[:, :-2])[:, 1] if extra_bkg is not None else None
     )
 
-    return all_x, all_y, all_preds, extra_preds, extra_bkg_preds
+    return all_x, all_y, all_preds, extra_preds, extra_bkg_preds, extra_preds_dict, extra_bkg_preds_dict

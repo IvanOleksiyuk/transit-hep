@@ -1,6 +1,0 @@
-_target_: twinturbo.src.data.data.LHCODataModule
-  train_dataset:
-    file_path: '/home/users/o/oleksiyu/scratch/DATA/LHCO/events_anomalydetection_v2.features.h5'
-    var_group_list: [['is_signal'], ['mj1', 'mj2', 'dR'], ['m_jj']]
-    to_return_list: [false, true, true]
-

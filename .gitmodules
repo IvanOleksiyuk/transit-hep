@@ -1,10 +1,3 @@
-[submodule "libs/mltools"]
-	path = libs/mltools
-	url = https://gitlab.cern.ch/mleigh/mltools.git
-	branch = projecttemplate
 [submodule "transit"]
 	path = transit
 	url = https://gitlab.cern.ch/ioleksiy/transit
-[submodule "anomdiff"]
-	path = libs_snap/anomdiff
-	url = https://gitlab.cern.ch/mleigh/AnomDiff

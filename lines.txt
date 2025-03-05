@@ -1,3 +1,0 @@
-after using docker:
-
-sudo chown -R $USER:$USER /home/ivanoleksiyuk/WORK/hyperproject

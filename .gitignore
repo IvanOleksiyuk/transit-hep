@@ -4,6 +4,7 @@
 __pycache__
 *.egg-info
 *.DS_Store
+*.png
 
 workspaces**
 user**
@@ -15,6 +16,6 @@ plots**
 **job_output**
 curtains2**
 IGNORE**
-lit/
 concept**
 wandb/**
+lit/
